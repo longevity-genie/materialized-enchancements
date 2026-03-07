@@ -1,4 +1,4 @@
-# Materialized Enhancements — CODAME Hackathon Submission Draft
+# Materialized Enhancements — CODAME ART+TECH 『 The New Human 』 Hackathon & Festival · Milano · 2026
 
 > Template: https://www.codame.com/p/creative-hackathon-project-title
 > Submit the finished Substack post URL to: newhuman@codame.com
@@ -9,9 +9,9 @@
 
 **Materialized Enhancements**
 
-### One-Sentence Pitch
+### Short Pitch (Elevator Pitch)
 
-> A web app where participants compose a personal biological wish-list from real enhancement genes sourced across 25+ species — then sign it to generate a unique 3D-printable totem.
+> A platform translating human biological upgrades into generative, wearable art. Choose your real-world genetic enhancements, and our system generates a unique, 3D-printable artifact shaped by your biological choices.
 
 ---
 
@@ -30,20 +30,26 @@
 
 ## Presenting Your Project
 
-**Milano Team** — 🕕 6:00 PM – 8:00 PM (CET)
+**Milano Team** — 6:00 PM – 8:00 PM (CET)
 https://luma.com/5zq1xkvx
 
 ---
 
-## Project Summary
+## Project Description
 
-Nature is an open library. Greenland sharks carry genes for centuries of cellular repair. Tardigrades encode proteins that shield DNA from radiation. Axolotls regenerate entire limbs. These aren't abstractions — they are working biological code, and the tools to express it in human cells are arriving now.
+Upgrading human DNA isn't sci-fi — it is already happening in adults today. In alternative jurisdictions like Prospera, medical tourists are actively receiving gene therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens in 10 years as we unlock harder-to-implement targets to shape "The New Human"? Nature already has the code for extreme survival: shark longevity, tardigrade radiation shields, and axolotl regeneration. Materialized Enhancements turns this impending synthetic biology into participatory artwork.
 
-Materialized Enhancements invites participants to compose their own biological wish-list. From a curated menu of 35 real enhancement genes — across longevity, resilience, regeneration, new senses, and more — each person selects the traits that resonate with them, then signs the mix with something personal. No two selections are alike, because no two visions of a better self are alike.
+Users select their desired "enhancement genes" through our intuitive UI built in Reflex. These selections, combined with a personal digital signature, act as the exact data inputs for a generative algorithm. The result is a single, unrepeatable 3D form — ready for 3D printing.
 
-This data feeds a generative algorithm that produces a unique form — a personal totem of becoming, 3D-printed on site or shareable as a file: a holdable fragment of a future where biology is not destiny but choice, and where enhancing yourself means freely choosing from what life on Earth has already invented.
+We built this as a highly extensible platform. We are actively inviting other artists to plug their own generative art models into our biological input engine. While we used Grasshopper for fast prototyping during the hackathon, our roadmap includes switching to fully open-source generative tools integrated directly with the deployed UI.
 
 **Category:** Interactive installation / Data visualization / Generative art
+
+---
+
+## The Hackathon Journey
+
+This project was literally built on the move across over 1,500 kilometers. We pitched the concept during the first hour of the hackathon in Milan, caught a flight to Bucharest, and developed the Reflex code and Grasshopper logic on a train to Munich, where Livia is currently exhibiting her "Data as Art" work.
 
 ---
 
@@ -63,7 +69,7 @@ The project is a collaboration between humans and biological heritage — each s
 
 ### Art and Technology
 
-A Reflex web app with a dark biopunk aesthetic serves as the interface — the gene library is the data layer, generative algorithms translate selections into unique 3D forms, and the final artefact is the physical print. Technology makes the biology legible; art makes it personal and emotionally resonant.
+A Reflex web app serves as the interface — the gene library is the data layer, generative algorithms translate selections into unique 3D forms, and the final artefact is the physical print. Technology makes the biology legible; art makes it personal and emotionally resonant.
 
 ### Depth
 
@@ -75,23 +81,15 @@ Rather than fearing genetic enhancement, this project imagines a world where it 
 
 ---
 
-## Tools & Materials Used
+## Tech Stack
 
-**Software / AI / Data**
-- Python — Reflex (reactive web framework) + Fomantic UI (dark biopunk theme)
-- Polars — data processing
-- Gene library CSV (35 genes · 10 categories · ~25 source organisms, each with a real research paper)
-- PhyloPic — open-licensed organism silhouettes (CC0 / CC BY 4.0)
-- Generative algorithm → 3D-printable STL output (in progress)
-
-**Hardware / Output**
-- 3D printer (on site) for physical totems
-- Web browser / QR code for remote participants
-
-**Media / Output**
-- Interactive web experience (http://localhost:3000 in dev; deployable)
-- Physical 3D-printed totem per participant
-- Shareable digital file
+- **Frontend UI**: Reflex ([GitHub Repo](https://github.com/winternewt/materialized-enchancements))
+- **Generative Form Prototype**: Rhino / Grasshopper
+- **Future Generative Engine**: Open-source generative models directly integrated with the UI
+- **Generative Video**: Google Flux / Veo
+- **Data**: Polars, reflex-mui-datagrid
+- **Gene library**: 35 genes · 9 categories · ~25 source organisms (each with a real research paper)
+- **Organism silhouettes**: PhyloPic (CC0 / CC BY)
 
 ---
 
@@ -103,7 +101,8 @@ Visit the web app (or scan a QR code on site). Browse the Gene Library — 35 re
 
 ## What's Next?
 
-- Complete the generative algorithm to produce fully unique 3D-printable forms from each person's gene selection
+- Integrate fully open-source generative tools directly into the deployed UI (replacing Grasshopper prototype)
+- Invite other artists to plug their own generative art models into the biological input engine
 - Add the puzzle assembly view — showing how each source organism contributes a piece to the human silhouette
 - Extend the gene library with more organisms and categories
 - Explore AR as a presentation layer for the generated totem
@@ -113,8 +112,8 @@ Visit the web app (or scan a QR code on site). Browse the Gene Library — 35 re
 
 ## Anything Else
 
-The gene library is built on real published research — every entry links to a peer-reviewed paper. The organisms range from extremophile bacteria to extinct hominins (Denisovans). The biopunk aesthetic is intentional: this is not clinical, it is visceral and personal.
+The gene library is built on real published research — every entry links to a peer-reviewed paper. The organisms range from extremophile bacteria to extinct hominins (Denisovans).
 
 The puzzle metaphor runs through the whole project: each organism is a puzzle piece, the human silhouette is assembled from non-human biological heritage, and your personal totem is the assembled result of your choices — a materialised version of your vision of yourself.
 
-Source code: https://github.com/[your-repo] *(update before submitting)*
+Source code: https://github.com/winternewt/materialized-enchancements

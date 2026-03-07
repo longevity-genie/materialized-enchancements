@@ -1,58 +1,199 @@
 from __future__ import annotations
 
-import reflex as rx
+import datetime
 
-from materialized_enhancements.gene_data import UNIQUE_CATEGORIES
+import reflex as rx
+from reflex_mui_datagrid import LazyFrameGridMixin
+
+from materialized_enhancements.gene_data import (
+    ANIMAL_LIBRARY,
+    ANIMAL_LIBRARY_LF,
+    CATEGORY_TRAITS,
+    GENE_LIBRARY,
+    GENE_LIBRARY_LF,
+    UNIQUE_CATEGORIES,
+)
 
 
 CATEGORY_COLORS: dict[str, str] = {
-    "Radiation Resistance": "orange",
-    "Longevity & Cancer Resistance": "green",
-    "DNA Repair & Stress Resistance": "green",
-    "Genome Stability": "green",
-    "Oxidative Stress Resistance": "green",
-    "Longevity & Metabolic Regulation": "green",
-    "Longevity & Cognitive Protection": "green",
-    "Cancer Resistance": "green",
-    "Longevity & Cellular Rejuvenation": "green",
-    "Extreme Longevity": "green",
-    "Oncogenic Redundancy": "green",
-    "Environmental Adaptation": "teal",
-    "Hypoxia Tolerance": "teal",
-    "Desiccation Tolerance": "orange",
-    "Post-Damage Genome Repair": "orange",
-    "Radiosynthesis": "orange",
-    "Biological Immortality": "teal",
-    "Distributed Stem Cell Regeneration": "teal",
-    "Regeneration": "teal",
-    "Viral Tolerance & Immune Balance": "blue",
-    "Extreme Breath-Holding": "blue",
-    "Extreme Cold Tolerance": "blue",
-    "Unihemispheric Sleep": "violet",
-    "Echolocation / Ultrasonic Hearing": "pink",
-    "Infrared Sensing": "pink",
-    "Hyper-Spectral Vision": "pink",
-    "Magnetoreception": "pink",
-    "Night Vision Enhancement": "pink",
-    "Adaptive Camouflage": "pink",
-    "Bioluminescence / Fluorescence": "pink",
-    "True Bioluminescence": "pink",
-    "Bioelectrogenesis": "orange",
-    "Photosynthesis / Kleptoplasty": "teal",
-    "Surface Adhesion": "teal",
+    "Radiation & Extremophile": "#e67e22",
+    "Longevity & Cancer Resistance": "#27ae60",
+    "Biological Immortality & Regeneration": "#16a085",
+    "Immunity & Physiology": "#2980b9",
+    "Sleep & Consciousness": "#8e44ad",
+    "New Senses": "#e84393",
+    "Display & Expression": "#d63031",
+    "Energy": "#f39c12",
+    "Materials": "#00b894",
 }
 
-CATEGORIES: list[str] = ["All"] + UNIQUE_CATEGORIES
+CATEGORY_ICONS: dict[str, str] = {
+    "Radiation & Extremophile": "sun",
+    "Longevity & Cancer Resistance": "heartbeat",
+    "Biological Immortality & Regeneration": "sync",
+    "Immunity & Physiology": "shield",
+    "Sleep & Consciousness": "moon",
+    "New Senses": "eye",
+    "Display & Expression": "paint brush",
+    "Energy": "bolt",
+    "Materials": "cube",
+}
 
 
 class AppState(rx.State):
     """Root application state."""
 
-    active_tab: str = "library"
-    active_category: str = "All"
+    active_tab: str = "landing"
 
     def set_tab(self, tab: str) -> None:
         self.active_tab = tab
 
-    def set_category(self, category: str) -> None:
-        self.active_category = category
+
+class ComposeState(rx.State):
+    """State for the Parametric Sculpture tab."""
+
+    personal_tag: str = "A new human, to be"
+    selected_categories: list[str] = []
+
+    def set_personal_tag(self, value: str) -> None:
+        self.personal_tag = value
+
+    def toggle_category(self, category: str) -> None:
+        if category in self.selected_categories:
+            self.selected_categories = [c for c in self.selected_categories if c != category]
+        else:
+            self.selected_categories = [*self.selected_categories, category]
+
+    def remove_category(self, category: str) -> None:
+        self.selected_categories = [c for c in self.selected_categories if c != category]
+
+    def materialize(self) -> rx.event.EventSpec:
+        """Stub — fires a toast with the composition data."""
+        timestamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        tag = self.personal_tag.strip() or "Anonymous"
+        cats = ", ".join(self.selected_categories) if self.selected_categories else "none"
+        return rx.toast.success(
+            f"Materialized: {tag} | Categories: {cats} | {timestamp}",
+            duration=6000,
+        )
+
+    @rx.var
+    def selected_traits(self) -> list[str]:
+        traits: list[str] = []
+        for cat in self.selected_categories:
+            for t in CATEGORY_TRAITS.get(cat, []):
+                if t not in traits:
+                    traits.append(t)
+        return traits
+
+    @rx.var
+    def selected_genes(self) -> list[dict]:
+        return [
+            {"gene": g["gene"], "trait": g["trait"], "category": g["category"]}
+            for g in GENE_LIBRARY
+            if g["category"] in self.selected_categories
+        ]
+
+    @rx.var
+    def has_selection(self) -> bool:
+        return len(self.selected_categories) > 0
+
+    @rx.var
+    def can_materialize(self) -> bool:
+        return len(self.selected_categories) > 0 and len(self.personal_tag.strip()) > 0
+
+
+class JigsawState(rx.State):
+    """State for the Gene Jigsaw tab — animal/organism selection."""
+
+    personal_tag: str = "A new human, to be"
+    selected_organisms: list[str] = []
+
+    def set_personal_tag(self, value: str) -> None:
+        self.personal_tag = value
+
+    def toggle_organism(self, organism: str) -> None:
+        if organism in self.selected_organisms:
+            self.selected_organisms = [o for o in self.selected_organisms if o != organism]
+        else:
+            self.selected_organisms = [*self.selected_organisms, organism]
+
+    def remove_organism(self, organism: str) -> None:
+        self.selected_organisms = [o for o in self.selected_organisms if o != organism]
+
+    def materialize(self) -> rx.event.EventSpec:
+        """Stub — fires a toast with the jigsaw composition data."""
+        timestamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        tag = self.personal_tag.strip() or "Anonymous"
+        orgs = ", ".join(self.selected_organisms) if self.selected_organisms else "none"
+        return rx.toast.success(
+            f"Jigsaw assembled: {tag} | Organisms: {orgs} | {timestamp}",
+            duration=6000,
+        )
+
+    @rx.var
+    def selected_genes(self) -> list[dict]:
+        return [
+            {"gene": g["gene"], "organism": g["source_organism"], "trait": g["trait"]}
+            for g in GENE_LIBRARY
+            if g["source_organism"] in self.selected_organisms
+        ]
+
+    @rx.var
+    def selected_traits(self) -> list[str]:
+        traits: list[str] = []
+        for g in GENE_LIBRARY:
+            if g["source_organism"] in self.selected_organisms:
+                if g["trait"] not in traits:
+                    traits.append(g["trait"])
+        return traits
+
+    @rx.var
+    def selected_animal_entries(self) -> list[dict]:
+        return [
+            {"organism": a["organism"], "superpower": a["superpower"]}
+            for a in ANIMAL_LIBRARY
+            if a["organism"] in self.selected_organisms
+        ]
+
+    @rx.var
+    def has_selection(self) -> bool:
+        return len(self.selected_organisms) > 0
+
+    @rx.var
+    def can_materialize(self) -> bool:
+        return len(self.selected_organisms) > 0 and len(self.personal_tag.strip()) > 0
+
+
+class GeneGridState(LazyFrameGridMixin, rx.State):
+    """DataGrid state for the gene library."""
+
+    grid_loaded: bool = False
+
+    def load_grid(self) -> None:
+        if self.grid_loaded:
+            return
+        for _ in self.set_lazyframe(GENE_LIBRARY_LF, {}, chunk_size=100):
+            pass
+        self.grid_loaded = True
+
+    @rx.var
+    def has_data(self) -> bool:
+        return bool(self.lf_grid_loaded)
+
+
+class AnimalGridState(LazyFrameGridMixin, rx.State):
+    """DataGrid state for the animal library."""
+
+    grid_loaded: bool = False
+
+    def load_grid(self) -> None:
+        if self.grid_loaded:
+            return
+        for _ in self.set_lazyframe(ANIMAL_LIBRARY_LF, {}, chunk_size=100):
+            pass
+        self.grid_loaded = True
+
+    @rx.var
+    def has_data(self) -> bool:
+        return bool(self.lf_grid_loaded)

@@ -9,10 +9,7 @@ def fomantic_icon(
     color: str | None = None,
     style: dict | None = None,
 ) -> rx.Component:
-    """
-    Fomantic UI icon component.
-    Replaces rx.icon because Lucide icons often fail to load or give warnings.
-    """
+    """Fomantic UI icon component."""
     mapping = {
         "circle-check": "check circle",
         "circle-x": "times circle",
@@ -51,6 +48,14 @@ def fomantic_icon(
         "atom": "atom",
         "fire": "fire",
         "brain": "brain",
+        "paint brush": "paint brush",
+        "cube": "cube",
+        "puzzle piece": "puzzle piece",
+        "video": "video",
+        "play": "play",
+        "close": "close",
+        "check": "check",
+        "times": "times",
     }
 
     fomantic_name = mapping.get(name, name)
@@ -68,98 +73,6 @@ def fomantic_icon(
     return rx.el.i(
         class_name=f"icon {fomantic_name}",
         style=icon_style,
-    )
-
-
-def _nav_tab(
-    label: str,
-    icon_name: str,
-    href: str,
-    is_active: rx.Var,
-) -> rx.Component:
-    """Navigation tab for the topbar with reactive active state."""
-    base_style = {
-        "display": "flex",
-        "alignItems": "center",
-        "padding": "6px 16px",
-        "borderRadius": "4px",
-        "fontSize": "0.95rem",
-        "textDecoration": "none",
-        "transition": "all 0.15s ease",
-        "cursor": "pointer",
-    }
-    return rx.el.a(
-        fomantic_icon(icon_name, size=16),
-        rx.el.span(label, style={"marginLeft": "6px"}),
-        href=href,
-        style=base_style,
-        class_name=rx.cond(
-            is_active,
-            "nav-tab nav-tab-active",
-            "nav-tab",
-        ),
-    )
-
-
-def topbar() -> rx.Component:
-    """Top navigation bar with page tabs."""
-    current_path = rx.State.router.page.path
-    nav_tab_css = rx.el.style(
-        """
-        .nav-tab { color: #555; font-weight: 500; }
-        .nav-tab:hover { background-color: #1a0a2e; color: #c084fc; }
-        .nav-tab-active { background-color: #2d1b69 !important; color: #e879f9 !important; font-weight: 600 !important; }
-        """
-    )
-    return rx.el.div(
-        nav_tab_css,
-        # Left: Logo / title
-        rx.el.div(
-            rx.el.a(
-                rx.el.span(
-                    "Materialized Enhancements",
-                    style={
-                        "fontSize": "1.2rem",
-                        "fontWeight": "700",
-                        "color": "#e879f9",
-                        "letterSpacing": "0.03em",
-                    },
-                ),
-                href="/",
-                style={"display": "flex", "alignItems": "center", "textDecoration": "none"},
-            ),
-            style={"display": "flex", "alignItems": "center", "flex": "0 0 auto"},
-        ),
-        # Center: Navigation tabs
-        rx.el.div(
-            _nav_tab("Gene Library", "dna", "/", current_path == "/"),
-            _nav_tab("Compose", "sparkles", "/compose", current_path == "/compose"),
-            style={
-                "display": "flex",
-                "alignItems": "center",
-                "gap": "8px",
-                "flex": "1 1 auto",
-                "justifyContent": "center",
-            },
-        ),
-        # Right: spacer
-        rx.el.div(style={"width": "80px", "flex": "0 0 80px"}),
-        style={
-            "position": "fixed",
-            "top": "0",
-            "left": "0",
-            "right": "0",
-            "height": "56px",
-            "backgroundColor": "#0d0221",
-            "borderBottom": "1px solid #3b1a6e",
-            "boxShadow": "0 1px 6px rgba(200,100,255,0.15)",
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "space-between",
-            "padding": "0 24px",
-            "zIndex": "1000",
-        },
-        id="topbar",
     )
 
 
@@ -253,29 +166,69 @@ def ws_watchdog() -> rx.Component:
     return rx.script(_WS_WATCHDOG_JS)
 
 
+def topbar() -> rx.Component:
+    """Top navigation bar — logo only, tabs live in page content."""
+    return rx.el.div(
+        rx.el.a(
+            rx.el.span(
+                "Materialized Enhancements",
+                style={
+                    "fontSize": "1.2rem",
+                    "fontWeight": "700",
+                    "color": "#7c3aed",
+                    "letterSpacing": "0.03em",
+                },
+            ),
+            href="/",
+            style={"display": "flex", "alignItems": "center", "textDecoration": "none"},
+        ),
+        style={
+            "position": "fixed",
+            "top": "0",
+            "left": "0",
+            "right": "0",
+            "height": "56px",
+            "backgroundColor": "#ffffff",
+            "borderBottom": "1px solid #e5e7eb",
+            "boxShadow": "0 1px 3px rgba(0,0,0,0.06)",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "padding": "0 24px",
+            "zIndex": "1000",
+        },
+        id="topbar",
+    )
+
+
 def template(*children: rx.Component) -> rx.Component:
-    """Main page template with dark biopunk styling."""
+    """Main page template — White Mirror light theme."""
     global_css = rx.el.style(
         """
-        body { background-color: #0d0221 !important; color: #e2d9f3 !important; }
-        .ui.segment { background-color: #150535 !important; border-color: #3b1a6e !important; color: #e2d9f3 !important; }
-        .ui.raised.segment { box-shadow: 0 2px 8px rgba(200,100,255,0.15) !important; }
-        .ui.button { background-color: #2d1b69 !important; color: #e879f9 !important; border: 1px solid #7c3aed !important; }
-        .ui.primary.button { background-color: #7c3aed !important; color: #fff !important; }
-        .ui.top.attached.tabular.menu { background-color: #0d0221 !important; border-color: #3b1a6e !important; }
-        .ui.top.attached.tabular.menu .item { color: #a78bfa !important; }
-        .ui.top.attached.tabular.menu .active.item { background-color: #150535 !important; color: #e879f9 !important; border-color: #7c3aed !important; }
-        .ui.bottom.attached.segment { background-color: #150535 !important; border-color: #3b1a6e !important; }
-        .ui.label { background-color: #2d1b69 !important; color: #c084fc !important; }
-        .ui.green.label { background-color: #065f46 !important; color: #6ee7b7 !important; }
-        .ui.violet.label { background-color: #4c1d95 !important; color: #ddd6fe !important; }
-        .ui.teal.label { background-color: #134e4a !important; color: #5eead4 !important; }
-        .ui.orange.label { background-color: #7c2d12 !important; color: #fdba74 !important; }
-        .ui.blue.label { background-color: #1e3a5f !important; color: #93c5fd !important; }
-        .ui.red.label { background-color: #7f1d1d !important; color: #fca5a5 !important; }
-        .ui.pink.label { background-color: #831843 !important; color: #f9a8d4 !important; }
-        a { color: #a78bfa !important; }
-        a:hover { color: #e879f9 !important; }
+        body { background-color: #f8f9fa !important; color: #1a1a2e !important; }
+        .ui.segment { background-color: #ffffff !important; border-color: #e5e7eb !important; color: #1a1a2e !important; }
+        .ui.raised.segment { box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important; }
+        .ui.button { background-color: #f3f0ff !important; color: #7c3aed !important; border: 1px solid #d4c5f9 !important; }
+        .ui.button:hover { background-color: #ede9fe !important; }
+        .ui.primary.button { background-color: #7c3aed !important; color: #fff !important; border: none !important; }
+        .ui.primary.button:hover { background-color: #6d28d9 !important; }
+        .ui.top.attached.tabular.menu { background-color: #ffffff !important; border-color: #e5e7eb !important; }
+        .ui.top.attached.tabular.menu .item { color: #6b7280 !important; }
+        .ui.top.attached.tabular.menu .active.item { background-color: #ffffff !important; color: #7c3aed !important; border-color: #7c3aed !important; font-weight: 600 !important; }
+        .ui.bottom.attached.segment { background-color: #ffffff !important; border-color: #e5e7eb !important; }
+        .ui.label { background-color: #f3f0ff !important; color: #7c3aed !important; }
+        .ui.green.label { background-color: #ecfdf5 !important; color: #059669 !important; }
+        .ui.violet.label { background-color: #f3f0ff !important; color: #7c3aed !important; }
+        .ui.teal.label { background-color: #f0fdfa !important; color: #0d9488 !important; }
+        .ui.orange.label { background-color: #fff7ed !important; color: #ea580c !important; }
+        .ui.blue.label { background-color: #eff6ff !important; color: #2563eb !important; }
+        .ui.red.label { background-color: #fef2f2 !important; color: #dc2626 !important; }
+        .ui.pink.label { background-color: #fdf2f8 !important; color: #db2777 !important; }
+        .ui.yellow.label { background-color: #fffbeb !important; color: #d97706 !important; }
+        .ui.message { background-color: #f9fafb !important; color: #374151 !important; border: 1px solid #e5e7eb !important; }
+        .ui.divider { border-color: #e5e7eb !important; }
+        a { color: #7c3aed !important; }
+        a:hover { color: #6d28d9 !important; }
         """
     )
     return rx.el.div(
@@ -292,7 +245,7 @@ def template(*children: rx.Component) -> rx.Component:
                 "marginTop": "56px",
                 "padding": "20px",
                 "minHeight": "calc(100vh - 56px)",
-                "backgroundColor": "#0d0221",
+                "backgroundColor": "#f8f9fa",
             },
         ),
         style={"fontFamily": "'Lato', 'Helvetica Neue', Arial, Helvetica, sans-serif"},
@@ -310,14 +263,14 @@ def two_column_layout(
         "overflowY": "auto",
         "overflowX": "hidden",
         "padding": "16px",
-        "backgroundColor": "#150535",
+        "backgroundColor": "#ffffff",
         "borderRadius": "6px",
-        "boxShadow": "0 1px 4px rgba(200,100,255,0.12)",
-        "border": "1px solid #3b1a6e",
+        "boxShadow": "0 1px 4px rgba(0,0,0,0.06)",
+        "border": "1px solid #e5e7eb",
     }
     divider_style = {
         "width": "1px",
-        "backgroundColor": "#3b1a6e",
+        "backgroundColor": "#e5e7eb",
         "margin": "0 12px",
         "flexShrink": "0",
     }
