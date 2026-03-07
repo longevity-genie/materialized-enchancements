@@ -703,12 +703,11 @@ def _jigsaw_right_pane() -> rx.Component:
             ),
         ),
         rx.el.div(
-            rx.el.button(
-                fomantic_icon("puzzle piece", size=16),
-                rx.el.span(" Assemble", style={"marginLeft": "8px"}),
-                on_click=JigsawState.materialize,
-                class_name=rx.cond(JigsawState.can_materialize, "ui primary button", "ui disabled primary button"),
-                style={"width": "100%", "padding": "12px", "fontSize": "1rem", "marginBottom": "8px"},
+            # Hidden textarea holding SVG data for JS access
+            rx.el.textarea(
+                value=JigsawState.jigsaw_svg,
+                id="jigsaw-svg-data",
+                style={"display": "none"},
             ),
             # Pipeline action buttons
             rx.el.div(
@@ -719,13 +718,12 @@ def _jigsaw_right_pane() -> rx.Component:
                     class_name=rx.cond(JigsawState.has_selection, "ui button", "ui disabled button"),
                     style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
                 ),
-                rx.el.a(
-                    fomantic_icon("external link", size=14),
-                    rx.el.span(" Jigsaw Generator", style={"marginLeft": "6px"}),
-                    href="https://proceduraljigsaw.github.io/CustomShapeJigsawJs/",
-                    target="_blank",
-                    class_name="ui teal button",
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem", "textDecoration": "none"},
+                rx.el.button(
+                    fomantic_icon("puzzle piece", size=14),
+                    rx.el.span(" Generate Pieces", style={"marginLeft": "6px"}),
+                    on_click=JigsawState.open_jigsaw_generator,
+                    class_name=rx.cond(JigsawState.has_selection, "ui teal button", "ui disabled teal button"),
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
                 ),
                 style={"display": "flex", "gap": "8px", "marginBottom": "8px"},
             ),
@@ -744,12 +742,10 @@ def _jigsaw_right_pane() -> rx.Component:
                 rx.el.strong("1. "),
                 "Select organisms → ",
                 rx.el.strong("2. "),
-                "Download SVG → ",
+                "Generate Pieces (Voronoi tessellation) → ",
                 rx.el.strong("3. "),
-                "Upload to Jigsaw Generator (Voronoi tessellation) → ",
-                rx.el.strong("4. "),
                 "Extrude to 3D model with svg_extrude → ",
-                rx.el.strong("5. "),
+                rx.el.strong("4. "),
                 "3D print your jigsaw.",
                 style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center", "lineHeight": "1.5"},
             ),

@@ -142,6 +142,16 @@ class JigsawState(rx.State):
             filename="materialized_jigsaw.svg",
         )
 
+    def open_jigsaw_generator(self) -> rx.event.EventSpec:
+        """Store SVG in localStorage and open the jigsaw generator page."""
+        if not self.jigsaw_svg:
+            return rx.toast.error("No SVG to generate — select some organisms first.")
+        return rx.call_script(
+            "localStorage.setItem('materialized_jigsaw_svg', "
+            "document.getElementById('jigsaw-svg-data').value); "
+            "window.open('/jigsaw/index.html', '_blank');"
+        )
+
     def materialize(self) -> rx.event.EventSpec:
         """Stub — fires a toast with the jigsaw composition data."""
         timestamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
