@@ -71,6 +71,11 @@ Opens the Reflex Web UI at [http://localhost:3000](http://localhost:3000).
 
 ## Attributions & Acknowledgements
 
+### Jigsaw Pipeline Tools
+
+- **[CustomShapeJigsawJs](https://github.com/proceduraljigsaw/CustomShapeJigsawJs)** by ProceduralJigsaw — Voronoi-tessellation jigsaw puzzle generator with custom SVG border support. Used to turn organism silhouettes into laser-cuttable / 3D-printable puzzle pieces. MIT License.
+- **[svg_extrude](https://github.com/deffi/svg_extrude)** by deffi — Creates 3D models (suitable for 3D printing) from SVG files via OpenSCAD. Used to extrude jigsaw SVGs into printable 3MF/STL models. AGPL-3.0 License.
+
 ### PhyloPic
 
 Organism silhouette artwork used in the puzzle-piece visualisation is sourced from **[PhyloPic](https://www.phylopic.org/)** — a free, open database of life-form silhouettes in the public domain or under open licenses.

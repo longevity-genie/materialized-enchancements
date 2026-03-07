@@ -12,6 +12,7 @@ from materialized_enhancements.gene_data import (
     GENE_LIBRARY,
     GENE_LIBRARY_LF,
     UNIQUE_CATEGORIES,
+    build_jigsaw_svg,
 )
 
 
@@ -108,6 +109,10 @@ class JigsawState(rx.State):
 
     personal_tag: str = "A new human, to be"
     selected_organisms: list[str] = []
+    jigsaw_svg: str = ""
+
+    def _rebuild_svg(self) -> None:
+        self.jigsaw_svg = build_jigsaw_svg(self.selected_organisms)
 
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
@@ -117,9 +122,25 @@ class JigsawState(rx.State):
             self.selected_organisms = [o for o in self.selected_organisms if o != organism]
         else:
             self.selected_organisms = [*self.selected_organisms, organism]
+        self._rebuild_svg()
 
     def remove_organism(self, organism: str) -> None:
         self.selected_organisms = [o for o in self.selected_organisms if o != organism]
+        self._rebuild_svg()
+
+    def init_jigsaw(self) -> None:
+        """Initialize with base-only SVG on page load."""
+        if not self.jigsaw_svg:
+            self.jigsaw_svg = build_jigsaw_svg([])
+
+    def download_svg(self) -> rx.event.EventSpec:
+        """Download the current jigsaw SVG as a file."""
+        if not self.jigsaw_svg:
+            return rx.toast.error("No SVG to download — select some organisms first.")
+        return rx.download(
+            data=self.jigsaw_svg,
+            filename="materialized_jigsaw.svg",
+        )
 
     def materialize(self) -> rx.event.EventSpec:
         """Stub — fires a toast with the jigsaw composition data."""

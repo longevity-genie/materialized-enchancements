@@ -643,6 +643,23 @@ def _jigsaw_right_pane() -> rx.Component:
             },
         ),
         rx.el.div(class_name="ui divider", style={"marginBottom": "16px"}),
+        # Live SVG preview
+        rx.cond(
+            JigsawState.jigsaw_svg != "",
+            rx.el.div(
+                rx.html(JigsawState.jigsaw_svg),
+                style={
+                    "width": "100%",
+                    "maxWidth": "240px",
+                    "margin": "0 auto 16px auto",
+                    "border": "1px solid #e5e7eb",
+                    "borderRadius": "8px",
+                    "padding": "12px",
+                    "backgroundColor": "#f9fafb",
+                },
+            ),
+            rx.fragment(),
+        ),
         rx.el.h3(
             fomantic_icon("puzzle piece", size=18, color="#16a085"),
             rx.el.span(" Your Jigsaw", style={"marginLeft": "8px"}),
@@ -691,7 +708,50 @@ def _jigsaw_right_pane() -> rx.Component:
                 rx.el.span(" Assemble", style={"marginLeft": "8px"}),
                 on_click=JigsawState.materialize,
                 class_name=rx.cond(JigsawState.can_materialize, "ui primary button", "ui disabled primary button"),
-                style={"width": "100%", "padding": "12px", "fontSize": "1rem"},
+                style={"width": "100%", "padding": "12px", "fontSize": "1rem", "marginBottom": "8px"},
+            ),
+            # Pipeline action buttons
+            rx.el.div(
+                rx.el.button(
+                    fomantic_icon("download", size=14),
+                    rx.el.span(" Download SVG", style={"marginLeft": "6px"}),
+                    on_click=JigsawState.download_svg,
+                    class_name=rx.cond(JigsawState.has_selection, "ui button", "ui disabled button"),
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                ),
+                rx.el.a(
+                    fomantic_icon("external link", size=14),
+                    rx.el.span(" Jigsaw Generator", style={"marginLeft": "6px"}),
+                    href="https://proceduraljigsaw.github.io/CustomShapeJigsawJs/",
+                    target="_blank",
+                    class_name="ui teal button",
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem", "textDecoration": "none"},
+                ),
+                style={"display": "flex", "gap": "8px", "marginBottom": "8px"},
+            ),
+            rx.el.a(
+                fomantic_icon("cube", size=14),
+                rx.el.span(" SVG → 3D Print (svg_extrude)", style={"marginLeft": "6px"}),
+                href="https://github.com/deffi/svg_extrude",
+                target="_blank",
+                class_name="ui basic button",
+                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem", "textDecoration": "none", "display": "block", "textAlign": "center"},
+            ),
+            # Pipeline description
+            rx.el.div(class_name="ui divider", style={"margin": "12px 0"}),
+            rx.el.p(
+                "Pipeline: ",
+                rx.el.strong("1. "),
+                "Select organisms → ",
+                rx.el.strong("2. "),
+                "Download SVG → ",
+                rx.el.strong("3. "),
+                "Upload to Jigsaw Generator (Voronoi tessellation) → ",
+                rx.el.strong("4. "),
+                "Extrude to 3D model with svg_extrude → ",
+                rx.el.strong("5. "),
+                "3D print your jigsaw.",
+                style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center", "lineHeight": "1.5"},
             ),
             style={"marginTop": "auto", "paddingTop": "16px"},
         ),
@@ -943,7 +1003,7 @@ def _tab_content() -> rx.Component:
 # ── Page ─────────────────────────────────────────────────────────────────────
 
 
-@rx.page(route="/", on_load=[GeneGridState.load_grid, AnimalGridState.load_grid])
+@rx.page(route="/", on_load=[GeneGridState.load_grid, AnimalGridState.load_grid, JigsawState.init_jigsaw])
 def index_page() -> rx.Component:
     """Single-page app: tab navigation with landing, sculpture, jigsaw, gene library, animal library."""
     return template(

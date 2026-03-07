@@ -90,6 +90,8 @@ Rather than fearing genetic enhancement, this project imagines a world where it 
 - **Data**: Polars, reflex-mui-datagrid
 - **Gene library**: 35 genes · 9 categories · ~25 source organisms (each with a real research paper)
 - **Organism silhouettes**: PhyloPic (CC0 / CC BY)
+- **Jigsaw tessellation**: [CustomShapeJigsawJs](https://github.com/proceduraljigsaw/CustomShapeJigsawJs) by ProceduralJigsaw (MIT)
+- **SVG → 3D print**: [svg_extrude](https://github.com/deffi/svg_extrude) by deffi (AGPL-3.0)
 
 ---
 
@@ -103,7 +105,7 @@ Visit the web app (or scan a QR code on site). Browse the Gene Library — 35 re
 
 - Integrate fully open-source generative tools directly into the deployed UI (replacing Grasshopper prototype)
 - Invite other artists to plug their own generative art models into the biological input engine
-- Add the puzzle assembly view — showing how each source organism contributes a piece to the human silhouette
+- Wire the Jigsaw Generator (CustomShapeJigsawJs) and svg_extrude pipeline directly into the UI for one-click 3D-printable output
 - Extend the gene library with more organisms and categories
 - Explore AR as a presentation layer for the generated totem
 - Deploy the web app publicly so anyone can compose their enhancement
