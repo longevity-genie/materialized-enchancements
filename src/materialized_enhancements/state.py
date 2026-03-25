@@ -110,6 +110,8 @@ class JigsawState(rx.State):
     personal_tag: str = "A new human, to be"
     selected_organisms: list[str] = []
     jigsaw_svg: str = ""
+    show_generator: bool = False
+    generated_jigsaw_svg: str = ""
 
     def _rebuild_svg(self) -> None:
         self.jigsaw_svg = build_jigsaw_svg(self.selected_organisms)
@@ -142,15 +144,36 @@ class JigsawState(rx.State):
             filename="materialized_jigsaw.svg",
         )
 
-    def open_jigsaw_generator(self) -> rx.event.EventSpec:
-        """Store SVG in localStorage and open the jigsaw generator page."""
+    def open_jigsaw_generator(self):  # type: ignore[return]
+        """Store SVG in localStorage then show the iframe (which reads it on load)."""
         if not self.jigsaw_svg:
-            return rx.toast.error("No SVG to generate — select some organisms first.")
-        return rx.call_script(
+            yield rx.toast.error("No SVG to generate — select some organisms first.")
+            return
+        # 1. Write SVG to localStorage BEFORE the iframe renders
+        yield rx.call_script(
             "localStorage.setItem('materialized_jigsaw_svg', "
-            "document.getElementById('jigsaw-svg-data').value); "
-            "window.open('/jigsaw/index.html', '_blank');"
+            "document.getElementById('jigsaw-svg-data').value);"
         )
+        # 2. Show the iframe — it will read from localStorage via checkAutoLoad()
+        self.show_generator = True
+
+    def hide_generator(self) -> None:
+        """Hide the embedded jigsaw generator."""
+        self.show_generator = False
+
+    def receive_generated_svg(self, svg: str) -> rx.event.EventSpec:
+        """Receive the generated jigsaw SVG from the iframe and download it."""
+        if not svg:
+            return rx.toast.error("No generated jigsaw — click Generate in the tool first.")
+        self.generated_jigsaw_svg = svg
+        return rx.download(
+            data=svg,
+            filename="materialized_jigsaw_pieces.svg",
+        )
+
+    @rx.var
+    def has_generated_svg(self) -> bool:
+        return len(self.generated_jigsaw_svg) > 0
 
     def materialize(self) -> rx.event.EventSpec:
         """Stub — fires a toast with the jigsaw composition data."""

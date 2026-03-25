@@ -32,4 +32,5 @@ config = rx.Config(
         rx.script(src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.4/dist/semantic.min.js"),
     ],
     tailwind=None,
+    vite_allowed_hosts=["materialized-enhancements.longevity-genie.info"],
 )

@@ -796,9 +796,20 @@
             }
         }
 
-        function savesvg() {
-            window.alert("DISCLAIMER: This generator has no mechanism implemented to check and fix line intersections at this moment. Please check the output and fix any issues manually before cutting.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
+        var isEmbedded = (window.parent !== window);
 
+        function sendResultToParent() {
+            if (isEmbedded && svgstrsave && window.parent) {
+                window.parent.postMessage({type: 'jigsaw_result', svg: svgstrsave}, '*');
+            }
+        }
+
+        function savesvg() {
+            if (isEmbedded) {
+                sendResultToParent();
+                return;
+            }
+            window.alert("DISCLAIMER: This generator has no mechanism implemented to check and fix line intersections at this moment. Please check the output and fix any issues manually before cutting.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
             save("jigsaw.svg", svgstrsave);
         }
 
@@ -988,6 +999,7 @@
                 }
             }
             updatedimensions();
+            sendResultToParent();
         }
 
 
@@ -1106,19 +1118,20 @@
         }
 
 
-        function checkAutoLoad() {
-            var storedSvg = localStorage.getItem('materialized_jigsaw_svg');
-            if (!storedSvg) return;
-            localStorage.removeItem('materialized_jigsaw_svg');
-
+        function loadSvgAndGenerate(svgString) {
             var parser = new DOMParser();
-            xmldoc = parser.parseFromString(storedSvg, "image/svg+xml");
+            xmldoc = parser.parseFromString(svgString, "image/svg+xml");
             var svgdata_p = xmldoc.getElementsByTagName("svg")[0];
+            if (!svgdata_p) return;
             customborder.svgdata = svgdata_p;
 
             // Switch UI to custom border tab
             var customBtn = document.querySelectorAll('.tablinks')[1];
             if (customBtn) {
+                var tablinks = document.getElementsByClassName("tablinks");
+                for (var k = 0; k < tablinks.length; k++) {
+                    tablinks[k].className = tablinks[k].className.replace(" active", "");
+                }
                 customBtn.className += ' active';
             }
             var tabcontent = document.getElementsByClassName("controltable");
@@ -1143,6 +1156,20 @@
             updatedimensions();
             setTimeout(function() { generate(); }, 200);
         }
+
+        function checkAutoLoad() {
+            var storedSvg = localStorage.getItem('materialized_jigsaw_svg');
+            if (!storedSvg) return;
+            localStorage.removeItem('materialized_jigsaw_svg');
+            loadSvgAndGenerate(storedSvg);
+        }
+
+        // Accept SVG from parent frame via postMessage (for iframe embedding)
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'load_jigsaw_svg' && event.data.svg) {
+                loadSvgAndGenerate(event.data.svg);
+            }
+        });
 
     </script>
 </head>

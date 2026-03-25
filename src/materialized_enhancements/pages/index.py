@@ -754,10 +754,111 @@ def _jigsaw_right_pane() -> rx.Component:
     )
 
 
+def _jigsaw_generator_embed() -> rx.Component:
+    """Embedded jigsaw generator iframe, shown after clicking Generate Pieces."""
+    return rx.cond(
+        JigsawState.show_generator,
+        rx.el.div(
+            # JS listener: captures generated jigsaw SVG from iframe postMessage
+            rx.script(
+                "window.__jigsawResult = null;"
+                "window.addEventListener('message', function(e) {"
+                "  if (e.data && e.data.type === 'jigsaw_result' && e.data.svg) {"
+                "    window.__jigsawResult = e.data.svg;"
+                "    document.getElementById('jigsaw-result-ready').style.display = 'flex';"
+                "  }"
+                "});"
+            ),
+            rx.el.div(
+                rx.el.h3(
+                    fomantic_icon("puzzle piece", size=18, color="#16a085"),
+                    rx.el.span(" Jigsaw Generator", style={"marginLeft": "8px", "flex": "1"}),
+                    rx.el.button(
+                        fomantic_icon("times", size=14),
+                        on_click=JigsawState.hide_generator,
+                        class_name="ui mini icon button",
+                        style={"marginLeft": "auto"},
+                    ),
+                    style={
+                        "color": "#1a1a2e",
+                        "marginBottom": "12px",
+                        "display": "flex",
+                        "alignItems": "center",
+                    },
+                ),
+                rx.el.iframe(
+                    src="/jigsaw/index.html",
+                    id="jigsaw-generator-iframe",
+                    style={
+                        "width": "100%",
+                        "height": "700px",
+                        "border": "1px solid #e5e7eb",
+                        "borderRadius": "8px",
+                        "backgroundColor": "#ffffff",
+                    },
+                ),
+                # Result actions — shown after generation completes
+                rx.el.div(
+                    rx.el.div(
+                        fomantic_icon("check circle", size=16, color="#16a085"),
+                        rx.el.span(
+                            " Jigsaw generated",
+                            style={"marginLeft": "6px", "fontWeight": "600", "color": "#16a085"},
+                        ),
+                        style={"display": "flex", "alignItems": "center", "marginBottom": "10px"},
+                    ),
+                    rx.el.div(
+                        rx.el.button(
+                            fomantic_icon("download", size=14),
+                            rx.el.span(" Download Pieces SVG", style={"marginLeft": "6px"}),
+                            on_click=rx.call_script(
+                                "window.__jigsawResult || ''",
+                                callback=JigsawState.receive_generated_svg,
+                            ),
+                            class_name="ui teal button",
+                            style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                        ),
+                        rx.el.a(
+                            fomantic_icon("cube", size=14),
+                            rx.el.span(" SVG → 3D (svg_extrude)", style={"marginLeft": "6px"}),
+                            href="https://github.com/deffi/svg_extrude",
+                            target="_blank",
+                            class_name="ui basic button",
+                            style={"flex": "1", "padding": "10px", "fontSize": "0.88rem", "textDecoration": "none", "textAlign": "center"},
+                        ),
+                        style={"display": "flex", "gap": "8px"},
+                    ),
+                    id="jigsaw-result-ready",
+                    style={
+                        "display": "none",
+                        "flexDirection": "column",
+                        "padding": "12px",
+                        "marginTop": "12px",
+                        "borderRadius": "6px",
+                        "border": "1px solid #99f6e4",
+                        "backgroundColor": "#f0fdfa",
+                    },
+                ),
+                style={
+                    "padding": "16px",
+                    "borderRadius": "8px",
+                    "border": "1px solid #e5e7eb",
+                    "backgroundColor": "#f9fafb",
+                    "marginTop": "16px",
+                },
+            ),
+        ),
+        rx.fragment(),
+    )
+
+
 def _jigsaw_tab() -> rx.Component:
-    return two_column_layout(
-        left=_jigsaw_left_pane(),
-        right=_jigsaw_right_pane(),
+    return rx.el.div(
+        two_column_layout(
+            left=_jigsaw_left_pane(),
+            right=_jigsaw_right_pane(),
+        ),
+        _jigsaw_generator_embed(),
     )
 
 
