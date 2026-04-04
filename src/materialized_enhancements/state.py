@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import base64
 import datetime
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict
 
 import reflex as rx
 from reflex_mui_datagrid import LazyFrameGridMixin
@@ -14,6 +20,13 @@ from materialized_enhancements.gene_data import (
     UNIQUE_CATEGORIES,
     build_jigsaw_svg,
 )
+from materialized_enhancements.sculpture import (
+    DEFAULT_EXPORT_DIR,
+    compute_sculpture_params,
+    generate_sculpture,
+)
+
+logger = logging.getLogger(__name__)
 
 
 CATEGORY_COLORS: dict[str, str] = {
@@ -56,27 +69,131 @@ class ComposeState(rx.State):
     personal_tag: str = "A new human, to be"
     selected_categories: list[str] = []
 
+    sculpture_params: Dict[str, Any] = {}
+    generating: bool = False
+    generation_error: str = ""
+    stl_filename: str = ""
+    stl_download_path: str = ""
+    pipeline_stats: Dict[str, Any] = {}
+    choice_expanded: bool = True
+    sculpture_expanded: bool = False
+    viewer_expanded: bool = False
+    stl_base64: str = ""
+    viewer_nonce: int = 0
+
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
+        self._recompute_params()
 
     def toggle_category(self, category: str) -> None:
         if category in self.selected_categories:
             self.selected_categories = [c for c in self.selected_categories if c != category]
         else:
             self.selected_categories = [*self.selected_categories, category]
+        self._recompute_params()
 
     def remove_category(self, category: str) -> None:
         self.selected_categories = [c for c in self.selected_categories if c != category]
+        self._recompute_params()
 
-    def materialize(self) -> rx.event.EventSpec:
-        """Stub — fires a toast with the composition data."""
-        timestamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        tag = self.personal_tag.strip() or "Anonymous"
-        cats = ", ".join(self.selected_categories) if self.selected_categories else "none"
-        return rx.toast.success(
-            f"Materialized: {tag} | Categories: {cats} | {timestamp}",
-            duration=6000,
+    def _recompute_params(self) -> None:
+        """Recompute sculpture params live as the user changes selections."""
+        if not self.selected_categories or not self.personal_tag.strip():
+            self.sculpture_params = {}
+            return
+        params = compute_sculpture_params(
+            name=self.personal_tag,
+            selected_categories=self.selected_categories,
+            all_categories=UNIQUE_CATEGORIES,
+            gene_library=GENE_LIBRARY,
         )
+        self.sculpture_params = params
+
+    @rx.event(background=True)
+    async def materialize(self) -> None:
+        """Run the full sculpture pipeline in the background."""
+        async with self:
+            if self.generating:
+                return
+            tag = self.personal_tag.strip()
+            cats = list(self.selected_categories)
+            if not cats or not tag:
+                return
+            self.generating = True
+            self.generation_error = ""
+            self.stl_filename = ""
+            self.stl_download_path = ""
+            self.pipeline_stats = {}
+            self.stl_base64 = ""
+
+        try:
+            loop = asyncio.get_event_loop()
+            stl_path, params, stats = await loop.run_in_executor(
+                None,
+                generate_sculpture,
+                tag,
+                cats,
+                UNIQUE_CATEGORIES,
+                GENE_LIBRARY,
+                DEFAULT_EXPORT_DIR,
+                10,
+            )
+        except Exception as exc:
+            logger.exception("Sculpture generation failed")
+            async with self:
+                self.generating = False
+                self.generation_error = str(exc)
+            return
+
+        stl_bytes = stl_path.read_bytes()
+
+        async with self:
+            self.generating = False
+            self.pipeline_stats = stats
+            self.sculpture_params = params
+            self.stl_filename = stl_path.name
+            self.stl_download_path = str(stl_path)
+            self.stl_base64 = base64.b64encode(stl_bytes).decode("ascii")
+            self.viewer_nonce += 1
+            self.sculpture_expanded = True
+            self.viewer_expanded = True
+
+    def toggle_choice_expanded(self) -> None:
+        self.choice_expanded = not self.choice_expanded
+
+    def toggle_sculpture_expanded(self) -> None:
+        self.sculpture_expanded = not self.sculpture_expanded
+
+    def toggle_viewer_expanded(self) -> None:
+        self.viewer_expanded = not self.viewer_expanded
+
+    def download_artifacts(self):  # type: ignore[return]
+        """Download STL and reproducibility JSON in one click."""
+        if not self.stl_download_path:
+            yield rx.toast.error("No sculpture generated yet.")
+            return
+        p = Path(self.stl_download_path)
+        if not p.exists():
+            yield rx.toast.error("STL file not found on disk.")
+            return
+        yield rx.download(data=p.read_bytes(), filename=self.stl_filename)
+        artifact: Dict[str, Any] = {
+            "name": self.personal_tag,
+            "selected_categories": self.selected_categories,
+            "sculpture_params": self.sculpture_params,
+            "pipeline_stats": self.pipeline_stats,
+        }
+        json_name = p.stem + "_params.json"
+        yield rx.download(
+            data=json.dumps(artifact, indent=2).encode("utf-8"),
+            filename=json_name,
+        )
+
+    @rx.var
+    def viewer_iframe_src(self) -> str:
+        if not self.viewer_expanded or not self.stl_base64:
+            return "about:blank"
+        return f"/sculpture_viewer/index.html?nonce={self.viewer_nonce}"
 
     @rx.var
     def selected_traits(self) -> list[str]:
@@ -102,6 +219,46 @@ class ComposeState(rx.State):
     @rx.var
     def can_materialize(self) -> bool:
         return len(self.selected_categories) > 0 and len(self.personal_tag.strip()) > 0
+
+    @rx.var
+    def has_stl(self) -> bool:
+        return len(self.stl_download_path) > 0
+
+    @rx.var
+    def has_params(self) -> bool:
+        return len(self.sculpture_params) > 0
+
+    @rx.var
+    def param_seed(self) -> int:
+        return int(self.sculpture_params.get("seed", 0))
+
+    @rx.var
+    def param_radius(self) -> float:
+        return float(self.sculpture_params.get("radius", 0.0))
+
+    @rx.var
+    def param_spacing(self) -> float:
+        return float(self.sculpture_params.get("spacing", 0.0))
+
+    @rx.var
+    def param_points(self) -> int:
+        return int(self.sculpture_params.get("points", 0))
+
+    @rx.var
+    def param_extrusion(self) -> float:
+        return float(self.sculpture_params.get("extrusion", 0.0))
+
+    @rx.var
+    def param_scale_x(self) -> float:
+        return float(self.sculpture_params.get("scale_x", 0.0))
+
+    @rx.var
+    def param_scale_y(self) -> float:
+        return float(self.sculpture_params.get("scale_y", 0.0))
+
+    @rx.var
+    def param_pool_size(self) -> int:
+        return int(self.sculpture_params.get("pool_size", 0))
 
 
 class JigsawState(rx.State):

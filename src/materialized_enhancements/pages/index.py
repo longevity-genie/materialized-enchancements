@@ -274,8 +274,7 @@ def _landing_tab() -> rx.Component:
                     )
                     for tool in [
                         "Frontend UI — Reflex (Python reactive web framework) + Fomantic UI",
-                        "Generative Form Prototype — Rhino / Grasshopper",
-                        "Future Generative Engine — open-source models integrated with UI",
+                        "Generative Engine — compass-web (lofted voronoi shell generator)",
                         "Generative Video — Google Flux / Veo",
                         "Data — Polars, reflex-mui-datagrid",
                         "Gene library — 35 genes · 9 categories · ~25 source organisms",
@@ -352,7 +351,7 @@ def _sculpture_left_pane() -> rx.Component:
                 style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center"},
             ),
             rx.el.p(
-                "Each combination drives a Grasshopper algorithm that "
+                "Each combination drives a generative algorithm that "
                 "translates your biological identity into a one-of-a-kind "
                 "parametric sculpture — printable in resin, ceramic, or metal.",
                 style={
@@ -415,87 +414,327 @@ def _gene_chip(gene_item: rx.Var) -> rx.Component:
     )
 
 
-def _sculpture_right_pane() -> rx.Component:
+def _param_row(label: str, value: rx.Var, unit: str = "") -> rx.Component:
+    """A single row in the sculpture parameters panel."""
     return rx.el.div(
-        rx.el.h3(
-            fomantic_icon("user", size=18, color="#7c3aed"),
-            rx.el.span(" Your Identity", style={"marginLeft": "8px"}),
-            style={"color": "#1a1a2e", "marginBottom": "10px", "display": "flex", "alignItems": "center"},
+        rx.el.span(label, style={"fontSize": "0.82rem", "color": "#6b7280", "flex": "0 0 100px"}),
+        rx.el.span(
+            value,
+            rx.el.span(f" {unit}" if unit else "", style={"color": "#9ca3af", "fontSize": "0.75rem"}),
+            style={"fontSize": "0.92rem", "fontWeight": "600", "color": "#1a1a2e"},
         ),
-        rx.el.input(
-            placeholder="Name or personal tag...",
-            value=ComposeState.personal_tag,
-            on_change=ComposeState.set_personal_tag,
-            style={
-                "width": "100%",
-                "padding": "10px 14px",
-                "borderRadius": "6px",
-                "border": "1px solid #d1d5db",
-                "fontSize": "0.95rem",
-                "marginBottom": "16px",
-                "outline": "none",
-                "backgroundColor": "#ffffff",
-                "color": "#1a1a2e",
-            },
-        ),
-        rx.el.div(class_name="ui divider", style={"marginBottom": "16px"}),
-        rx.el.h3(
-            fomantic_icon("sparkles", size=18, color="#7c3aed"),
-            rx.el.span(" Your Totem", style={"marginLeft": "8px"}),
-            style={"color": "#1a1a2e", "marginBottom": "16px", "display": "flex", "alignItems": "center"},
-        ),
-        rx.cond(
-            ComposeState.has_selection,
-            rx.el.div(
-                rx.el.label(
-                    "Selected categories:",
-                    style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                ),
-                rx.el.div(
-                    rx.foreach(ComposeState.selected_categories, _selected_category_tag),
-                    style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "16px"},
-                ),
-                rx.el.div(class_name="ui divider"),
-                rx.el.label(
-                    "Traits you obtain:",
-                    style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                ),
-                rx.el.div(
-                    rx.foreach(ComposeState.selected_traits, _trait_item),
-                    style={"marginBottom": "16px"},
-                ),
-                rx.el.div(class_name="ui divider"),
-                rx.el.label(
-                    "Genes in your composition:",
-                    style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                ),
-                rx.el.div(
-                    rx.foreach(ComposeState.selected_genes, _gene_chip),
-                    style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "20px"},
-                ),
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "Select categories from the left panel to shape your parametric sculpture.",
-                    style={"color": "#9ca3af", "fontSize": "0.95rem", "textAlign": "center", "padding": "40px 20px"},
-                ),
-            ),
-        ),
+        style={"display": "flex", "alignItems": "center", "gap": "8px", "padding": "4px 0"},
+    )
+
+
+def _sculpture_params_panel() -> rx.Component:
+    """Live-updating panel showing computed sculpture parameters."""
+    return rx.cond(
+        ComposeState.has_params,
         rx.el.div(
+            rx.el.label(
+                "Sculpture parameters:",
+                style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "8px", "display": "block"},
+            ),
+            rx.el.div(
+                _param_row("Seed", ComposeState.param_seed),
+                _param_row("Radius", ComposeState.param_radius, "mm"),
+                _param_row("Spacing", ComposeState.param_spacing, "mm"),
+                _param_row("Points", ComposeState.param_points),
+                _param_row("Extrusion", ComposeState.param_extrusion),
+                _param_row("Scale X", ComposeState.param_scale_x),
+                _param_row("Scale Y", ComposeState.param_scale_y),
+                _param_row("Gene pool", ComposeState.param_pool_size, "genes"),
+                style={
+                    "padding": "10px 14px",
+                    "borderRadius": "6px",
+                    "backgroundColor": "#f9f5ff",
+                    "border": "1px solid #d4c5f9",
+                    "marginBottom": "16px",
+                },
+            ),
+        ),
+        rx.fragment(),
+    )
+
+
+def _section_header(
+    expanded: rx.Var,
+    icon_name: str,
+    title: str,
+    on_toggle: rx.EventSpec,
+    right_badge: rx.Component = rx.fragment(),
+) -> rx.Component:
+    """Reusable collapsible section header."""
+    return rx.el.div(
+        rx.el.div(
+            rx.cond(
+                expanded,
+                fomantic_icon("chevron-down", size=16, color="#7c3aed"),
+                fomantic_icon("chevron-right", size=16, color="#7c3aed"),
+            ),
+            fomantic_icon(icon_name, size=16, color="#7c3aed", style={"marginLeft": "6px"}),
+            rx.el.span(
+                title,
+                style={"fontSize": "0.95rem", "fontWeight": "600", "marginLeft": "8px"},
+            ),
+            style={"display": "flex", "alignItems": "center"},
+        ),
+        right_badge,
+        on_click=on_toggle,
+        style={
+            "display": "flex",
+            "justifyContent": "space-between",
+            "alignItems": "center",
+            "cursor": "pointer",
+            "padding": "10px",
+            "backgroundColor": "#f9fafb",
+            "borderRadius": "6px",
+            "marginBottom": rx.cond(expanded, "10px", "0"),
+        },
+    )
+
+
+def _choice_section() -> rx.Component:
+    """Collapsible: identity, selected genes, materialize button."""
+    body = rx.cond(
+        ComposeState.choice_expanded,
+        rx.el.div(
+            rx.el.input(
+                placeholder="Name or personal tag...",
+                value=ComposeState.personal_tag,
+                on_change=ComposeState.set_personal_tag,
+                style={
+                    "width": "100%",
+                    "padding": "10px 14px",
+                    "borderRadius": "6px",
+                    "border": "1px solid #d1d5db",
+                    "fontSize": "0.95rem",
+                    "marginBottom": "12px",
+                    "outline": "none",
+                    "backgroundColor": "#ffffff",
+                    "color": "#1a1a2e",
+                },
+            ),
+            rx.cond(
+                ComposeState.has_selection,
+                rx.el.div(
+                    rx.el.label(
+                        "Selected categories:",
+                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+                    ),
+                    rx.el.div(
+                        rx.foreach(ComposeState.selected_categories, _selected_category_tag),
+                        style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "12px"},
+                    ),
+                    rx.el.div(class_name="ui divider"),
+                    rx.el.label(
+                        "Traits you obtain:",
+                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+                    ),
+                    rx.el.div(
+                        rx.foreach(ComposeState.selected_traits, _trait_item),
+                        style={"marginBottom": "12px"},
+                    ),
+                    rx.el.div(class_name="ui divider"),
+                    rx.el.label(
+                        "Genes in your composition:",
+                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+                    ),
+                    rx.el.div(
+                        rx.foreach(ComposeState.selected_genes, _gene_chip),
+                        style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "12px"},
+                    ),
+                ),
+                rx.el.p(
+                    "Select categories from the left panel.",
+                    style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+                ),
+            ),
+            # Error display
+            rx.cond(
+                ComposeState.generation_error != "",
+                rx.el.div(
+                    fomantic_icon("circle-alert", size=14, color="#dc2626"),
+                    rx.el.span(
+                        ComposeState.generation_error,
+                        style={"marginLeft": "6px", "fontSize": "0.82rem", "color": "#dc2626"},
+                    ),
+                    style={
+                        "display": "flex",
+                        "alignItems": "flex-start",
+                        "padding": "10px",
+                        "borderRadius": "6px",
+                        "border": "1px solid #fca5a5",
+                        "backgroundColor": "#fef2f2",
+                        "marginBottom": "10px",
+                    },
+                ),
+                rx.fragment(),
+            ),
             rx.el.button(
-                fomantic_icon("atom", size=16),
-                rx.el.span(" Materialize", style={"marginLeft": "8px"}),
+                rx.cond(
+                    ComposeState.generating,
+                    fomantic_icon("sync", size=16, style={"animation": "me-spin 1s linear infinite"}),
+                    fomantic_icon("atom", size=16),
+                ),
+                rx.el.span(
+                    rx.cond(ComposeState.generating, " Generating\u2026", " Materialize"),
+                    style={"marginLeft": "8px"},
+                ),
                 on_click=ComposeState.materialize,
-                class_name=rx.cond(ComposeState.can_materialize, "ui primary button", "ui disabled primary button"),
+                class_name=rx.cond(
+                    ComposeState.generating,
+                    "ui disabled primary button",
+                    rx.cond(ComposeState.can_materialize, "ui primary button", "ui disabled primary button"),
+                ),
                 style={"width": "100%", "padding": "12px", "fontSize": "1rem"},
             ),
-            rx.el.p(
-                "Your selections feed a generative algorithm (Grasshopper prototype) that produces "
-                "a unique, unrepeatable 3D form — ready for 3D printing.",
-                style={"fontSize": "0.82rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "10px", "lineHeight": "1.5"},
-            ),
-            style={"marginTop": "auto", "paddingTop": "16px"},
+            rx.el.style("@keyframes me-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }"),
         ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=ComposeState.choice_expanded,
+            icon_name="user",
+            title="Choice",
+            on_toggle=ComposeState.toggle_choice_expanded,
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
+def _sculpture_section() -> rx.Component:
+    """Collapsible: parameters panel, download button."""
+    body = rx.cond(
+        ComposeState.sculpture_expanded,
+        rx.el.div(
+            rx.cond(
+                ComposeState.has_params,
+                rx.el.div(
+                    _sculpture_params_panel(),
+                    rx.cond(
+                        ComposeState.has_stl,
+                        rx.el.div(
+                            rx.el.div(
+                                rx.el.span(
+                                    ComposeState.stl_filename,
+                                    style={"fontSize": "0.8rem", "color": "#6b7280", "wordBreak": "break-all"},
+                                ),
+                                style={"marginBottom": "8px"},
+                            ),
+                            rx.el.button(
+                                fomantic_icon("download", size=14),
+                                rx.el.span(" Download STL + Params", style={"marginLeft": "6px"}),
+                                on_click=ComposeState.download_artifacts,
+                                class_name="ui primary button",
+                                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
+                            ),
+                            style={"marginTop": "10px"},
+                        ),
+                        rx.fragment(),
+                    ),
+                ),
+                rx.el.p(
+                    "Parameters will appear after selecting categories.",
+                    style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+                ),
+            ),
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=ComposeState.sculpture_expanded,
+            icon_name="sparkles",
+            title="Sculpture",
+            on_toggle=ComposeState.toggle_sculpture_expanded,
+            right_badge=rx.cond(
+                ComposeState.generating,
+                rx.el.div(
+                    fomantic_icon("sync", size=12, style={"animation": "me-spin 1s linear infinite"}),
+                    rx.el.span(" Generating\u2026", style={"marginLeft": "4px", "fontSize": "0.75rem", "color": "#7c3aed"}),
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+                rx.cond(
+                    ComposeState.has_stl,
+                    rx.el.span("Ready", class_name="ui mini green label"),
+                    rx.fragment(),
+                ),
+            ),
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
+def _viewer_section() -> rx.Component:
+    """Collapsible 3D viewer — auto-expands after generation."""
+    body = rx.cond(
+        ComposeState.viewer_expanded,
+        rx.cond(
+            ComposeState.has_stl,
+            rx.el.div(
+                rx.el.iframe(
+                    src=ComposeState.viewer_iframe_src,
+                    id="sculpture-viewer-iframe",
+                    style={
+                        "width": "100%",
+                        "height": "420px",
+                        "border": "1px solid #e5e7eb",
+                        "borderRadius": "8px",
+                        "backgroundColor": "#1a1a2e",
+                    },
+                ),
+                rx.el.p(
+                    "Drag to rotate \u00b7 Scroll to zoom \u00b7 Right-drag to pan",
+                    style={"fontSize": "0.75rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "6px"},
+                ),
+            ),
+            rx.el.p(
+                "Click Materialize to generate a sculpture.",
+                style={"color": "#9ca3af", "fontSize": "0.85rem", "textAlign": "center", "padding": "24px 12px"},
+            ),
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=ComposeState.viewer_expanded,
+            icon_name="cube",
+            title="3D Viewer",
+            on_toggle=ComposeState.toggle_viewer_expanded,
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
+_COLLAPSIBLE_STYLE: dict = {
+    "borderRadius": "8px",
+    "border": "1px solid #e5e7eb",
+    "padding": "4px 10px 10px",
+    "backgroundColor": "#ffffff",
+    "marginBottom": "10px",
+}
+
+
+def _sculpture_right_pane() -> rx.Component:
+    return rx.el.div(
+        # Hidden textarea — always in DOM so the viewer iframe can read it
+        rx.el.textarea(
+            value=ComposeState.stl_base64,
+            id="stl-b64-data",
+            style={"display": "none"},
+        ),
+        _choice_section(),
+        _sculpture_section(),
+        _viewer_section(),
     )
 
 
