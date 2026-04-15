@@ -13,6 +13,9 @@ Usage:
 
   # Collect ALL failures (no -x), write JSONs
   uv run pytest tests/test_sculpture_pipeline.py --sculpture-failure-dir=data/sculpture_failures
+
+  # Only the 41 masks that failed on a prior full run (fast regression slice)
+  uv run pytest tests/test_sculpture_pipeline.py::test_pipeline_first_seed_known_failures -x
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pytest
 from compass_web.pipeline import run_pipeline
@@ -33,6 +36,52 @@ from materialized_enhancements.sculpture import (
 )
 
 NAME = "Test"
+
+# Bitmasks that failed is_valid_volume on first seed in a prior full 512-combo run;
+# filenames under data/sculpture_failures/fail_mask*.json. Update when re-baselining.
+KNOWN_FAILURE_MASKS: Tuple[int, ...] = (
+    8,
+    15,
+    50,
+    60,
+    113,
+    143,
+    182,
+    186,
+    187,
+    207,
+    242,
+    256,
+    260,
+    272,
+    276,
+    278,
+    286,
+    288,
+    289,
+    294,
+    300,
+    303,
+    304,
+    308,
+    312,
+    316,
+    318,
+    333,
+    341,
+    357,
+    376,
+    384,
+    388,
+    405,
+    417,
+    420,
+    421,
+    436,
+    447,
+    493,
+    497,
+)
 
 
 def _write_failure_json(
@@ -68,12 +117,11 @@ def _jsonable_params(params: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def test_pipeline_first_seed(
+def _assert_pipeline_first_seed_valid_volume(
     mask: int,
     selected: List[str],
     request: pytest.FixtureRequest,
 ) -> None:
-    """Run the Voronoi pipeline once (no retry) and assert valid volume."""
     failure_dir_raw = request.config.getoption("--sculpture-failure-dir", default=None)
     failure_dir = Path(failure_dir_raw) if failure_dir_raw else None
 
@@ -103,3 +151,27 @@ def test_pipeline_first_seed(
             f"is_valid_volume=False for mask={mask} "
             f"(seed={params['seed']}, {elapsed:.1f}s)"
         )
+
+
+def test_pipeline_first_seed(
+    mask: int,
+    selected: List[str],
+    request: pytest.FixtureRequest,
+) -> None:
+    """Run the Voronoi pipeline once (no retry) and assert valid volume."""
+    _assert_pipeline_first_seed_valid_volume(mask, selected, request)
+
+
+@pytest.mark.parametrize(
+    "mask",
+    KNOWN_FAILURE_MASKS,
+    ids=[f"mask={m:0{len(UNIQUE_CATEGORIES)}b}" for m in KNOWN_FAILURE_MASKS],
+)
+def test_pipeline_first_seed_known_failures(
+    mask: int,
+    request: pytest.FixtureRequest,
+) -> None:
+    """Same as test_pipeline_first_seed but only masks that failed a prior full-grid run."""
+    n = len(UNIQUE_CATEGORIES)
+    selected = [UNIQUE_CATEGORIES[i] for i in range(n) if mask & (1 << i)]
+    _assert_pipeline_first_seed_valid_volume(mask, selected, request)

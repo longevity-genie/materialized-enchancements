@@ -246,7 +246,7 @@ class ComposeState(rx.State):
 
     @rx.var
     def param_extrusion(self) -> float:
-        return float(self.sculpture_params.get("extrusion", 0.0))
+        return float(self.sculpture_params.get("extrusion", -0.2))
 
     @rx.var
     def param_scale_x(self) -> float:

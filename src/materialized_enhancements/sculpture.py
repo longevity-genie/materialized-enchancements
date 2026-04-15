@@ -26,6 +26,7 @@ DEFAULT_EXPORT_DIR = Path(__file__).resolve().parents[2] / "data" / "output" / "
 
 NUM_CIRCLES = 8
 DEFAULT_SCALE = 0.5  # compass-web default for scale_x / scale_y
+DEFAULT_EXTRUSION = -0.2  # fixed extrusion while investigating failure rates
 
 # ---------------------------------------------------------------------------
 # Aesthetic scaling factors: tighten the usable parameter space to avoid
@@ -212,7 +213,8 @@ def compute_sculpture_params(
         "radius": radius,
         "spacing": round(spacing, 2),
         "points": points_raw,
-        "extrusion": extrusion,
+        # "extrusion": extrusion,
+        "extrusion": DEFAULT_EXTRUSION,
         # "scale_x": scale_x,
         # "scale_y": scale_y,
         "scale_x": DEFAULT_SCALE,
@@ -232,7 +234,8 @@ def build_pipeline_config(params: Dict[str, Any]) -> PipelineConfig:
         z_increment=params["z_increment"],
         seed_count=params["seed_count"],
         random_seed=params["random_seed"],
-        extrusion_multiplier=params["extrusion"],
+        # extrusion_multiplier=params["extrusion"],
+        extrusion_multiplier=DEFAULT_EXTRUSION,
         # scale_x=params["scale_x"],
         # scale_y=params["scale_y"],
         scale_x=DEFAULT_SCALE,
