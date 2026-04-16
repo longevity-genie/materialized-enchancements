@@ -26,7 +26,7 @@ DEFAULT_EXPORT_DIR = Path(__file__).resolve().parents[2] / "data" / "output" / "
 
 NUM_CIRCLES = 8
 DEFAULT_SCALE = 0.5  # compass-web default for scale_x / scale_y
-DEFAULT_EXTRUSION = -0.2  # fixed extrusion while investigating failure rates
+# DEFAULT_EXTRUSION = -0.2  # was fixed while investigating failure rates; now computed from gravy_score
 
 # ---------------------------------------------------------------------------
 # Aesthetic scaling factors: tighten the usable parameter space to avoid
@@ -48,7 +48,7 @@ _BASE_MAX_SPACING = MAX_MODEL_SPAN / (NUM_CIRCLES - 1)  # ≈21.43; z_inc × 7 �
 _BASE_MIN_POINTS = 2.0  # Voronoi needs ≥ 2 seeds to produce cells
 _BASE_MAX_POINTS = 300.0  # sum-mod ceiling from spec: (sum % 299) + 2
 
-_BASE_MAX_EXTRUSION = 0.6  # effective extrusion = 5 × 0.6 = 3.0, comfortable visual range
+# _BASE_MAX_EXTRUSION = 0.6  # was: effective extrusion = 5 × 0.6 = 3.0; replaced by direct range below
 
 _BASE_MIN_SCALE = DEFAULT_SCALE  # below 0.1 the mesh nearly collapses in one axis
 _BASE_MAX_SCALE = 1.5  # beyond 1.5× the silhouette distorts unpleasantly
@@ -66,8 +66,7 @@ _SRC_RANGES: Dict[str, Tuple[float, float]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Scaled destination ranges — base × scaling factors
-# Extrusion is bipolar (symmetric around 0), so both ends use DST_UPPER_SCALE.
+# Scaled destination ranges — base × scaling factors (extrusion set directly).
 # ---------------------------------------------------------------------------
 _DST_RANGES: Dict[str, Tuple[float, float]] = {
     "radius": (
@@ -83,8 +82,8 @@ _DST_RANGES: Dict[str, Tuple[float, float]] = {
         _BASE_MAX_POINTS * DST_UPPER_SCALE,     # 270; reduced surface complexity ceiling
     ),
     "extrusion": (
-        -_BASE_MAX_EXTRUSION * DST_UPPER_SCALE,  # -0.54; effective = 5 × -0.54 = -2.7
-        _BASE_MAX_EXTRUSION * DST_UPPER_SCALE,   #  0.54; effective = 5 ×  0.54 =  2.7
+        -0.35,  # lower bound; always negative, never zero
+        -0.05,  # upper bound; midpoint is -0.2
     ),
     "scale_x": (
         _BASE_MIN_SCALE * DST_LOWER_SCALE,     # 0.11; slightly above collapse threshold
@@ -213,8 +212,7 @@ def compute_sculpture_params(
         "radius": radius,
         "spacing": round(spacing, 2),
         "points": points_raw,
-        # "extrusion": extrusion,
-        "extrusion": DEFAULT_EXTRUSION,
+        "extrusion": extrusion,
         # "scale_x": scale_x,
         # "scale_y": scale_y,
         "scale_x": DEFAULT_SCALE,
@@ -224,6 +222,16 @@ def compute_sculpture_params(
         "seed_count": points_raw,
         "random_seed": seed,
         "pool_size": len(props_pool),
+        # Gene-level inputs that drove the above parameters
+        "personal_tag": name.strip(),
+        "input_name_crc": int(raw_crc),
+        "input_bitmask": bitmask,
+        "input_mass_median": round(mass_med, 1),
+        "input_gravy_median": round(gravy_med, 2),
+        "input_disorder_median": round(disorder_med, 1),
+        "input_pi_median": round(pi_med, 1),
+        "input_exon_sum": exon_sum,
+        "input_system_sum": system_sum,
     }
 
 
@@ -234,8 +242,7 @@ def build_pipeline_config(params: Dict[str, Any]) -> PipelineConfig:
         z_increment=params["z_increment"],
         seed_count=params["seed_count"],
         random_seed=params["random_seed"],
-        # extrusion_multiplier=params["extrusion"],
-        extrusion_multiplier=DEFAULT_EXTRUSION,
+        extrusion_multiplier=params["extrusion"],
         # scale_x=params["scale_x"],
         # scale_y=params["scale_y"],
         scale_x=DEFAULT_SCALE,

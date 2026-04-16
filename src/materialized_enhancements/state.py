@@ -14,7 +14,9 @@ from reflex_mui_datagrid import LazyFrameGridMixin
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     ANIMAL_LIBRARY_LF,
+    CATEGORY_PRICES,
     CATEGORY_TRAITS,
+    DEFAULT_BUDGET,
     GENE_LIBRARY,
     GENE_LIBRARY_LF,
     UNIQUE_CATEGORIES,
@@ -89,6 +91,10 @@ class ComposeState(rx.State):
         if category in self.selected_categories:
             self.selected_categories = [c for c in self.selected_categories if c != category]
         else:
+            price = CATEGORY_PRICES.get(category, 0)
+            spent = sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+            if spent + price > DEFAULT_BUDGET:
+                return
             self.selected_categories = [*self.selected_categories, category]
         self._recompute_params()
 
@@ -155,6 +161,7 @@ class ComposeState(rx.State):
             self.stl_download_path = str(stl_path)
             self.stl_base64 = base64.b64encode(stl_bytes).decode("ascii")
             self.viewer_nonce += 1
+            self.choice_expanded = False
             self.sculpture_expanded = True
             self.viewer_expanded = True
 
@@ -213,6 +220,26 @@ class ComposeState(rx.State):
         ]
 
     @rx.var
+    def budget_total(self) -> int:
+        return DEFAULT_BUDGET
+
+    @rx.var
+    def budget_spent(self) -> int:
+        return sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+
+    @rx.var
+    def budget_remaining(self) -> int:
+        return DEFAULT_BUDGET - sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+
+    @rx.var
+    def affordable_categories(self) -> list[str]:
+        remaining = DEFAULT_BUDGET - sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+        return [
+            cat for cat in UNIQUE_CATEGORIES
+            if cat in self.selected_categories or CATEGORY_PRICES.get(cat, 0) <= remaining
+        ]
+
+    @rx.var
     def has_selection(self) -> bool:
         return len(self.selected_categories) > 0
 
@@ -259,6 +286,42 @@ class ComposeState(rx.State):
     @rx.var
     def param_pool_size(self) -> int:
         return int(self.sculpture_params.get("pool_size", 0))
+
+    @rx.var
+    def input_personal_tag(self) -> str:
+        return str(self.sculpture_params.get("personal_tag", ""))
+
+    @rx.var
+    def input_name_crc(self) -> int:
+        return int(self.sculpture_params.get("input_name_crc", 0))
+
+    @rx.var
+    def input_bitmask(self) -> int:
+        return int(self.sculpture_params.get("input_bitmask", 0))
+
+    @rx.var
+    def input_mass_median(self) -> float:
+        return float(self.sculpture_params.get("input_mass_median", 0.0))
+
+    @rx.var
+    def input_gravy_median(self) -> float:
+        return float(self.sculpture_params.get("input_gravy_median", 0.0))
+
+    @rx.var
+    def input_disorder_median(self) -> float:
+        return float(self.sculpture_params.get("input_disorder_median", 0.0))
+
+    @rx.var
+    def input_pi_median(self) -> float:
+        return float(self.sculpture_params.get("input_pi_median", 0.0))
+
+    @rx.var
+    def input_exon_sum(self) -> int:
+        return int(self.sculpture_params.get("input_exon_sum", 0))
+
+    @rx.var
+    def input_system_sum(self) -> int:
+        return int(self.sculpture_params.get("input_system_sum", 0))
 
 
 class JigsawState(rx.State):

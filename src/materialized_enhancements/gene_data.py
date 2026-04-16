@@ -306,3 +306,28 @@ UNIQUE_TRAITS: list[str] = get_unique_traits(GENE_LIBRARY)
 CATEGORY_TRAITS: dict[str, list[str]] = build_category_traits(GENE_LIBRARY)
 ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
 ANIMAL_LIBRARY_LF: pl.LazyFrame = build_animal_library_lf(GENE_LIBRARY)
+
+
+# ---------------------------------------------------------------------------
+# Budget system — per-gene prices summed into category costs.
+# Prices are loaded from gene_properties.csv (gene_price column); the budget
+# constrains category selection so users pick 2–4 categories, not all nine.
+# ---------------------------------------------------------------------------
+GENE_PRICES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties.csv"
+
+DEFAULT_BUDGET: int = 100
+
+
+def _load_category_prices(path: Path = GENE_PRICES_PATH) -> dict[str, int]:
+    """Sum per-gene prices into category totals from gene_properties.csv."""
+    df = pl.read_csv(path)
+    totals: dict[str, int] = {}
+    for row in df.to_dicts():
+        cat = row.get("category", "")
+        price = int(row.get("gene_price", 0))
+        if cat:
+            totals[cat] = totals.get(cat, 0) + price
+    return totals
+
+
+CATEGORY_PRICES: dict[str, int] = _load_category_prices()

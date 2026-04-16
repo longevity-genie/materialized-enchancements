@@ -4,6 +4,7 @@ import os
 import socket
 
 import reflex as rx
+from reflex.plugins.sitemap import SitemapPlugin
 
 
 def _find_free_port(start: int = 8000, end: int = 9000) -> int:
@@ -23,7 +24,7 @@ config = rx.Config(
     app_name="materialized_enhancements",
     backend_port=backend_port,
     api_url=api_url,
-    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
+    disable_plugins=[SitemapPlugin],
     stylesheets=[
         "https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.4/dist/semantic.min.css",
     ],

@@ -7,7 +7,9 @@ from materialized_enhancements.components.layout import fomantic_icon, template,
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     CATEGORY_COUNTS,
+    CATEGORY_PRICES,
     CATEGORY_TRAITS,
+    DEFAULT_BUDGET,
     GENE_LIBRARY,
     UNIQUE_CATEGORIES,
 )
@@ -296,21 +298,39 @@ def _category_button(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     count = CATEGORY_COUNTS.get(category, 0)
+    price = CATEGORY_PRICES.get(category, 0)
     is_selected = ComposeState.selected_categories.contains(category)
+    is_affordable = ComposeState.affordable_categories.contains(category)
+    is_enabled = is_selected | is_affordable
 
     return rx.el.div(
         rx.el.div(
-            fomantic_icon(icon_name, size=16, color=rx.cond(is_selected, "#ffffff", color)),
+            fomantic_icon(
+                icon_name, size=16,
+                color=rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, color, "#d1d5db")),
+            ),
             rx.el.span(
                 category,
                 style={"fontSize": "0.88rem", "flex": "1", "marginLeft": "8px"},
             ),
             rx.el.span(
+                f"{price} cr",
+                style={
+                    "fontSize": "0.72rem",
+                    "fontWeight": "700",
+                    "padding": "2px 6px",
+                    "borderRadius": "10px",
+                    "backgroundColor": rx.cond(is_selected, "rgba(255,255,255,0.25)", "#f3f4f6"),
+                    "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#7c3aed", "#d1d5db")),
+                    "marginRight": "4px",
+                },
+            ),
+            rx.el.span(
                 str(count),
                 style={
-                    "fontSize": "0.75rem",
+                    "fontSize": "0.72rem",
                     "fontWeight": "600",
-                    "padding": "2px 8px",
+                    "padding": "2px 7px",
                     "borderRadius": "10px",
                     "backgroundColor": rx.cond(is_selected, "rgba(255,255,255,0.25)", "#f3f4f6"),
                     "color": rx.cond(is_selected, "#ffffff", "#6b7280"),
@@ -322,14 +342,68 @@ def _category_button(category: str) -> rx.Component:
         style={
             "marginBottom": "6px",
             "textAlign": "left",
-            "cursor": "pointer",
+            "cursor": rx.cond(is_enabled, "pointer", "not-allowed"),
             "padding": "10px 14px",
             "borderRadius": "6px",
             "border": "1px solid",
-            "borderColor": rx.cond(is_selected, color, "#e5e7eb"),
+            "borderColor": rx.cond(is_selected, color, rx.cond(is_enabled, "#e5e7eb", "#f3f4f6")),
             "backgroundColor": rx.cond(is_selected, color, "#ffffff"),
-            "color": rx.cond(is_selected, "#ffffff", "#1a1a2e"),
+            "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
+            "opacity": rx.cond(is_enabled, "1", "0.5"),
             "transition": "all 0.15s ease",
+        },
+    )
+
+
+def _budget_bar() -> rx.Component:
+    """Budget indicator showing spent / total credits with a progress bar."""
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(
+                "Budget",
+                style={"fontSize": "0.78rem", "fontWeight": "600", "color": "#6b7280"},
+            ),
+            rx.el.span(
+                rx.el.span(ComposeState.budget_spent, style={"fontWeight": "700", "color": "#7c3aed"}),
+                f" / {DEFAULT_BUDGET} cr",
+                style={"fontSize": "0.82rem", "color": "#6b7280"},
+            ),
+            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "4px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                style={
+                    "height": "100%",
+                    "borderRadius": "4px",
+                    "backgroundColor": rx.cond(
+                        ComposeState.budget_remaining > 20, "#7c3aed", "#e74c3c",
+                    ),
+                    "width": rx.cond(
+                        ComposeState.budget_spent > 0,
+                        f"calc({ComposeState.budget_spent} * 100% / {DEFAULT_BUDGET})",
+                        "0%",
+                    ),
+                    "transition": "width 0.3s ease, background-color 0.3s ease",
+                },
+            ),
+            style={
+                "height": "6px",
+                "borderRadius": "4px",
+                "backgroundColor": "#f3f4f6",
+                "overflow": "hidden",
+            },
+        ),
+        rx.el.div(
+            rx.el.span(ComposeState.budget_remaining, style={"fontWeight": "700"}),
+            " cr remaining",
+            style={"fontSize": "0.72rem", "color": "#9ca3af", "textAlign": "right", "marginTop": "2px"},
+        ),
+        style={
+            "padding": "8px 12px",
+            "borderRadius": "6px",
+            "backgroundColor": "#f9f5ff",
+            "border": "1px solid #ede9fe",
+            "marginBottom": "12px",
         },
     )
 
@@ -341,6 +415,7 @@ def _sculpture_left_pane() -> rx.Component:
             rx.el.span(" Choose Categories", style={"marginLeft": "8px"}),
             style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
         ),
+        _budget_bar(),
         rx.el.div(
             *[_category_button(cat) for cat in UNIQUE_CATEGORIES],
         ),
@@ -427,34 +502,184 @@ def _param_row(label: str, value: rx.Var, unit: str = "") -> rx.Component:
     )
 
 
-def _sculpture_params_panel() -> rx.Component:
-    """Live-updating panel showing computed sculpture parameters."""
+def _input_row(label: str, value: rx.Var, unit: str, arrow: bool = False) -> rx.Component:
+    """Compact row: label + value + optional arrow connector."""
+    return rx.el.div(
+        rx.el.span(label, style={"fontSize": "0.82rem", "color": "#6b7280", "flex": "0 0 100px"}),
+        rx.el.span(
+            value,
+            rx.el.span(f" {unit}" if unit else "", style={"color": "#9ca3af", "fontSize": "0.75rem"}),
+            style={"fontSize": "0.92rem", "fontWeight": "600", "color": "#1a1a2e"},
+        ),
+        *(
+            [rx.el.span(
+                "\u2192",
+                style={"fontSize": "0.88rem", "color": "#7c3aed", "fontWeight": "600", "marginLeft": "auto"},
+            )] if arrow else []
+        ),
+        style={"display": "flex", "alignItems": "center", "gap": "6px", "padding": "4px 0"},
+    )
+
+
+def _explanation_item(term: str, desc: str, maps_to: str = "") -> rx.Component:
+    """A single glossary entry in the explanations panel."""
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(term, style={"fontWeight": "700", "color": "#1a1a2e"}),
+            *(
+                [rx.el.span(
+                    f"  {maps_to}",
+                    style={"fontWeight": "600", "color": "#7c3aed", "fontSize": "0.85rem", "marginLeft": "6px"},
+                )] if maps_to else []
+            ),
+        ),
+        rx.el.p(desc, style={"color": "#4b5563", "margin": "2px 0 0 0", "lineHeight": "1.5"}),
+        style={"padding": "6px 0", "borderBottom": "1px solid #f3f4f6"},
+    )
+
+
+def _explanations_panel() -> rx.Component:
+    """Full-width glossary explaining how gene properties map to sculpture geometry."""
     return rx.cond(
         ComposeState.has_params,
         rx.el.div(
-            rx.el.label(
-                "Sculpture parameters:",
-                style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "8px", "display": "block"},
-            ),
             rx.el.div(
-                _param_row("Seed", ComposeState.param_seed),
-                _param_row("Radius", ComposeState.param_radius, "mm"),
-                _param_row("Spacing", ComposeState.param_spacing, "mm"),
-                _param_row("Points", ComposeState.param_points),
-                _param_row("Extrusion", ComposeState.param_extrusion),
-                _param_row("Scale X", ComposeState.param_scale_x),
-                _param_row("Scale Y", ComposeState.param_scale_y),
-                _param_row("Gene pool", ComposeState.param_pool_size, "genes"),
-                style={
-                    "padding": "10px 14px",
-                    "borderRadius": "6px",
-                    "backgroundColor": "#f9f5ff",
-                    "border": "1px solid #d4c5f9",
-                    "marginBottom": "16px",
-                },
+                rx.el.div(
+                    fomantic_icon("dna", size=14, color="#27ae60"),
+                    rx.el.span(
+                        " Name: ",
+                        style={"fontWeight": "600", "color": "#6b7280"},
+                    ),
+                    rx.el.span(
+                        ComposeState.input_personal_tag,
+                        style={"fontWeight": "700", "color": "#1a1a2e"},
+                    ),
+                    style={"display": "flex", "alignItems": "center", "gap": "4px"},
+                ),
+                rx.el.p(
+                    "Your name is hashed (CRC32) and XORed with your category bitmask "
+                    "to produce a unique seed — the number that makes every sculpture unrepeatable.",
+                    style={"color": "#4b5563", "margin": "2px 0 0 0", "lineHeight": "1.5"},
+                ),
+                rx.el.div(
+                    rx.el.span("CRC32 ", style={"color": "#9ca3af"}),
+                    rx.el.span(ComposeState.input_name_crc, style={"fontWeight": "600"}),
+                    rx.el.span(" XOR mask ", style={"color": "#9ca3af"}),
+                    rx.el.span(ComposeState.input_bitmask, style={"fontWeight": "600"}),
+                    rx.el.span(" = seed ", style={"color": "#7c3aed"}),
+                    rx.el.span(ComposeState.param_seed, style={"fontWeight": "700", "color": "#7c3aed"}),
+                    style={"fontSize": "0.88rem", "color": "#1a1a2e", "marginTop": "4px"},
+                ),
+                style={"padding": "6px 0", "borderBottom": "1px solid #f3f4f6"},
             ),
+            _explanation_item(
+                "Gene pool",
+                "Total number of genes with measured properties in your selected categories. "
+                "Combined with your name hash, determines the unique seed.",
+                maps_to="-> seed",
+            ),
+            _explanation_item(
+                "Protein mass (kDa)",
+                "Median molecular weight of the selected proteins. "
+                "Heavier proteins produce wider sculptures with larger circle radii.",
+                maps_to="-> radius",
+            ),
+            _explanation_item(
+                "Exon sum",
+                "Total exon count across all selected genes. Exons are the protein-coding "
+                "segments of DNA — more exons means more structural complexity, "
+                "mapped to the vertical spacing between layers.",
+                maps_to="-> spacing",
+            ),
+            _explanation_item(
+                "System size",
+                "How many genes cooperate in each selected biological system. "
+                "Larger cooperative networks produce more Voronoi seed points "
+                "and finer surface detail.",
+                maps_to="-> points",
+            ),
+            _explanation_item(
+                "GRAVY score",
+                "Grand Average of Hydropathy — measures how water-loving (negative) or "
+                "fat-loving (positive) the proteins are. "
+                "Controls how deeply the Voronoi cells are extruded into the surface.",
+                maps_to="-> extrusion",
+            ),
+            _explanation_item(
+                "Disorder %",
+                "Percentage of intrinsically disordered residues — floppy, unstructured "
+                "regions that lack a fixed 3D shape. High disorder means flexible, "
+                "shape-shifting proteins.",
+                maps_to="-> scale X",
+            ),
+            _explanation_item(
+                "Isoelectric point (pI)",
+                "The pH at which the protein carries zero net electric charge. "
+                "Low pI = acidic protein, high pI = basic protein.",
+                maps_to="-> scale Y",
+            ),
+            style={
+                "padding": "12px 16px",
+                "borderRadius": "6px",
+                "backgroundColor": "#f9fafb",
+                "border": "1px solid #e5e7eb",
+                "marginBottom": "12px",
+                "fontSize": "0.95rem",
+            },
         ),
         rx.fragment(),
+    )
+
+
+def _gene_inputs_panel() -> rx.Component:
+    """Compact panel: gene-derived quantitative inputs, ordered 1:1 with sculpture params."""
+    return rx.el.div(
+        rx.el.label(
+            "Gene inputs",
+            style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+        ),
+        rx.el.div(
+            _input_row("Gene pool", ComposeState.param_pool_size, "genes", arrow=True),
+            _input_row("Protein mass", ComposeState.input_mass_median, "kDa", arrow=True),
+            _input_row("Exon sum", ComposeState.input_exon_sum, "", arrow=True),
+            _input_row("System size", ComposeState.input_system_sum, "genes", arrow=True),
+            _input_row("GRAVY score", ComposeState.input_gravy_median, "", arrow=True),
+            _input_row("Disorder", ComposeState.input_disorder_median, "%", arrow=True),
+            _input_row("Isoelectric pI", ComposeState.input_pi_median, "", arrow=True),
+            style={
+                "padding": "10px 14px",
+                "borderRadius": "6px",
+                "backgroundColor": "#f0fdf4",
+                "border": "1px solid #bbf7d0",
+            },
+        ),
+        style={"flex": "1", "minWidth": "0"},
+    )
+
+
+def _sculpture_params_panel() -> rx.Component:
+    """Compact panel: computed sculpture geometry parameters."""
+    return rx.el.div(
+        rx.el.label(
+            "Sculpture parameters",
+            style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+        ),
+        rx.el.div(
+            _param_row("Seed", ComposeState.param_seed),
+            _param_row("Radius", ComposeState.param_radius, "mm"),
+            _param_row("Spacing", ComposeState.param_spacing, "mm"),
+            _param_row("Points", ComposeState.param_points),
+            _param_row("Extrusion", ComposeState.param_extrusion),
+            _param_row("Scale X", ComposeState.param_scale_x),
+            _param_row("Scale Y", ComposeState.param_scale_y),
+            style={
+                "padding": "10px 14px",
+                "borderRadius": "6px",
+                "backgroundColor": "#f9f5ff",
+                "border": "1px solid #d4c5f9",
+            },
+        ),
+        style={"flex": "1", "minWidth": "0"},
     )
 
 
@@ -615,7 +840,16 @@ def _sculpture_section() -> rx.Component:
             rx.cond(
                 ComposeState.has_params,
                 rx.el.div(
-                    _sculpture_params_panel(),
+                    _explanations_panel(),
+                    rx.el.div(
+                        _gene_inputs_panel(),
+                        _sculpture_params_panel(),
+                        style={
+                            "display": "flex",
+                            "gap": "12px",
+                            "marginBottom": "12px",
+                        },
+                    ),
                     rx.cond(
                         ComposeState.has_stl,
                         rx.el.div(
