@@ -4,6 +4,7 @@ import reflex as rx
 from reflex_mui_datagrid import lazyframe_grid
 
 from materialized_enhancements.components.layout import fomantic_icon, template, two_column_layout
+from materialized_enhancements.env import DEV_MODE
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     CATEGORY_COUNTS,
@@ -906,6 +907,181 @@ def _sculpture_section() -> rx.Component:
     )
 
 
+def _artex_dev_inputs() -> rx.Component:
+    """Dev-only API configuration (URL + token). Hidden in production builds."""
+    if not DEV_MODE:
+        return rx.fragment()
+    return rx.el.div(
+        rx.el.label(
+            "API URL (dev)",
+            style={"fontSize": "0.78rem", "color": "#6b7280", "display": "block", "marginBottom": "4px"},
+        ),
+        rx.el.input(
+            placeholder="http://localhost:8080/v1",
+            value=ComposeState.artex_api_url,
+            on_change=ComposeState.set_artex_api_url,
+            style={
+                "width": "100%",
+                "padding": "8px 12px",
+                "borderRadius": "6px",
+                "border": "1px solid #d1d5db",
+                "fontSize": "0.85rem",
+                "marginBottom": "8px",
+                "outline": "none",
+                "backgroundColor": "#ffffff",
+                "color": "#1a1a2e",
+                "fontFamily": "monospace",
+            },
+        ),
+        rx.el.label(
+            "API Token (dev)",
+            style={"fontSize": "0.78rem", "color": "#6b7280", "display": "block", "marginBottom": "4px"},
+        ),
+        rx.el.input(
+            type="password",
+            placeholder="Bearer token (8+ characters)",
+            value=ComposeState.artex_api_token,
+            on_change=ComposeState.set_artex_api_token,
+            style={
+                "width": "100%",
+                "padding": "8px 12px",
+                "borderRadius": "6px",
+                "border": "1px solid #d1d5db",
+                "fontSize": "0.85rem",
+                "marginBottom": "12px",
+                "outline": "none",
+                "backgroundColor": "#ffffff",
+                "color": "#1a1a2e",
+                "fontFamily": "monospace",
+            },
+        ),
+    )
+
+
+def _artex_section() -> rx.Component:
+    """Collapsible ARTEX integration — create an ARTEX project from the Totem STL."""
+    body = rx.cond(
+        ComposeState.artex_expanded,
+        rx.el.div(
+            rx.el.p(
+                "Create an ARTEX project with your Totem as 3D media. "
+                "Requires an ARTEX Platform API token.",
+                style={"fontSize": "0.85rem", "color": "#6b7280", "marginBottom": "12px", "lineHeight": "1.5"},
+            ),
+            _artex_dev_inputs(),
+            # Error display
+            rx.cond(
+                ComposeState.artex_error != "",
+                rx.el.div(
+                    fomantic_icon("circle-alert", size=14, color="#dc2626"),
+                    rx.el.span(
+                        ComposeState.artex_error,
+                        style={"marginLeft": "6px", "fontSize": "0.82rem", "color": "#dc2626"},
+                    ),
+                    style={
+                        "display": "flex",
+                        "alignItems": "flex-start",
+                        "padding": "10px",
+                        "borderRadius": "6px",
+                        "border": "1px solid #fca5a5",
+                        "backgroundColor": "#fef2f2",
+                        "marginBottom": "10px",
+                    },
+                ),
+                rx.fragment(),
+            ),
+            # Success display
+            rx.cond(
+                ComposeState.has_artex_project,
+                rx.el.div(
+                    fomantic_icon("check circle", size=14, color="#16a085"),
+                    rx.el.span(
+                        " ARTEX project created: ",
+                        style={"marginLeft": "6px", "fontSize": "0.85rem", "color": "#16a085", "fontWeight": "600"},
+                    ),
+                    rx.el.span(
+                        ComposeState.artex_project_id,
+                        style={
+                            "fontSize": "0.82rem",
+                            "color": "#1a1a2e",
+                            "fontFamily": "monospace",
+                            "wordBreak": "break-all",
+                        },
+                    ),
+                    style={
+                        "display": "flex",
+                        "alignItems": "flex-start",
+                        "flexWrap": "wrap",
+                        "padding": "10px",
+                        "borderRadius": "6px",
+                        "border": "1px solid #99f6e4",
+                        "backgroundColor": "#f0fdfa",
+                        "marginBottom": "10px",
+                    },
+                ),
+                rx.fragment(),
+            ),
+            # Create button
+            rx.el.button(
+                rx.cond(
+                    ComposeState.artex_creating,
+                    fomantic_icon("sync", size=16, style={"animation": "me-spin 1s linear infinite"}),
+                    fomantic_icon("cloud upload", size=16),
+                ),
+                rx.el.span(
+                    rx.cond(ComposeState.artex_creating, " Creating\u2026", " Create ARTEX Project"),
+                    style={"marginLeft": "8px"},
+                ),
+                on_click=ComposeState.create_artex_project,
+                class_name=rx.cond(
+                    ComposeState.artex_creating,
+                    "ui disabled button",
+                    rx.cond(ComposeState.can_create_artex, "ui button", "ui disabled button"),
+                ),
+                style={
+                    "width": "100%",
+                    "padding": "10px",
+                    "fontSize": "0.88rem",
+                    "backgroundColor": rx.cond(
+                        ComposeState.artex_creating, "#e5e7eb",
+                        rx.cond(ComposeState.can_create_artex, "#1a1a2e", "#e5e7eb"),
+                    ),
+                    "color": rx.cond(
+                        ComposeState.can_create_artex & ~ComposeState.artex_creating,
+                        "#ffffff",
+                        "#9ca3af",
+                    ),
+                },
+            ),
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=ComposeState.artex_expanded,
+            icon_name="cloud upload",
+            title="ARTEX",
+            on_toggle=ComposeState.toggle_artex_expanded,
+            right_badge=rx.cond(
+                ComposeState.artex_creating,
+                rx.el.div(
+                    fomantic_icon("sync", size=12, style={"animation": "me-spin 1s linear infinite"}),
+                    rx.el.span(" Creating\u2026", style={"marginLeft": "4px", "fontSize": "0.75rem", "color": "#7c3aed"}),
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+                rx.cond(
+                    ComposeState.has_artex_project,
+                    rx.el.span("Published", class_name="ui mini green label"),
+                    rx.fragment(),
+                ),
+            ),
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
 def _viewer_section() -> rx.Component:
     """Collapsible 3D viewer — auto-expands after generation."""
     body = rx.cond(
@@ -969,6 +1145,7 @@ def _sculpture_right_pane() -> rx.Component:
         _choice_section(),
         _sculpture_section(),
         _viewer_section(),
+        _artex_section(),
     )
 
 

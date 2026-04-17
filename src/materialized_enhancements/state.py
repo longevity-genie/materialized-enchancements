@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, AsyncIterator, Dict
 
 import reflex as rx
 from reflex_mui_datagrid import LazyFrameGridMixin
@@ -26,6 +26,13 @@ from materialized_enhancements.sculpture import (
     DEFAULT_EXPORT_DIR,
     compute_sculpture_params,
     generate_sculpture,
+)
+from materialized_enhancements.artex import create_artex_project_sync
+from materialized_enhancements.env import (
+    ARTEX_API_TOKEN,
+    ARTEX_API_URL,
+    ARTEX_INSTANCE_ID,
+    project_redirect_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +89,14 @@ class ComposeState(rx.State):
     viewer_expanded: bool = False
     stl_base64: str = ""
     viewer_nonce: int = 0
+
+    # ARTEX integration — defaults from .env (ARTEX_API_URL / ARTEX_API_TOKEN)
+    artex_expanded: bool = False
+    artex_api_url: str = ARTEX_API_URL
+    artex_api_token: str = ARTEX_API_TOKEN
+    artex_creating: bool = False
+    artex_project_id: str = ""
+    artex_error: str = ""
 
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
@@ -173,6 +188,74 @@ class ComposeState(rx.State):
 
     def toggle_viewer_expanded(self) -> None:
         self.viewer_expanded = not self.viewer_expanded
+
+    def toggle_artex_expanded(self) -> None:
+        self.artex_expanded = not self.artex_expanded
+
+    def set_artex_api_url(self, value: str) -> None:
+        self.artex_api_url = value
+
+    def set_artex_api_token(self, value: str) -> None:
+        self.artex_api_token = value
+
+    @rx.event(background=True)
+    async def create_artex_project(self) -> AsyncIterator[rx.event.EventSpec]:
+        """One-click flow: upload media, create project, run, redirect to ARTEX."""
+        async with self:
+            if self.artex_creating:
+                return
+            if not self.stl_download_path:
+                self.artex_error = "No sculpture generated yet."
+                return
+            if not self.artex_api_token.strip():
+                self.artex_error = "API token is required."
+                return
+            self.artex_creating = True
+            self.artex_error = ""
+            self.artex_project_id = ""
+            api_url = self.artex_api_url
+            api_token = self.artex_api_token
+            tag = self.personal_tag
+            cats = list(self.selected_categories)
+            params = dict(self.sculpture_params)
+            stl_path = self.stl_download_path
+            stl_name = self.stl_filename
+            redirect_override = str(self.router.page.params.get("redirect", ""))
+
+        try:
+            loop = asyncio.get_event_loop()
+            project_id = await loop.run_in_executor(
+                None,
+                create_artex_project_sync,
+                api_url,
+                api_token,
+                tag,
+                cats,
+                params,
+                stl_path,
+                stl_name,
+                ARTEX_INSTANCE_ID,
+            )
+        except Exception as exc:
+            logger.exception("ARTEX project creation failed")
+            async with self:
+                self.artex_creating = False
+                self.artex_error = str(exc)
+            return
+
+        async with self:
+            self.artex_creating = False
+            self.artex_project_id = project_id
+
+        yield rx.redirect(project_redirect_url(project_id, redirect_override), is_external=True)
+
+    @rx.var
+    def has_artex_project(self) -> bool:
+        return len(self.artex_project_id) > 0
+
+    @rx.var
+    def can_create_artex(self) -> bool:
+        return len(self.stl_download_path) > 0 and len(self.artex_api_token.strip()) > 0
 
     def download_artifacts(self):  # type: ignore[return]
         """Download STL and reproducibility JSON in one click."""

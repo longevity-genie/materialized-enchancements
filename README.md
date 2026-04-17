@@ -51,10 +51,84 @@ This project was literally built on the move across over 1,500 kilometers. We pi
 ## Running
 
 ```bash
-uv run start
+uv run start           # normal mode
+uv run start --dev     # exposes developer-only UI (ARTEX API config panel)
 ```
 
-Opens the Reflex Web UI at [http://localhost:3000](http://localhost:3000).
+Opens the Reflex Web UI at [http://localhost:3000](http://localhost:3000). Copy `.env.example` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout).
+
+---
+
+## ARTEX Integration
+
+The sculpture tab has a **Create ARTEX Project** button that ships the generated Totem to a running [ARTEX Platform API](https://github.com/CODAME/artex-open/tree/main/.services/artex-platform-api) in one click:
+
+1. `POST /v1/projects` — creates the project with a ConfigJson tailored to the gene selection
+2. `PUT /v1/projects/:id/assets/models/<file>.stl` — uploads the Totem STL as the project's 3D media
+3. `POST /v1/projects/:id/run` — deploys it on the target instance
+4. Redirects the visitor to the ARTEX project URL
+
+### Local dev setup
+
+Clone ARTEX alongside this repo and run the Platform API:
+
+```bash
+git clone https://github.com/CODAME/artex-open
+cd artex-open && npm install
+npm run dev --workspace=@artex/platform-api   # → http://localhost:8080/v1
+```
+
+Any Bearer token ≥8 chars works in dev (`dev-token-12345678`). In `--dev` mode our app's ARTEX section shows the API URL / token inputs for live tweaking; in regular mode they're hidden and the values come exclusively from `.env`.
+
+### Kiosk mode
+
+For installations, activate kiosk behaviour per URL with `?interaction=artex`:
+
+- A 60-second inactivity band appears above the topbar, resets on any user activity, turns red in the last 5 seconds, and redirects to `ARTEX_IDLE_URL` on expiry.
+- Works in both dev and prod; no query param → band stays hidden.
+- Optional `&redirect=<url>` overrides both the idle-expiry AND post-create destinations. Supports `{project_id}` substitution, e.g. `?interaction=artex&redirect=https://artex.live/wall/{project_id}`.
+
+### Testing the integration
+
+Unit tests (mocked HTTP, no server required) cover the config builder, the POST+PUT+POST sequence, URL trimming, and error paths:
+
+```bash
+uv run pytest tests/test_artex.py -v      # 7 tests, ~0.1s
+```
+
+End-to-end smoke test against a live ARTEX dev server:
+
+```bash
+# 1. In the artex-open clone, start the Platform API
+cd /path/to/artex-open && npm run dev --workspace=@artex/platform-api
+
+# 2. In this repo, start the Reflex app in dev mode
+uv run start --dev
+
+# 3. Point `ARTEX_DEV_REDIRECT_URL` at the API's GET endpoint so you land on
+#    the JSON of the project you just created:
+#    ARTEX_DEV_REDIRECT_URL=http://localhost:8080/v1/projects/{project_id}
+
+# 4. Browse to http://localhost:3000, generate a Totem, click "Create ARTEX
+#    Project". On success the tab redirects to the project JSON, confirming
+#    POST /projects + PUT assets/models/<file>.stl + POST /run all returned 2xx.
+```
+
+Optional: confirm the running project responds to live updates with `npx tsx examples/update-running-experience.ts <projectId>` from inside the ARTEX repo's `.services/artex-platform-api`.
+
+### Configuration
+
+See [`.env.example`](.env.example) for the full list. Highlights:
+
+| Variable | Purpose |
+|---|---|
+| `ARTEX_API_URL` | Platform API base (default `http://localhost:8080/v1`) |
+| `ARTEX_API_TOKEN` | Bearer token |
+| `ARTEX_INSTANCE_ID` | Target instance for `/run` (default `default`) |
+| `ARTEX_PROJECT_URL_TEMPLATE` | Post-create redirect in prod; `{project_id}` substituted |
+| `ARTEX_IDLE_URL` | Kiosk idle-timeout target in prod |
+| `ARTEX_DEV_REDIRECT_URL` | Dev-mode override for both redirects above |
+| `IDLE_TIMEOUT_SECONDS` / `IDLE_WARNING_SECONDS` | Kiosk timer tuning (defaults 60 / 5) |
 
 ---
 
@@ -64,8 +138,9 @@ Opens the Reflex Web UI at [http://localhost:3000](http://localhost:3000).
 - **Generative Form Prototype**: Rhino / Grasshopper
 - **Future Generative Engine**: Open-source generative models integrated with the UI
 - **Generative Video**: Google Flux / Veo
+- **Publishing Target**: [ARTEX Platform API](https://github.com/CODAME/artex-open) (REST + WebSocket) for shipping Totems to running installations
 - **Data**: Polars, reflex-mui-datagrid
-- **Dependency management**: uv
+- **Dependency management**: uv, python-dotenv
 
 ---
 

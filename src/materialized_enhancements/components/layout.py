@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import json
+
 import reflex as rx
+
+from materialized_enhancements.env import (
+    DEV_MODE,
+    IDLE_TIMEOUT_SECONDS,
+    IDLE_WARNING_SECONDS,
+    idle_redirect_url,
+)
 
 
 def fomantic_icon(
@@ -166,7 +175,140 @@ def ws_watchdog() -> rx.Component:
     return rx.script(_WS_WATCHDOG_JS)
 
 
-def topbar() -> rx.Component:
+IDLE_BAND_HEIGHT_PX = 28
+
+_IDLE_BAND_JS_TEMPLATE = """
+(function () {
+  'use strict';
+  var TIMEOUT = %(timeout)d;
+  var WARNING = %(warning)d;
+  var BAND_H  = %(band_height)d;
+  var IDLE_URL = %(url)s;
+  var ACTIVATE_VALUE = 'artex';
+
+  // Activate only when URL has ?interaction=artex (kiosk mode).
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('interaction') !== ACTIVATE_VALUE) return;
+
+  // Optional ?redirect=<url> overrides the default idle-redirect destination.
+  var override = params.get('redirect');
+  if (override) IDLE_URL = override;
+
+  var band = document.getElementById('idle-band');
+  var text = document.getElementById('idle-band-text');
+  var fill = document.getElementById('idle-band-fill');
+  var topbar = document.getElementById('topbar');
+  var content = document.getElementById('me-app-content');
+  if (!band || !text || !fill) return;
+
+  // Unhide the band and shift the rest of the layout down to make room.
+  band.style.display = 'flex';
+  if (topbar) topbar.style.top = BAND_H + 'px';
+  if (content) {
+    content.style.marginTop = (56 + BAND_H) + 'px';
+    content.style.minHeight = 'calc(100vh - ' + (56 + BAND_H) + 'px)';
+  }
+
+  var remaining = TIMEOUT;
+
+  function render() {
+    text.textContent = 'Next visitor in ' + remaining + 's \u2014 touch or move to continue';
+    fill.style.width = ((remaining / TIMEOUT) * 100) + '%%';
+    var warn = remaining <= WARNING;
+    band.style.backgroundColor = warn ? '#dc2626' : '#1a1a2e';
+    fill.style.backgroundColor = warn ? '#fca5a5' : '#7c3aed';
+    text.style.color = warn ? '#ffffff' : '#e5e7eb';
+  }
+
+  function tick() {
+    remaining -= 1;
+    if (remaining <= 0) {
+      window.location.href = IDLE_URL;
+      return;
+    }
+    render();
+  }
+
+  function reset() {
+    remaining = TIMEOUT;
+    render();
+  }
+
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function (evt) {
+    document.addEventListener(evt, reset, { passive: true, capture: true });
+  });
+
+  render();
+  setInterval(tick, 1000);
+})();
+"""
+
+
+def idle_band() -> rx.Component:
+    """Kiosk inactivity timer band at the very top.
+
+    Activated by ``?interaction=artex`` in the URL (dev or prod). When active,
+    starts at IDLE_TIMEOUT_SECONDS, resets on any user activity, turns red in
+    the last IDLE_WARNING_SECONDS, and redirects to ``ARTEX_IDLE_URL`` at 0.
+    Markup is always rendered but kept ``display: none`` until the JS sees the
+    query param.
+    """
+    script = _IDLE_BAND_JS_TEMPLATE % {
+        "timeout": IDLE_TIMEOUT_SECONDS,
+        "warning": IDLE_WARNING_SECONDS,
+        "band_height": IDLE_BAND_HEIGHT_PX,
+        "url": json.dumps(idle_redirect_url()),
+    }
+
+    return rx.fragment(
+        rx.el.div(
+            rx.el.div(
+                id="idle-band-fill",
+                style={
+                    "position": "absolute",
+                    "top": "0",
+                    "left": "0",
+                    "bottom": "0",
+                    "width": "100%",
+                    "backgroundColor": "#7c3aed",
+                    "opacity": "0.35",
+                    "transition": "width 1s linear, background-color 0.3s ease",
+                    "zIndex": "0",
+                },
+            ),
+            rx.el.span(
+                f"Next visitor in {IDLE_TIMEOUT_SECONDS}s",
+                id="idle-band-text",
+                style={
+                    "position": "relative",
+                    "zIndex": "1",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "600",
+                    "letterSpacing": "0.04em",
+                    "color": "#e5e7eb",
+                },
+            ),
+            id="idle-band",
+            style={
+                "position": "fixed",
+                "top": "0",
+                "left": "0",
+                "right": "0",
+                "height": f"{IDLE_BAND_HEIGHT_PX}px",
+                "backgroundColor": "#1a1a2e",
+                "display": "none",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "overflow": "hidden",
+                "zIndex": "1100",
+                "transition": "background-color 0.3s ease",
+            },
+        ),
+        rx.script(script),
+    )
+
+
+def topbar(top_offset_px: int = 0) -> rx.Component:
     """Top navigation bar — logo only, tabs live in page content."""
     return rx.el.div(
         rx.el.a(
@@ -184,7 +326,7 @@ def topbar() -> rx.Component:
         ),
         style={
             "position": "fixed",
-            "top": "0",
+            "top": f"{top_offset_px}px",
             "left": "0",
             "right": "0",
             "height": "56px",
@@ -231,16 +373,20 @@ def template(*children: rx.Component) -> rx.Component:
         a:hover { color: #6d28d9 !important; }
         """
     )
+    # Default layout has no band. The idle_band() JS shifts the topbar and
+    # content down at runtime when ?interaction=artex activates the kiosk.
     return rx.el.div(
         fomantic_stylesheets(),
         ws_watchdog(),
         global_css,
-        topbar(),
+        idle_band(),
+        topbar(top_offset_px=0),
         rx.el.div(
             rx.el.div(
                 *children,
                 class_name="ui fluid container",
             ),
+            id="me-app-content",
             style={
                 "marginTop": "56px",
                 "padding": "20px",
