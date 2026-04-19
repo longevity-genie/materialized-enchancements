@@ -1,6 +1,6 @@
 [project]
 name = "materialized-enhancements"
-version = "0.2.4"
+version = "0.2.5"
 description = "Materialized Enhancements — an art+tech hackathon project exploring gene enhancements as generative art"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -9,7 +9,7 @@ dependencies = [
   "granian>=2.7.1",
   "polars>=1.0.0",
   "pydantic>=2.0.0",
-  "reflex-mui-datagrid>=0.2.2",
+  "reflex-mui-datagrid>=0.2.3",
   "compass-web>=0.2.3",
   "dotenv>=0.9.9",
 ]

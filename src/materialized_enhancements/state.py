@@ -22,8 +22,8 @@ from materialized_enhancements.gene_data import (
     GENE_LIBRARY,
     GENE_LIBRARY_LF,
     UNIQUE_CATEGORIES,
-    build_jigsaw_svg,
 )
+from materialized_enhancements.puzzle import build_jigsaw_svg
 from materialized_enhancements.sculpture import (
     DEFAULT_EXPORT_DIR,
     compute_sculpture_params,
@@ -75,7 +75,7 @@ class AppState(rx.State):
 
     def apply_tab_from_query(self) -> None:
         """Honour ?tab=<key> on page load (used by shared-report links)."""
-        tab = str(self.router.page.params.get("tab", "")).strip()
+        tab = str(self.router.url.query_parameters.get("tab", "")).strip()
         if tab in {"landing", "sculpture", "jigsaw", "library", "animals"}:
             self.active_tab = tab
 
@@ -242,7 +242,7 @@ class ComposeState(rx.State):
             params = dict(self.sculpture_params)
             stl_path = self.stl_download_path
             stl_name = self.stl_filename
-            redirect_override = str(self.router.page.params.get("redirect", ""))
+            redirect_override = str(self.router.url.query_parameters.get("redirect", ""))
 
         try:
             loop = asyncio.get_event_loop()
@@ -432,7 +432,7 @@ class ComposeState(rx.State):
 
         Runs as page on_load handler. No-op when the query params aren't present.
         """
-        params = self.router.page.params
+        params = self.router.url.query_parameters
         if str(params.get("report", "")) != "1":
             return
         name_b64 = str(params.get("name", ""))

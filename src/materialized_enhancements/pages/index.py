@@ -82,7 +82,7 @@ def _landing_tab() -> rx.Component:
             # Video — 16:9 YouTube embed
             rx.el.div(
                 rx.el.iframe(
-                    src="https://www.youtube.com/embed/OrdT8JCPTdU",
+                    src="https://www.youtube.com/embed/F8cbuNNTiRQ",
                     title="Materialized Enhancements",
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
                     allow_full_screen=True,

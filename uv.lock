@@ -1381,7 +1381,7 @@ wheels = [
 
 [[package]]
 name = "materialized-enhancements"
-version = "0.2.4"
+version = "0.2.5"
 source = { editable = "." }
 dependencies = [
     { name = "compass-web" },
@@ -1408,7 +1408,7 @@ requires-dist = [
     { name = "polars", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "reflex", specifier = ">=0.8.27" },
-    { name = "reflex-mui-datagrid", specifier = ">=0.2.2" },
+    { name = "reflex-mui-datagrid", specifier = ">=0.2.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -2439,16 +2439,16 @@ wheels = [
 
 [[package]]
 name = "reflex-mui-datagrid"
-version = "0.2.2"
+version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "polars" },
     { name = "reflex" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/78/bc7e9c19dddc848d125e1c2ba655cbe07380de8c7fe729749559f1db09e5/reflex_mui_datagrid-0.2.2.tar.gz", hash = "sha256:629486c660d02c6fe643027db072decf1ec94195fb611131a81d05f3b316418b", size = 49658, upload-time = "2026-04-19T17:15:17.515Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/7d/5bf94abac53ac9c698b674a15cbb49272953ce16fcfc415663816cbac532/reflex_mui_datagrid-0.2.3.tar.gz", hash = "sha256:eb33e7c3f7bfc666e3cc75f2daef7d2b2015dbf3f1353c16fb3e3422d2c1c380", size = 49658, upload-time = "2026-04-19T17:40:38.946Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/6f/268e57df5d695aed9e9cf6ff51947241865c02934dbbbe56a1d4d3cf2a31/reflex_mui_datagrid-0.2.2-py3-none-any.whl", hash = "sha256:c435aa5e8016a50ac9ecabaf2d5bab619e5a7eceff84e7eaab94830ba68a58fe", size = 55121, upload-time = "2026-04-19T17:15:16.212Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/ca/79c143e8e1ed628e2b1611d23f9bad1f3407b869f47327672ddbd7ab36ee/reflex_mui_datagrid-0.2.3-py3-none-any.whl", hash = "sha256:b7962b29fb2b05b3007a57249891188ff1fa212821ad2dc9eeb06345bb5ef9b2", size = 55117, upload-time = "2026-04-19T17:40:40.438Z" },
 ]
 
 [[package]]
