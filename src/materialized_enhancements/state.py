@@ -350,7 +350,14 @@ class ComposeState(rx.State):
                 continue
             org = g["source_organism"]
             if org not in by_org:
-                by_org[org] = {"organism": org, "superpower": "", "genes": [], "traits": []}
+                by_org[org] = {
+                    "organism": org,
+                    "superpower": "",
+                    "genes": [],
+                    "traits": [],
+                    "puzzle_svg": "",
+                    "puzzle_src": "",
+                }
             by_org[org]["genes"].append(g["gene"])
             if g["trait"] not in by_org[org]["traits"]:
                 by_org[org]["traits"].append(g["trait"])
@@ -358,8 +365,50 @@ class ComposeState(rx.State):
         for a in ANIMAL_LIBRARY:
             if a["organism"] in by_org:
                 by_org[a["organism"]]["superpower"] = a["superpower"]
+                ps = a["puzzle_svg"]
+                by_org[a["organism"]]["puzzle_svg"] = ps
+                by_org[a["organism"]]["puzzle_src"] = f"/puzzle/{quote(ps)}" if ps else ""
+
+        for row in by_org.values():
+            traits: list[str] = row["traits"]
+            row["traits_csv"] = ", ".join(traits)
+            row["primary_trait"] = traits[0] if traits else "\u2014"
 
         return list(by_org.values())
+
+    @rx.var
+    def export_categories_csv(self) -> str:
+        """Comma-separated categories for client-side PDF export."""
+        return ", ".join(self.selected_categories)
+
+    @rx.var
+    def export_animals_summary(self) -> str:
+        """One line per organism (legacy fallback; PDF prefers export_animals_json)."""
+        lines: list[str] = []
+        for a in self.selected_animals:
+            lines.append(f"{a['organism']} — {a['superpower']}")
+        return "\n".join(lines)
+
+    @rx.var
+    def export_animals_json(self) -> str:
+        """Structured organism rows for PDF cover: puzzle art URL + traits (browser reads as JSON)."""
+        payload: list[dict[str, Any]] = []
+        for a in self.selected_animals:
+            payload.append(
+                {
+                    "organism": a["organism"],
+                    "puzzle_svg": a.get("puzzle_svg", ""),
+                    "puzzle_src": a.get("puzzle_src", ""),
+                    "traits": a.get("traits", []),
+                    "primary_trait": a.get("primary_trait", ""),
+                }
+            )
+        return json.dumps(payload)
+
+    @rx.var
+    def export_gene_names_csv(self) -> str:
+        """Comma-separated gene symbols for PDF cover."""
+        return ", ".join(g["gene"] for g in self.selected_genes)
 
     @rx.var
     def share_url(self) -> str:

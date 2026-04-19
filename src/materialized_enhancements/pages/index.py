@@ -9,7 +9,6 @@ from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     CATEGORY_COUNTS,
     CATEGORY_PRICES,
-    CATEGORY_TRAITS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     UNIQUE_CATEGORIES,
@@ -1158,25 +1157,67 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
 
 
 def _report_animal_row(animal_item: rx.Var) -> rx.Component:
-    return rx.el.div(
+    """Puzzle glyph + organism name + traits; parent uses two columns."""
+    text_block = rx.el.div(
         rx.el.div(
-            fomantic_icon("paw", size=12, color="#16a085", style={"marginRight": "6px", "verticalAlign": "middle"}),
-            rx.el.span(
-                animal_item["organism"],
-                style={"fontWeight": "700", "color": "#1a1a2e", "verticalAlign": "middle"},
-            ),
-            style={"display": "block", "lineHeight": "1.4", "marginBottom": "2px"},
+            animal_item["organism"],
+            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.85rem", "lineHeight": "1.3"},
         ),
         rx.el.div(
-            animal_item["superpower"],
+            rx.el.span("Traits: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.72rem"}),
+            rx.el.span(
+                animal_item["traits_csv"],
+                style={"color": "#4b5563", "fontSize": "0.78rem", "lineHeight": "1.4"},
+            ),
+        ),
+        style={"overflow": "hidden"},
+    )
+    return rx.cond(
+        animal_item["puzzle_src"] != "",
+        rx.el.div(
+            rx.el.img(
+                src=animal_item["puzzle_src"],
+                alt="",
+                style={
+                    "float": "left",
+                    "maxWidth": "58px",
+                    "maxHeight": "72px",
+                    "width": "auto",
+                    "height": "auto",
+                    "objectFit": "contain",
+                    "display": "block",
+                    "marginRight": "8px",
+                    "marginBottom": "2px",
+                },
+            ),
+            text_block,
             style={
-                "fontSize": "0.86rem",
-                "color": "#4b5563",
-                "lineHeight": "1.5",
-                "paddingLeft": "18px",
+                "overflow": "hidden",
+                "padding": "6px 0",
+                "borderBottom": "1px solid #f3f4f6",
+                "breakInside": "avoid",
+                "WebkitColumnBreakInside": "avoid",
+                "pageBreakInside": "avoid",
             },
         ),
-        style={"padding": "6px 0", "display": "block"},
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("paw", size=12, color="#16a085", style={"marginRight": "6px", "verticalAlign": "middle"}),
+                rx.el.span(animal_item["organism"], style={"fontWeight": "700", "color": "#1a1a2e"}),
+                style={"display": "block", "lineHeight": "1.4", "marginBottom": "2px"},
+            ),
+            rx.el.div(
+                animal_item["traits_csv"],
+                style={"fontSize": "0.86rem", "color": "#4b5563", "lineHeight": "1.5", "paddingLeft": "18px"},
+            ),
+            style={
+                "padding": "8px 0",
+                "borderBottom": "1px solid #f3f4f6",
+                "breakInside": "avoid",
+                "WebkitColumnBreakInside": "avoid",
+                "pageBreakInside": "avoid",
+            },
+        ),
     )
 
 
@@ -1360,7 +1401,14 @@ def _report_card() -> rx.Component:
                     "marginBottom": "6px",
                 },
             ),
-            rx.el.div(rx.foreach(ComposeState.selected_animals, _report_animal_row)),
+            rx.el.div(
+                rx.foreach(ComposeState.selected_animals, _report_animal_row),
+                style={
+                    "columnCount": 2,
+                    "columnGap": "22px",
+                    "columnFill": "balance",
+                },
+            ),
             style={"marginBottom": "14px"},
         ),
         rx.el.div(
@@ -1439,30 +1487,88 @@ def _report_card() -> rx.Component:
 
 
 def _png_animal_row(animal_item: rx.Var) -> rx.Component:
-    """Compact animal row used inside the square PNG card."""
-    return rx.el.div(
-        rx.el.span(
-            "\u2022 ",
-            style={"color": "#16a085", "fontWeight": "700", "marginRight": "4px"},
-        ),
-        rx.el.span(
+    """Square PNG: three columns; bounded text wraps vertically; one primary trait."""
+    text_block = rx.el.div(
+        rx.el.div(
             animal_item["organism"],
-            style={"fontWeight": "700", "color": "#1a1a2e"},
+            style={
+                "fontWeight": "700",
+                "color": "#1a1a2e",
+                "fontSize": "0.58rem",
+                "lineHeight": "1.15",
+                "marginBottom": "2px",
+                "maxWidth": "100%",
+                "overflowWrap": "anywhere",
+                "wordBreak": "break-word",
+            },
         ),
-        rx.el.span(
-            " \u2014 ",
-            style={"color": "#9ca3af", "margin": "0 4px"},
-        ),
-        rx.el.span(
-            animal_item["superpower"],
-            style={"color": "#4b5563"},
+        rx.el.div(
+            rx.el.span("Trait: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.5rem"}),
+            rx.el.span(
+                animal_item["primary_trait"],
+                style={
+                    "color": "#4b5563",
+                    "fontSize": "0.5rem",
+                    "lineHeight": "1.15",
+                    "overflowWrap": "anywhere",
+                    "wordBreak": "break-word",
+                },
+            ),
+            style={"maxWidth": "100%", "maxHeight": "3.6em", "overflow": "hidden"},
         ),
         style={
-            "fontSize": "0.82rem",
-            "lineHeight": "1.45",
-            "padding": "3px 0",
+            "overflow": "hidden",
+            "maxWidth": "100%",
             "display": "block",
         },
+    )
+    return rx.cond(
+        animal_item["puzzle_src"] != "",
+        rx.el.div(
+            rx.el.img(
+                src=animal_item["puzzle_src"],
+                alt="",
+                style={
+                    "float": "left",
+                    "display": "block",
+                    "maxWidth": "34px",
+                    "maxHeight": "46px",
+                    "width": "auto",
+                    "height": "auto",
+                    "objectFit": "contain",
+                    "marginRight": "4px",
+                    "marginBottom": "2px",
+                },
+            ),
+            text_block,
+            style={
+                "overflow": "hidden",
+                "width": "100%",
+                "boxSizing": "border-box",
+                "clear": "both",
+                "paddingBottom": "4px",
+                "marginBottom": "3px",
+                "borderBottom": "1px solid #f3f4f6",
+                "breakInside": "avoid",
+                "WebkitColumnBreakInside": "avoid",
+                "pageBreakInside": "avoid",
+            },
+        ),
+        rx.el.div(
+            rx.el.span("\u2022 ", style={"color": "#16a085", "fontWeight": "700"}),
+            rx.el.span(animal_item["organism"], style={"fontWeight": "700", "color": "#1a1a2e"}),
+            rx.el.span(" \u2014 ", style={"color": "#9ca3af"}),
+            rx.el.span(animal_item["primary_trait"], style={"color": "#4b5563", "fontSize": "0.6rem"}),
+            style={
+                "fontSize": "0.65rem",
+                "lineHeight": "1.35",
+                "padding": "3px 0",
+                "display": "block",
+                "clear": "both",
+                "maxWidth": "100%",
+                "overflowWrap": "anywhere",
+            },
+        ),
     )
 
 
@@ -1520,9 +1626,8 @@ def _png_view_tile(label: str, img_id: str) -> rx.Component:
 def _report_png_card() -> rx.Component:
     """Dedicated 1080x1080 card — this is the element rasterized into the social PNG.
 
-    Compact layout: header + specimen stamp, name/seed row, categories, 3 views,
-    animals list, QR footer. No genes table, no footer URL text — those live in
-    the PDF version.
+    Layout: header + specimen stamp, name/seed row, categories, 3 views,
+    three-column source organisms (primary trait + wrapped text), brand footer (QR is PDF-only).
     """
     return rx.el.div(
         # Diagonal SPECIMEN stamp — top right
@@ -1634,7 +1739,7 @@ def _report_png_card() -> rx.Component:
             _png_view_tile("BACK",  "png-view-back"),
             style={"display": "flex", "gap": "14px", "marginBottom": "18px"},
         ),
-        # Animals (compact)
+        # Animals: three columns; text wraps inside column width (html-to-image friendly)
         rx.el.div(
             rx.el.div(
                 "SOURCE ORGANISMS",
@@ -1647,47 +1752,37 @@ def _report_png_card() -> rx.Component:
                     "marginBottom": "6px",
                 },
             ),
-            rx.el.div(rx.foreach(ComposeState.selected_animals, _png_animal_row)),
-            style={"marginBottom": "18px", "flex": "1 1 auto"},
-        ),
-        # Footer: QR + brand
-        rx.el.div(
             rx.el.div(
-                id="report-qr-png",
+                rx.foreach(ComposeState.selected_animals, _png_animal_row),
                 style={
-                    "width": "120px",
-                    "height": "120px",
-                    "backgroundColor": "#ffffff",
-                    "border": "1px solid #e5e7eb",
-                    "padding": "4px",
-                    "flex": "0 0 120px",
+                    "columnCount": 3,
+                    "columnGap": "12px",
+                    "columnFill": "balance",
                 },
             ),
+            style={"marginBottom": "12px", "flex": "1 1 auto"},
+        ),
+        # Footer: brand only (QR lives on PDF cover)
+        rx.el.div(
             rx.el.div(
-                rx.el.div(
-                    "materialized-enhancements",
-                    style={"fontSize": "1rem", "fontWeight": "700", "color": "#7c3aed"},
-                ),
-                rx.el.div(
-                    "CODAME \u00b7 The New Human \u00b7 Milano 2026",
-                    style={"fontSize": "0.85rem", "color": "#6b7280", "marginTop": "4px"},
-                ),
-                rx.el.div(
-                    "Scan to recreate this sculpture",
-                    style={"fontSize": "0.78rem", "color": "#9ca3af", "marginTop": "4px"},
-                ),
-                style={"flex": "1", "marginLeft": "18px", "alignSelf": "center"},
+                "materialized-enhancements",
+                style={"fontSize": "0.95rem", "fontWeight": "700", "color": "#7c3aed"},
+            ),
+            rx.el.div(
+                "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+                style={"fontSize": "0.8rem", "color": "#6b7280", "marginTop": "4px"},
             ),
             style={
-                "display": "flex",
-                "alignItems": "center",
-                "paddingTop": "14px",
+                "paddingTop": "12px",
                 "borderTop": "1px solid #e5e7eb",
+                "textAlign": "center",
             },
         ),
         id="me-report-png-card",
         style={
             # Hidden off-screen 1080x1080 card, rasterized by html-to-image on demand.
+            # me_report.js temporarily moves it on-screen (z-index -1, opacity 0.01)
+            # during capture so computed styles and webfonts resolve correctly.
             "position": "absolute",
             "left": "-12000px",
             "top": "0",
@@ -1696,12 +1791,10 @@ def _report_png_card() -> rx.Component:
             "padding": "48px",
             "backgroundColor": "#ffffff",
             "border": "2px solid #1a1a2e",
-            "borderRadius": "0",
             "boxSizing": "border-box",
             "overflow": "hidden",
             "fontFamily": "'Lato', 'Helvetica Neue', Arial, sans-serif",
-            "display": "flex",
-            "flexDirection": "column",
+            "color": "#1a1a2e",
         },
     )
 
@@ -1873,6 +1966,36 @@ def _report_section() -> rx.Component:
                     rx.el.input(
                         id="report-share-seed",
                         value=ComposeState.param_seed,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-share-points",
+                        value=ComposeState.param_points,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-export-categories",
+                        value=ComposeState.export_categories_csv,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-export-animals",
+                        value=ComposeState.export_animals_summary,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.textarea(
+                        id="report-export-animals-json",
+                        value=ComposeState.export_animals_json,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-export-genes",
+                        value=ComposeState.export_gene_names_csv,
                         read_only=True,
                         style={"display": "none"},
                     ),
