@@ -26,6 +26,7 @@ from materialized_enhancements.gene_data import (
 from materialized_enhancements.puzzle import build_jigsaw_svg
 from materialized_enhancements.sculpture import (
     DEFAULT_EXPORT_DIR,
+    GENE_PROPERTIES,
     compute_sculpture_params,
     generate_sculpture,
 )
@@ -85,6 +86,7 @@ class ComposeState(rx.State):
 
     personal_tag: str = "A new human, to be"
     selected_categories: list[str] = []
+    excluded_genes: list[str] = []
 
     sculpture_params: Dict[str, Any] = {}
     generating: bool = False
@@ -124,22 +126,48 @@ class ComposeState(rx.State):
             if spent + price > DEFAULT_BUDGET:
                 return
             self.selected_categories = [*self.selected_categories, category]
+        self._prune_excluded_genes()
         self._recompute_params()
 
     def remove_category(self, category: str) -> None:
         self.selected_categories = [c for c in self.selected_categories if c != category]
+        self._prune_excluded_genes()
         self._recompute_params()
+
+    def toggle_gene(self, gene: str) -> None:
+        if gene in self.excluded_genes:
+            self.excluded_genes = [g for g in self.excluded_genes if g != gene]
+        else:
+            self.excluded_genes = [*self.excluded_genes, gene]
+        self._recompute_params()
+
+    def _prune_excluded_genes(self) -> None:
+        """Remove exclusions for genes no longer in any selected category."""
+        active = {g["gene"] for g in GENE_LIBRARY if g["category"] in self.selected_categories}
+        self.excluded_genes = [g for g in self.excluded_genes if g in active]
+
+    def _active_gene_library(self) -> list[dict]:
+        """Gene library filtered to selected categories minus excluded genes."""
+        return [
+            g for g in GENE_LIBRARY
+            if g["category"] in self.selected_categories
+            and g["gene"] not in self.excluded_genes
+        ]
 
     def _recompute_params(self) -> None:
         """Recompute sculpture params live as the user changes selections."""
         if not self.selected_categories or not self.personal_tag.strip():
             self.sculpture_params = {}
             return
+        active = self._active_gene_library()
+        if not active:
+            self.sculpture_params = {}
+            return
         params = compute_sculpture_params(
             name=self.personal_tag,
             selected_categories=self.selected_categories,
             all_categories=UNIQUE_CATEGORIES,
-            gene_library=GENE_LIBRARY,
+            gene_library=active,
         )
         self.sculpture_params = params
 
@@ -152,6 +180,9 @@ class ComposeState(rx.State):
             tag = self.personal_tag.strip()
             cats = list(self.selected_categories)
             if not cats or not tag:
+                return
+            active = self._active_gene_library()
+            if not active:
                 return
             self.generating = True
             self.generation_error = ""
@@ -168,7 +199,7 @@ class ComposeState(rx.State):
                 tag,
                 cats,
                 UNIQUE_CATEGORIES,
-                GENE_LIBRARY,
+                active,
                 DEFAULT_EXPORT_DIR,
                 10,
             )
@@ -333,6 +364,8 @@ class ComposeState(rx.State):
                 "description": g["description"],
                 "enhancement": g["enhancement"],
                 "paper_url": g["paper_url"],
+                "included": g["gene"] not in self.excluded_genes,
+                "price": GENE_PROPERTIES.get(g["gene"], {}).get("gene_price", 0),
             }
             for g in GENE_LIBRARY
             if g["category"] in self.selected_categories
@@ -343,10 +376,13 @@ class ComposeState(rx.State):
         """Group selected genes by source organism for the report.
 
         Pulls the short per-organism superpower blurb from ANIMAL_LIBRARY.
+        Only includes genes not in excluded_genes.
         """
         by_org: dict[str, dict] = {}
         for g in GENE_LIBRARY:
             if g["category"] not in self.selected_categories:
+                continue
+            if g["gene"] in self.excluded_genes:
                 continue
             org = g["source_organism"]
             if org not in by_org:
@@ -467,19 +503,45 @@ class ComposeState(rx.State):
 
     @rx.var
     def budget_spent(self) -> int:
-        return sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+        return sum(
+            int(GENE_PROPERTIES.get(g["gene"], {}).get("gene_price", 0))
+            for g in GENE_LIBRARY
+            if g["category"] in self.selected_categories
+            and g["gene"] not in self.excluded_genes
+        )
 
     @rx.var
     def budget_remaining(self) -> int:
-        return DEFAULT_BUDGET - sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+        return DEFAULT_BUDGET - self.budget_spent
 
     @rx.var
     def affordable_categories(self) -> list[str]:
-        remaining = DEFAULT_BUDGET - sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
+        remaining = DEFAULT_BUDGET - self.budget_spent
         return [
             cat for cat in UNIQUE_CATEGORIES
             if cat in self.selected_categories or CATEGORY_PRICES.get(cat, 0) <= remaining
         ]
+
+    @rx.var
+    def active_gene_counts(self) -> dict[str, int]:
+        """Per-category count of included (non-excluded) genes."""
+        counts: dict[str, int] = {}
+        for g in GENE_LIBRARY:
+            cat = g["category"]
+            if g["gene"] not in self.excluded_genes:
+                counts[cat] = counts.get(cat, 0) + 1
+        return counts
+
+    @rx.var
+    def active_category_prices(self) -> dict[str, int]:
+        """Per-category sum of included gene prices."""
+        totals: dict[str, int] = {}
+        for g in GENE_LIBRARY:
+            cat = g["category"]
+            if g["gene"] not in self.excluded_genes:
+                price = int(GENE_PROPERTIES.get(g["gene"], {}).get("gene_price", 0))
+                totals[cat] = totals.get(cat, 0) + price
+        return totals
 
     @rx.var
     def has_selection(self) -> bool:

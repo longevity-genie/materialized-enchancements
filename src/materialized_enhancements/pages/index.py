@@ -297,8 +297,10 @@ def _landing_tab() -> rx.Component:
 def _category_button(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
-    count = CATEGORY_COUNTS.get(category, 0)
-    price = CATEGORY_PRICES.get(category, 0)
+    total_count = CATEGORY_COUNTS.get(category, 0)
+    total_price = CATEGORY_PRICES.get(category, 0)
+    active_count = ComposeState.active_gene_counts[category]
+    active_price = ComposeState.active_category_prices[category]
     is_selected = ComposeState.selected_categories.contains(category)
     is_affordable = ComposeState.affordable_categories.contains(category)
     is_enabled = is_selected | is_affordable
@@ -314,7 +316,11 @@ def _category_button(category: str) -> rx.Component:
                 style={"fontSize": "0.88rem", "flex": "1", "marginLeft": "8px"},
             ),
             rx.el.span(
-                f"{price} cr",
+                rx.cond(
+                    active_price == total_price,
+                    f"{total_price} cr",
+                    rx.cond(is_selected, active_price.to(str) + f"/{total_price} cr", f"{total_price} cr"),
+                ),
                 style={
                     "fontSize": "0.72rem",
                     "fontWeight": "700",
@@ -326,7 +332,11 @@ def _category_button(category: str) -> rx.Component:
                 },
             ),
             rx.el.span(
-                str(count),
+                rx.cond(
+                    active_count == total_count,
+                    f"{total_count}",
+                    rx.cond(is_selected, active_count.to(str) + f"/{total_count}", f"{total_count}"),
+                ),
                 style={
                     "fontSize": "0.72rem",
                     "fontWeight": "600",
@@ -473,18 +483,70 @@ def _trait_item(trait: rx.Var) -> rx.Component:
     )
 
 
-def _gene_chip(gene_item: rx.Var) -> rx.Component:
-    return rx.el.span(
-        gene_item["gene"],
+def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
+    included = gene_item["included"]
+    return rx.el.label(
+        rx.el.input(
+            type="checkbox",
+            checked=included,
+            on_change=ComposeState.toggle_gene(gene_item["gene"]),
+            style={"marginRight": "6px", "accentColor": "#7c3aed", "cursor": "pointer", "flexShrink": "0"},
+        ),
+        rx.el.span(
+            gene_item["trait"],
+            style={
+                "fontSize": "0.84rem",
+                "fontWeight": "500",
+                "color": rx.cond(included, "#1a1a2e", "#9ca3af"),
+                "textDecoration": rx.cond(included, "none", "line-through"),
+                "width": "45%",
+                "flexShrink": "0",
+            },
+        ),
+        rx.el.span(
+            gene_item["gene"],
+            style={
+                "fontSize": "0.78rem",
+                "fontWeight": "600",
+                "fontFamily": "monospace",
+                "color": rx.cond(included, "#7c3aed", "#d1d5db"),
+                "marginLeft": "4px",
+            },
+        ),
+        rx.el.span(
+            gene_item["source_organism"],
+            style={
+                "fontSize": "0.72rem",
+                "color": "#9ca3af",
+                "marginLeft": "6px",
+                "flex": "1",
+                "textAlign": "right",
+            },
+        ),
+        rx.el.span(
+            gene_item["price"],
+            " cr",
+            style={
+                "fontSize": "0.72rem",
+                "fontWeight": "700",
+                "padding": "1px 6px",
+                "borderRadius": "10px",
+                "backgroundColor": rx.cond(included, "#f3f0ff", "#f3f4f6"),
+                "color": rx.cond(included, "#7c3aed", "#d1d5db"),
+                "whiteSpace": "nowrap",
+                "marginLeft": "6px",
+            },
+        ),
         style={
-            "display": "inline-block",
-            "padding": "2px 8px",
+            "display": "flex",
+            "alignItems": "center",
+            "padding": "5px 8px",
             "borderRadius": "4px",
-            "backgroundColor": "#f9fafb",
-            "color": "#374151",
-            "fontSize": "0.8rem",
-            "margin": "2px",
-            "border": "1px solid #e5e7eb",
+            "cursor": "pointer",
+            "border": "1px solid",
+            "borderColor": rx.cond(included, "#e5e7eb", "#f3f4f6"),
+            "backgroundColor": rx.cond(included, "#ffffff", "#fafafa"),
+            "transition": "all 0.15s ease",
         },
     )
 
@@ -754,21 +816,12 @@ def _choice_section() -> rx.Component:
                     ),
                     rx.el.div(class_name="ui divider"),
                     rx.el.label(
-                        "Traits you obtain:",
-                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+                        "Trait",
+                        style={"fontSize": "0.75rem", "color": "#9ca3af", "width": "45%", "marginLeft": "22px"},
                     ),
                     rx.el.div(
-                        rx.foreach(ComposeState.selected_traits, _trait_item),
-                        style={"marginBottom": "12px"},
-                    ),
-                    rx.el.div(class_name="ui divider"),
-                    rx.el.label(
-                        "Genes in your composition:",
-                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                    ),
-                    rx.el.div(
-                        rx.foreach(ComposeState.selected_genes, _gene_chip),
-                        style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "12px"},
+                        rx.foreach(ComposeState.selected_genes, _gene_checkbox),
+                        style={"display": "flex", "flexDirection": "column", "gap": "3px", "marginBottom": "12px"},
                     ),
                 ),
                 rx.el.p(
