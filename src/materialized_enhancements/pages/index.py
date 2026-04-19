@@ -9,7 +9,6 @@ from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     CATEGORY_COUNTS,
     CATEGORY_PRICES,
-    CATEGORY_TRAITS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     UNIQUE_CATEGORIES,
@@ -1082,6 +1081,955 @@ def _artex_section() -> rx.Component:
     )
 
 
+# ── Share & Report ───────────────────────────────────────────────────────────
+
+
+_REPORT_CARD_STYLE: dict = {
+    "backgroundColor": "#ffffff",
+    "border": "1px solid #1a1a2e",
+    "borderRadius": "8px",
+    "padding": "24px",
+    "marginBottom": "16px",
+    "position": "relative",
+    "overflow": "hidden",
+    "fontFamily": "'Lato', 'Helvetica Neue', Arial, sans-serif",
+}
+
+
+_VIEW_TILE_STYLE: dict = {
+    "flex": "1 1 0",
+    "aspectRatio": "1 / 1",
+    "backgroundColor": "#0b0b14",
+    "border": "1px solid #7c3aed",
+    "borderRadius": "6px",
+    "display": "flex",
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "position": "relative",
+    "overflow": "hidden",
+}
+
+
+_SOCIAL_BUTTON_STYLE: dict = {
+    "flex": "1 1 0",
+    "height": "48px",
+    "fontSize": "0.95rem",
+    "fontWeight": "600",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "gap": "8px",
+    "padding": "0 16px",
+}
+
+_TRANSPARENT_PX = (
+    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+)
+
+
+def _report_gene_row(gene_item: rx.Var) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(
+                gene_item["gene"],
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontWeight": "700",
+                    "color": "#1a1a2e",
+                    "marginRight": "10px",
+                    "minWidth": "80px",
+                    "display": "inline-block",
+                },
+            ),
+            rx.el.span(
+                gene_item["trait"],
+                style={"fontSize": "0.88rem", "color": "#7c3aed", "fontWeight": "600"},
+            ),
+            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
+        ),
+        rx.el.p(
+            gene_item["enhancement"],
+            style={"fontSize": "0.86rem", "color": "#374151", "margin": "2px 0 0 0", "lineHeight": "1.5"},
+        ),
+        style={"padding": "8px 0", "borderBottom": "1px solid #f3f4f6"},
+    )
+
+
+def _report_animal_row(animal_item: rx.Var) -> rx.Component:
+    """Puzzle glyph + organism name + traits; parent uses two columns."""
+    text_block = rx.el.div(
+        rx.el.div(
+            animal_item["organism"],
+            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.85rem", "lineHeight": "1.3"},
+        ),
+        rx.el.div(
+            rx.el.span("Traits: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.72rem"}),
+            rx.el.span(
+                animal_item["traits_csv"],
+                style={"color": "#4b5563", "fontSize": "0.78rem", "lineHeight": "1.4"},
+            ),
+        ),
+        style={"overflow": "hidden"},
+    )
+    return rx.cond(
+        animal_item["puzzle_src"] != "",
+        rx.el.div(
+            rx.el.img(
+                src=animal_item["puzzle_src"],
+                alt="",
+                style={
+                    "float": "left",
+                    "maxWidth": "58px",
+                    "maxHeight": "72px",
+                    "width": "auto",
+                    "height": "auto",
+                    "objectFit": "contain",
+                    "display": "block",
+                    "marginRight": "8px",
+                    "marginBottom": "2px",
+                },
+            ),
+            text_block,
+            style={
+                "overflow": "hidden",
+                "padding": "6px 0",
+                "borderBottom": "1px solid #f3f4f6",
+                "breakInside": "avoid",
+                "WebkitColumnBreakInside": "avoid",
+                "pageBreakInside": "avoid",
+            },
+        ),
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("paw", size=12, color="#16a085", style={"marginRight": "6px", "verticalAlign": "middle"}),
+                rx.el.span(animal_item["organism"], style={"fontWeight": "700", "color": "#1a1a2e"}),
+                style={"display": "block", "lineHeight": "1.4", "marginBottom": "2px"},
+            ),
+            rx.el.div(
+                animal_item["traits_csv"],
+                style={"fontSize": "0.86rem", "color": "#4b5563", "lineHeight": "1.5", "paddingLeft": "18px"},
+            ),
+            style={
+                "padding": "8px 0",
+                "borderBottom": "1px solid #f3f4f6",
+                "breakInside": "avoid",
+                "WebkitColumnBreakInside": "avoid",
+                "pageBreakInside": "avoid",
+            },
+        ),
+    )
+
+
+def _report_category_chip(cat_item: rx.Var) -> rx.Component:
+    return rx.el.span(
+        cat_item,
+        style={
+            "display": "inline-block",
+            "padding": "4px 10px",
+            "borderRadius": "12px",
+            "backgroundColor": "#f3f0ff",
+            "color": "#7c3aed",
+            "fontSize": "0.82rem",
+            "fontWeight": "600",
+            "margin": "3px",
+            "border": "1px solid #d4c5f9",
+        },
+    )
+
+
+def _report_view_tile(label: str, img_id: str) -> rx.Component:
+    return rx.el.div(
+        rx.el.img(
+            id=img_id,
+            src=_TRANSPARENT_PX,
+            alt="",
+            style={"width": "100%", "height": "100%", "objectFit": "contain", "display": "block"},
+        ),
+        rx.el.div(
+            label,
+            style={
+                "position": "absolute",
+                "bottom": "6px",
+                "left": "8px",
+                "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                "fontSize": "0.72rem",
+                "fontWeight": "700",
+                "letterSpacing": "0.15em",
+                "color": "#c4b5fd",
+                "textShadow": "0 1px 2px rgba(0,0,0,0.7)",
+            },
+        ),
+        style=_VIEW_TILE_STYLE,
+    )
+
+
+def _report_card() -> rx.Component:
+    """The rasterizable police-report card — this DOM node is turned into PNG/PDF."""
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(
+                "SPECIMEN #",
+                style={"fontSize": "0.82rem", "fontWeight": "400"},
+            ),
+            rx.el.span(
+                ComposeState.param_seed,
+                style={"fontSize": "1.2rem", "fontWeight": "700"},
+            ),
+            style={
+                "position": "absolute",
+                "top": "18px",
+                "right": "-6px",
+                "padding": "4px 14px",
+                "border": "2px solid #b91c1c",
+                "color": "#b91c1c",
+                "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                "letterSpacing": "0.1em",
+                "transform": "rotate(-6deg)",
+                "opacity": "0.78",
+                "pointerEvents": "none",
+                "userSelect": "none",
+            },
+        ),
+        rx.el.div(
+            rx.el.div(
+                "MATERIALIZED ENHANCEMENTS",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.78rem",
+                    "letterSpacing": "0.18em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                },
+            ),
+            rx.el.h2(
+                "IDENTITY REPORT",
+                style={
+                    "fontSize": "1.6rem",
+                    "fontWeight": "800",
+                    "color": "#1a1a2e",
+                    "margin": "2px 0 0 0",
+                    "letterSpacing": "0.02em",
+                },
+            ),
+            style={"borderBottom": "2px solid #1a1a2e", "paddingBottom": "10px", "marginBottom": "14px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                rx.el.span("NAME", style={"fontSize": "0.72rem", "color": "#9ca3af", "letterSpacing": "0.12em"}),
+                rx.el.div(
+                    ComposeState.input_personal_tag,
+                    style={"fontSize": "1.1rem", "fontWeight": "700", "color": "#1a1a2e"},
+                ),
+                style={"flex": "2 1 200px", "minWidth": "160px"},
+            ),
+            rx.el.div(
+                rx.el.span("SEED", style={"fontSize": "0.72rem", "color": "#9ca3af", "letterSpacing": "0.12em"}),
+                rx.el.div(
+                    ComposeState.param_seed,
+                    style={
+                        "fontSize": "1.1rem",
+                        "fontWeight": "700",
+                        "color": "#7c3aed",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    },
+                ),
+                style={"flex": "1 1 80px", "minWidth": "80px"},
+            ),
+            rx.el.div(
+                rx.el.span("POINTS", style={"fontSize": "0.72rem", "color": "#9ca3af", "letterSpacing": "0.12em"}),
+                rx.el.div(
+                    ComposeState.param_points,
+                    style={
+                        "fontSize": "1.1rem",
+                        "fontWeight": "700",
+                        "color": "#1a1a2e",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    },
+                ),
+                style={"flex": "1 1 70px", "minWidth": "70px"},
+            ),
+            style={"display": "flex", "gap": "16px", "flexWrap": "wrap", "marginBottom": "14px"},
+        ),
+        rx.el.div(
+            _report_view_tile("FRONT", "report-view-front"),
+            _report_view_tile("SIDE", "report-view-side"),
+            _report_view_tile("BACK", "report-view-back"),
+            style={"display": "flex", "gap": "10px", "marginBottom": "16px"},
+        ),
+        rx.cond(
+            ComposeState.report_views_ready,
+            rx.fragment(),
+            rx.el.p(
+                "Generating three-view renders\u2026",
+                style={
+                    "textAlign": "center",
+                    "fontSize": "0.82rem",
+                    "color": "#9ca3af",
+                    "margin": "-10px 0 12px 0",
+                    "fontStyle": "italic",
+                },
+            ),
+        ),
+        rx.el.div(
+            rx.el.div(
+                "ENHANCEMENT CATEGORIES",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(ComposeState.selected_categories, _report_category_chip),
+                style={"display": "flex", "flexWrap": "wrap", "gap": "2px"},
+            ),
+            style={"marginBottom": "14px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                "SOURCE ORGANISMS",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(ComposeState.selected_animals, _report_animal_row),
+                style={
+                    "columnCount": 2,
+                    "columnGap": "22px",
+                    "columnFill": "balance",
+                },
+            ),
+            style={"marginBottom": "14px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                "GENES IN COMPOSITION",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(rx.foreach(ComposeState.selected_genes, _report_gene_row)),
+            style={"marginBottom": "14px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                rx.el.div(
+                    "SCAN TO RECREATE",
+                    style={
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                        "fontSize": "0.68rem",
+                        "letterSpacing": "0.14em",
+                        "color": "#9ca3af",
+                        "marginBottom": "4px",
+                    },
+                ),
+                rx.el.div(
+                    id="report-qr",
+                    style={
+                        "width": "96px",
+                        "height": "96px",
+                        "backgroundColor": "#ffffff",
+                        "border": "1px solid #e5e7eb",
+                        "padding": "4px",
+                        "display": "flex",
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                    },
+                ),
+            ),
+            rx.el.div(
+                rx.el.div(
+                    "materialized-enhancements",
+                    style={"fontSize": "0.9rem", "fontWeight": "700", "color": "#7c3aed"},
+                ),
+                rx.el.div(
+                    "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+                    style={"fontSize": "0.75rem", "color": "#9ca3af", "marginTop": "2px"},
+                ),
+                rx.el.div(
+                    id="report-share-url",
+                    style={
+                        "fontSize": "0.68rem",
+                        "color": "#6b7280",
+                        "marginTop": "6px",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                        "wordBreak": "break-all",
+                        "maxWidth": "100%",
+                    },
+                ),
+                style={"flex": "1", "marginLeft": "16px", "overflow": "hidden"},
+            ),
+            style={
+                "display": "flex",
+                "alignItems": "flex-start",
+                "paddingTop": "12px",
+                "borderTop": "1px solid #e5e7eb",
+            },
+        ),
+        id="me-report-card",
+        style=_REPORT_CARD_STYLE,
+    )
+
+
+def _png_animal_row(animal_item: rx.Var) -> rx.Component:
+    """Square PNG: three columns; bounded text wraps vertically; one primary trait."""
+    text_block = rx.el.div(
+        rx.el.div(
+            animal_item["organism"],
+            style={
+                "fontWeight": "700",
+                "color": "#1a1a2e",
+                "fontSize": "0.58rem",
+                "lineHeight": "1.15",
+                "marginBottom": "2px",
+                "maxWidth": "100%",
+                "overflowWrap": "anywhere",
+                "wordBreak": "break-word",
+            },
+        ),
+        rx.el.div(
+            rx.el.span("Trait: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.5rem"}),
+            rx.el.span(
+                animal_item["primary_trait"],
+                style={
+                    "color": "#4b5563",
+                    "fontSize": "0.5rem",
+                    "lineHeight": "1.15",
+                    "overflowWrap": "anywhere",
+                    "wordBreak": "break-word",
+                },
+            ),
+            style={"maxWidth": "100%", "maxHeight": "3.6em", "overflow": "hidden"},
+        ),
+        style={
+            "overflow": "hidden",
+            "maxWidth": "100%",
+            "display": "block",
+        },
+    )
+    return rx.cond(
+        animal_item["puzzle_src"] != "",
+        rx.el.div(
+            rx.el.img(
+                src=animal_item["puzzle_src"],
+                alt="",
+                style={
+                    "float": "left",
+                    "display": "block",
+                    "maxWidth": "34px",
+                    "maxHeight": "46px",
+                    "width": "auto",
+                    "height": "auto",
+                    "objectFit": "contain",
+                    "marginRight": "4px",
+                    "marginBottom": "2px",
+                },
+            ),
+            text_block,
+            style={
+                "overflow": "hidden",
+                "width": "100%",
+                "boxSizing": "border-box",
+                "clear": "both",
+                "paddingBottom": "4px",
+                "marginBottom": "3px",
+                "borderBottom": "1px solid #f3f4f6",
+                "breakInside": "avoid",
+                "WebkitColumnBreakInside": "avoid",
+                "pageBreakInside": "avoid",
+            },
+        ),
+        rx.el.div(
+            rx.el.span("\u2022 ", style={"color": "#16a085", "fontWeight": "700"}),
+            rx.el.span(animal_item["organism"], style={"fontWeight": "700", "color": "#1a1a2e"}),
+            rx.el.span(" \u2014 ", style={"color": "#9ca3af"}),
+            rx.el.span(animal_item["primary_trait"], style={"color": "#4b5563", "fontSize": "0.6rem"}),
+            style={
+                "fontSize": "0.65rem",
+                "lineHeight": "1.35",
+                "padding": "3px 0",
+                "display": "block",
+                "clear": "both",
+                "maxWidth": "100%",
+                "overflowWrap": "anywhere",
+            },
+        ),
+    )
+
+
+def _png_category_chip(cat_item: rx.Var) -> rx.Component:
+    return rx.el.span(
+        cat_item,
+        style={
+            "display": "inline-block",
+            "padding": "5px 12px",
+            "borderRadius": "14px",
+            "backgroundColor": "#f3f0ff",
+            "color": "#7c3aed",
+            "fontSize": "0.78rem",
+            "fontWeight": "600",
+            "margin": "3px",
+            "border": "1px solid #d4c5f9",
+        },
+    )
+
+
+def _png_view_tile(label: str, img_id: str) -> rx.Component:
+    return rx.el.div(
+        rx.el.img(
+            id=img_id,
+            src=_TRANSPARENT_PX,
+            alt="",
+            style={"width": "100%", "height": "100%", "objectFit": "contain", "display": "block"},
+        ),
+        rx.el.div(
+            label,
+            style={
+                "position": "absolute",
+                "bottom": "8px",
+                "left": "10px",
+                "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                "fontSize": "0.72rem",
+                "fontWeight": "700",
+                "letterSpacing": "0.16em",
+                "color": "#c4b5fd",
+                "textShadow": "0 1px 2px rgba(0,0,0,0.8)",
+            },
+        ),
+        style={
+            "flex": "1 1 0",
+            "aspectRatio": "1 / 1",
+            "backgroundColor": "#0b0b14",
+            "border": "1px solid #7c3aed",
+            "borderRadius": "8px",
+            "position": "relative",
+            "overflow": "hidden",
+        },
+    )
+
+
+def _report_png_card() -> rx.Component:
+    """Dedicated 1080x1080 card — this is the element rasterized into the social PNG.
+
+    Layout: header + specimen stamp, name/seed row, categories, 3 views,
+    three-column source organisms (primary trait + wrapped text), brand footer (QR is PDF-only).
+    """
+    return rx.el.div(
+        # Diagonal SPECIMEN stamp — top right
+        rx.el.div(
+            rx.el.span("SPECIMEN #", style={"fontSize": "0.9rem", "fontWeight": "400"}),
+            rx.el.span(ComposeState.param_seed, style={"fontSize": "1.3rem", "fontWeight": "700"}),
+            style={
+                "position": "absolute",
+                "top": "24px",
+                "right": "-8px",
+                "padding": "6px 16px",
+                "border": "2px solid #b91c1c",
+                "color": "#b91c1c",
+                "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                "letterSpacing": "0.1em",
+                "transform": "rotate(-6deg)",
+                "opacity": "0.8",
+            },
+        ),
+        # Header
+        rx.el.div(
+            rx.el.div(
+                "MATERIALIZED ENHANCEMENTS",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.82rem",
+                    "letterSpacing": "0.2em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                },
+            ),
+            rx.el.h2(
+                "IDENTITY REPORT",
+                style={
+                    "fontSize": "2rem",
+                    "fontWeight": "800",
+                    "color": "#1a1a2e",
+                    "margin": "4px 0 0 0",
+                    "letterSpacing": "0.02em",
+                },
+            ),
+            style={
+                "borderBottom": "2px solid #1a1a2e",
+                "paddingBottom": "12px",
+                "marginBottom": "18px",
+            },
+        ),
+        # NAME / SEED / POINTS row
+        rx.el.div(
+            rx.el.div(
+                rx.el.div("NAME", style={"fontSize": "0.72rem", "color": "#9ca3af", "letterSpacing": "0.14em", "marginBottom": "2px"}),
+                rx.el.div(
+                    ComposeState.input_personal_tag,
+                    style={"fontSize": "1.25rem", "fontWeight": "700", "color": "#1a1a2e"},
+                ),
+                style={"flex": "2 1 300px", "minWidth": "200px"},
+            ),
+            rx.el.div(
+                rx.el.div("SEED", style={"fontSize": "0.72rem", "color": "#9ca3af", "letterSpacing": "0.14em", "marginBottom": "2px"}),
+                rx.el.div(
+                    ComposeState.param_seed,
+                    style={
+                        "fontSize": "1.25rem",
+                        "fontWeight": "700",
+                        "color": "#7c3aed",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    },
+                ),
+                style={"flex": "0 0 110px"},
+            ),
+            rx.el.div(
+                rx.el.div("POINTS", style={"fontSize": "0.72rem", "color": "#9ca3af", "letterSpacing": "0.14em", "marginBottom": "2px"}),
+                rx.el.div(
+                    ComposeState.param_points,
+                    style={
+                        "fontSize": "1.25rem",
+                        "fontWeight": "700",
+                        "color": "#1a1a2e",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    },
+                ),
+                style={"flex": "0 0 90px"},
+            ),
+            style={"display": "flex", "gap": "20px", "marginBottom": "16px"},
+        ),
+        # Categories on top
+        rx.el.div(
+            rx.el.div(
+                "ENHANCEMENT CATEGORIES",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(ComposeState.selected_categories, _png_category_chip),
+                style={"display": "flex", "flexWrap": "wrap", "gap": "2px"},
+            ),
+            style={"marginBottom": "18px"},
+        ),
+        # Three views centered
+        rx.el.div(
+            _png_view_tile("FRONT", "png-view-front"),
+            _png_view_tile("SIDE",  "png-view-side"),
+            _png_view_tile("BACK",  "png-view-back"),
+            style={"display": "flex", "gap": "14px", "marginBottom": "18px"},
+        ),
+        # Animals: three columns; text wraps inside column width (html-to-image friendly)
+        rx.el.div(
+            rx.el.div(
+                "SOURCE ORGANISMS",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#6b7280",
+                    "fontWeight": "600",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(ComposeState.selected_animals, _png_animal_row),
+                style={
+                    "columnCount": 3,
+                    "columnGap": "12px",
+                    "columnFill": "balance",
+                },
+            ),
+            style={"marginBottom": "12px", "flex": "1 1 auto"},
+        ),
+        # Footer: brand only (QR lives on PDF cover)
+        rx.el.div(
+            rx.el.div(
+                "materialized-enhancements",
+                style={"fontSize": "0.95rem", "fontWeight": "700", "color": "#7c3aed"},
+            ),
+            rx.el.div(
+                "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+                style={"fontSize": "0.8rem", "color": "#6b7280", "marginTop": "4px"},
+            ),
+            style={
+                "paddingTop": "12px",
+                "borderTop": "1px solid #e5e7eb",
+                "textAlign": "center",
+            },
+        ),
+        id="me-report-png-card",
+        style={
+            # Hidden off-screen 1080x1080 card, rasterized by html-to-image on demand.
+            # me_report.js temporarily moves it on-screen (z-index -1, opacity 0.01)
+            # during capture so computed styles and webfonts resolve correctly.
+            "position": "absolute",
+            "left": "-12000px",
+            "top": "0",
+            "width": "1080px",
+            "height": "1080px",
+            "padding": "48px",
+            "backgroundColor": "#ffffff",
+            "border": "2px solid #1a1a2e",
+            "boxSizing": "border-box",
+            "overflow": "hidden",
+            "fontFamily": "'Lato', 'Helvetica Neue', Arial, sans-serif",
+            "color": "#1a1a2e",
+        },
+    )
+
+
+def _report_pdf_long_content() -> rx.Component:
+    """Hidden DOM subtree rasterized as additional A4 PDF page(s)."""
+    return rx.el.div(
+        rx.el.h2(
+            "Gene library \u2014 full descriptions",
+            style={"fontSize": "1.3rem", "fontWeight": "700", "color": "#1a1a2e", "marginBottom": "8px"},
+        ),
+        rx.el.p(
+            "The sculpture you just generated was shaped by the following genes. Each entry "
+            "summarises what the gene does in its source organism and what it could mean for "
+            "a future human.",
+            style={"fontSize": "0.82rem", "color": "#374151", "lineHeight": "1.6", "marginBottom": "10px"},
+        ),
+        rx.foreach(
+            ComposeState.selected_genes,
+            lambda g: rx.el.div(
+                rx.el.div(
+                    rx.el.span(
+                        g["gene"],
+                        style={
+                            "fontWeight": "700",
+                            "color": "#1a1a2e",
+                            "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                        },
+                    ),
+                    rx.el.span(" \u2014 ", style={"color": "#9ca3af"}),
+                    rx.el.span(g["trait"], style={"color": "#7c3aed", "fontWeight": "600"}),
+                    rx.el.span("  (", style={"color": "#9ca3af"}),
+                    rx.el.span(g["source_organism"], style={"color": "#0d9488", "fontWeight": "600"}),
+                    rx.el.span(")", style={"color": "#9ca3af"}),
+                    style={"fontSize": "0.95rem", "marginBottom": "2px"},
+                ),
+                rx.el.p(
+                    g["description"],
+                    style={"fontSize": "0.78rem", "color": "#374151", "margin": "0 0 4px 0", "lineHeight": "1.55"},
+                ),
+                rx.el.p(
+                    g["enhancement"],
+                    style={"fontSize": "0.78rem", "color": "#6b7280", "margin": "0", "lineHeight": "1.55", "fontStyle": "italic"},
+                ),
+                style={"padding": "6px 0", "borderBottom": "1px solid #e5e7eb"},
+            ),
+        ),
+        id="me-report-pdf-long",
+        style={
+            "position": "absolute",
+            "left": "-10000px",
+            "top": "0",
+            "width": "180mm",
+            "padding": "0",
+            "backgroundColor": "#ffffff",
+            "color": "#1a1a2e",
+            "fontFamily": "'Lato', 'Helvetica Neue', Arial, sans-serif",
+        },
+    )
+
+
+def _report_capture_iframe() -> rx.Component:
+    """Always-mounted off-screen iframe rendering the 3 booking-photo views."""
+    return rx.el.iframe(
+        src=rx.cond(
+            ComposeState.has_stl,
+            ComposeState.capture_iframe_src,
+            "about:blank",
+        ),
+        id="sculpture-capture-iframe",
+        style={
+            "position": "fixed",
+            "left": "-10000px",
+            "top": "0",
+            "width": "720px",
+            "height": "720px",
+            "border": "0",
+            "pointerEvents": "none",
+            "visibility": "hidden",
+        },
+    )
+
+
+def _report_action_bar() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.button(
+                fomantic_icon("copy", size=16),
+                rx.el.span(" Copy share link", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meCopyShareLink && window.__meCopyShareLink()"),
+                class_name="ui button",
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
+            rx.el.button(
+                fomantic_icon("download", size=16),
+                rx.el.span(" Download PNG", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meDownloadPng && window.__meDownloadPng()"),
+                class_name="ui primary button",
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
+            rx.el.button(
+                fomantic_icon("file pdf outline", size=16),
+                rx.el.span(" Download PDF (A4)", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meDownloadPdf && window.__meDownloadPdf()"),
+                class_name="ui button",
+                style={**_SOCIAL_BUTTON_STYLE, "backgroundColor": "#1a1a2e !important", "color": "#ffffff !important", "border": "none !important"},
+            ),
+            style={"display": "flex", "gap": "10px", "flexWrap": "wrap", "marginBottom": "10px"},
+        ),
+        rx.el.div(
+            rx.el.button(
+                fomantic_icon("twitter", size=16),
+                rx.el.span(" Share on X", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('twitter')"),
+                class_name="ui button",
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
+            rx.el.button(
+                fomantic_icon("facebook", size=16),
+                rx.el.span(" Share on Facebook", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('facebook')"),
+                class_name="ui button",
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
+            rx.el.button(
+                fomantic_icon("linkedin", size=16),
+                rx.el.span(" Share on LinkedIn", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('linkedin')"),
+                class_name="ui button",
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
+            style={"display": "flex", "gap": "10px", "flexWrap": "wrap"},
+        ),
+        rx.el.div(
+            id="report-copy-feedback",
+            style={
+                "fontSize": "0.82rem",
+                "color": "#16a085",
+                "textAlign": "center",
+                "marginTop": "8px",
+                "minHeight": "18px",
+                "fontWeight": "600",
+            },
+        ),
+        style={"marginTop": "6px"},
+    )
+
+
+def _report_section() -> rx.Component:
+    """Collapsible 'Share & Report' section — police-report card + export buttons."""
+    body = rx.cond(
+        ComposeState.report_expanded,
+        rx.el.div(
+            rx.cond(
+                ComposeState.has_stl,
+                rx.el.div(
+                    rx.el.input(
+                        id="report-share-path",
+                        value=ComposeState.share_url,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-share-name",
+                        value=ComposeState.input_personal_tag,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-share-seed",
+                        value=ComposeState.param_seed,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-share-points",
+                        value=ComposeState.param_points,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-export-categories",
+                        value=ComposeState.export_categories_csv,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-export-animals",
+                        value=ComposeState.export_animals_summary,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.textarea(
+                        id="report-export-animals-json",
+                        value=ComposeState.export_animals_json,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-export-genes",
+                        value=ComposeState.export_gene_names_csv,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    _report_card(),
+                    _report_png_card(),
+                    _report_pdf_long_content(),
+                    _report_action_bar(),
+                ),
+                rx.el.p(
+                    "Generate a sculpture first, then come back here to build your identity report.",
+                    style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+                ),
+            ),
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=ComposeState.report_expanded,
+            icon_name="file alternate",
+            title="Share & Report",
+            on_toggle=ComposeState.toggle_report_expanded,
+            right_badge=rx.cond(
+                ComposeState.has_stl,
+                rx.el.span("Ready", class_name="ui mini green label"),
+                rx.fragment(),
+            ),
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
 def _viewer_section() -> rx.Component:
     """Collapsible 3D viewer — auto-expands after generation."""
     body = rx.cond(
@@ -1142,9 +2090,12 @@ def _sculpture_right_pane() -> rx.Component:
             id="stl-b64-data",
             style={"display": "none"},
         ),
+        # Offscreen capture iframe — always mounted, re-runs whenever viewer_nonce changes
+        _report_capture_iframe(),
         _choice_section(),
         _sculpture_section(),
         _viewer_section(),
+        _report_section(),
         _artex_section(),
     )
 
@@ -1750,7 +2701,16 @@ def _tab_content() -> rx.Component:
 # ── Page ─────────────────────────────────────────────────────────────────────
 
 
-@rx.page(route="/", on_load=[GeneGridState.load_grid, AnimalGridState.load_grid, JigsawState.init_jigsaw])
+@rx.page(
+    route="/",
+    on_load=[
+        AppState.apply_tab_from_query,
+        GeneGridState.load_grid,
+        AnimalGridState.load_grid,
+        JigsawState.init_jigsaw,
+        ComposeState.apply_shared_report,
+    ],
+)
 def index_page() -> rx.Component:
     """Single-page app: tab navigation with landing, sculpture, jigsaw, gene library, animal library."""
     return template(

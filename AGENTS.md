@@ -176,3 +176,29 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 
 Category color mapping lives in `state.py → CATEGORY_COLORS` (per-category hex colors).
 Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon names).
+
+---
+
+## Learned User Preferences
+
+- Avoid Pillow/PIL and other dated Python image libraries for export features; prefer contemporary in-browser rasterization (`html-to-image` + `jsPDF`) so no new Python deps are added.
+- When asked to build a feature on top of existing work, create a dedicated feature branch (e.g. `feature/share-report`) off `main` instead of committing to the current branch.
+- Export PNG "square format" means reformatting the layout to a square card (e.g. 1080×1080) with the intended content, NOT padding the existing rectangular view to become square.
+
+## Learned Workspace Facts
+
+- `reflex-mui-datagrid` + Reflex 0.8.28 crashes with `theme.alpha is not a function` on the Gene Library and Animal Library tabs because the CSS-variables MUI theme path does not expose `alpha()`. Fix: mount `mui_theme_shim()` (`_MUI_THEME_SHIM_JS` in `src/materialized_enhancements/components/layout.py`) inside `template()` before any grid renders.
+- Use `rx.script(js_body_string)` or `rx.script(src=...)` for client JS. `rx.el.script(...)` with a string body can be escaped/not executed by Reflex; inline handlers defined that way won't register on `window`.
+- Browser-side export libraries are vendored under `assets/vendor/` (`html-to-image.js`, `jspdf.umd.min.js`, `qrcode.min.js`, `me_report.js`) and loaded via `rx.script(src="/vendor/<file>.js")` so the app works offline / in kiosk mode without `cdn.jsdelivr.net`.
+- `html-to-image` rasterization of nodes positioned off-screen with `left: -12000px` returns a blank canvas in Chromium/Firefox because `getComputedStyle` inside the cloned SVG `foreignObject` returns defaults. Temporarily move the capture node into the viewport (`position: fixed; opacity: 0.01; zIndex: -1`) during capture, then restore.
+- Avoid `display: flex` on the root of elements captured by `html-to-image`; flexbox inside SVG `foreignObject` renders inconsistently. Use block layout for any node that will be snapshotted.
+- MutationObservers that repaint DOM (e.g. QR painter) must be idempotent with a signature guard, must ignore mutations inside the rewritten subtree, and must debounce via `requestAnimationFrame`; otherwise an `innerHTML` rewrite retriggers the observer and freezes the browser.
+- The hidden `<textarea id="stl-b64-data">` in `_sculpture_right_pane` must always be mounted (not gated on panel expansion) so same-origin capture iframes (`/sculpture_viewer/capture.html`) can read the STL via `window.parent.document.getElementById("stl-b64-data")`.
+- The capture iframe at `assets/sculpture_viewer/capture.html` is always mounted with `src="/sculpture_viewer/capture.html?nonce=<viewer_nonce>"` so changing the nonce re-runs it for each new sculpture; it postMessages front/side/back PNGs back to the parent.
+- The shareable-report URL encodes state as `?tab=sculpture&report=1&name=<b64>&cats=<bitmask>`; `apply_shared_report` re-seeds `ComposeState` deterministically on page load so recipients regenerate the identical sculpture without server persistence.
+- The default shell on this workspace is PowerShell on Windows, which does not support bash heredocs. For multi-line `git commit` messages write to a temp file (e.g. `.commit_msg`) and use `git commit -F <file>`.
+- `html-to-image` MUST be called with `skipFonts: true` on this page. Fomantic UI's CDN stylesheet (`semantic.min.css`) contains ~4000 `url(https://cdn.jsdelivr.net/gh/jdecked/twemoji/…)` flag references. It's served cross-origin, so `sheet.cssRules` throws and html-to-image falls back to fetching the raw CSS text and downloading every `url()` it finds. Without `skipFonts` a single Download-PNG / Download-PDF click kicks off thousands of parallel twemoji SVG fetches that the browser aborts with `ERR_INSUFFICIENT_RESOURCES`, making the export appear to "do nothing". Our cards use only Lato / Helvetica Neue / Arial, so skipping webfont embedding is visually a no-op. See `h2iOptions()` in `assets/vendor/me_report.js`.
+- For the PDF's multi-page gene-description body, DO NOT rasterize the hidden `#me-report-pdf-long` element and re-`addImage` it on each A4 page — jsPDF embeds the full PNG on every call, producing ~20 MB PDFs. Instead, read the gene rows from the DOM and render them with native jsPDF `text()` / `splitTextToSize()` / `addPage()`, keeping the PDF at ~300-400 KB and infinitely sharper.
+- PDF page 1 is **not** a screenshot of `#me-report-card`. It is laid out in `renderCoverPageA4()` (jsPDF) using hidden inputs (`report-share-*`, `report-export-*`) plus `window.__reportViews` for the three PNG views and a generated QR. That keeps A4 typography and margins correct instead of scaling a wide web card.
+- PNG export: never capture with `opacity: 0.01` / `z-index: -1` on the target node — Chromium often rasterizes the SVG foreignObject snapshot as a blank white image. Use full `opacity: 1`, `z-index: 2147483646`, and `waitImages()` before `htmlToImage.toPng`.
+- In Reflex dev mode, `assets/` is copied to `.web/public/` at compile time; the dev server serves the `.web/public/` copy. When you edit a vendored JS under `assets/vendor/` without restarting `reflex run`, copy the file into `.web/public/vendor/` too (or just restart the server) — otherwise you will be testing the stale asset.

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sculpture Capture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #0b0b14; font-family: 'Lato', sans-serif; }
+  canvas { display: block; }
+  #status {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #9ca3af; font-size: 13px; text-align: center; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="status">Capturing sculpture views&hellip;</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.170.0",
+    "three/addons/": "https://esm.sh/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+const statusEl = document.getElementById('status');
+
+async function waitForData(maxWaitMs = 12000) {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      const el = window.parent.document.getElementById('stl-b64-data');
+      if (el && el.value && el.value.length > 100) return el.value;
+    } catch (_) { /* cross-origin: ignore */ }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  return null;
+}
+
+const b64 = await waitForData();
+if (!b64) {
+  statusEl.textContent = 'No sculpture data.';
+  throw new Error('No STL data available');
+}
+
+const raw = atob(b64);
+const buf = new Uint8Array(raw.length);
+for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+const arrayBuffer = buf.buffer;
+
+const SIZE = 720;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(2);
+renderer.setSize(SIZE, SIZE);
+renderer.setClearColor('#0b0b14', 1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0b0b14');
+
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 4000);
+
+// High-contrast booking-photo lighting: one strong key, faint violet fill.
+scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+const key = new THREE.DirectionalLight(0xffffff, 2.4);
+key.position.set(60, 120, 100);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x7c3aed, 0.55);
+fill.position.set(-80, 40, -60);
+scene.add(fill);
+
+const loader = new STLLoader();
+const geometry = loader.parse(arrayBuffer);
+geometry.computeVertexNormals();
+geometry.computeBoundingBox();
+
+const material = new THREE.MeshStandardMaterial({
+  color: 0xf5f3ff,
+  metalness: 0.15,
+  roughness: 0.28,
+  side: THREE.DoubleSide,
+});
+
+const mesh = new THREE.Mesh(geometry, material);
+const center = new THREE.Vector3();
+geometry.boundingBox.getCenter(center);
+mesh.position.sub(center);
+scene.add(mesh);
+
+const size = new THREE.Vector3();
+geometry.boundingBox.getSize(size);
+const maxDim = Math.max(size.x, size.y, size.z);
+const fitDist = (maxDim * 1.15) / (2 * Math.tan(Math.PI * camera.fov / 360));
+
+function render(position) {
+  camera.position.copy(position);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+const views = {
+  front: render(new THREE.Vector3(0, 0, fitDist)),
+  side:  render(new THREE.Vector3(fitDist, 0, 0)),
+  back:  render(new THREE.Vector3(0, 0, -fitDist)),
+};
+
+window.__reportViews = views;
+statusEl.textContent = '3 views captured.';
+
+try {
+  window.parent.postMessage({ type: 'report_views_ready', views: views }, '*');
+} catch (_) { /* ignore */ }
+</script>
+</body>
+</html>

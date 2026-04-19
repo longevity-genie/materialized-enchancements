@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import binascii
 import datetime
 import json
 import logging
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict
+from urllib.parse import quote
 
 import reflex as rx
 from reflex_mui_datagrid import LazyFrameGridMixin
@@ -71,6 +73,12 @@ class AppState(rx.State):
     def set_tab(self, tab: str) -> None:
         self.active_tab = tab
 
+    def apply_tab_from_query(self) -> None:
+        """Honour ?tab=<key> on page load (used by shared-report links)."""
+        tab = str(self.router.page.params.get("tab", "")).strip()
+        if tab in {"landing", "sculpture", "jigsaw", "library", "animals"}:
+            self.active_tab = tab
+
 
 class ComposeState(rx.State):
     """State for the Parametric Sculpture tab."""
@@ -89,6 +97,11 @@ class ComposeState(rx.State):
     viewer_expanded: bool = False
     stl_base64: str = ""
     viewer_nonce: int = 0
+
+    # Share & Report section
+    report_expanded: bool = False
+    report_views_ready: bool = False
+    report_copy_feedback: str = ""
 
     # ARTEX integration — defaults from .env (ARTEX_API_URL / ARTEX_API_TOKEN)
     artex_expanded: bool = False
@@ -192,6 +205,15 @@ class ComposeState(rx.State):
     def toggle_artex_expanded(self) -> None:
         self.artex_expanded = not self.artex_expanded
 
+    def toggle_report_expanded(self) -> None:
+        self.report_expanded = not self.report_expanded
+
+    def set_report_views_ready(self, ready: bool) -> None:
+        self.report_views_ready = bool(ready)
+
+    def set_report_copy_feedback(self, value: str) -> None:
+        self.report_copy_feedback = value
+
     def set_artex_api_url(self, value: str) -> None:
         self.artex_api_url = value
 
@@ -286,6 +308,12 @@ class ComposeState(rx.State):
         return f"/sculpture_viewer/index.html?nonce={self.viewer_nonce}"
 
     @rx.var
+    def capture_iframe_src(self) -> str:
+        if not self.stl_base64:
+            return "about:blank"
+        return f"/sculpture_viewer/capture.html?nonce={self.viewer_nonce}"
+
+    @rx.var
     def selected_traits(self) -> list[str]:
         traits: list[str] = []
         for cat in self.selected_categories:
@@ -297,10 +325,141 @@ class ComposeState(rx.State):
     @rx.var
     def selected_genes(self) -> list[dict]:
         return [
-            {"gene": g["gene"], "trait": g["trait"], "category": g["category"]}
+            {
+                "gene": g["gene"],
+                "trait": g["trait"],
+                "category": g["category"],
+                "source_organism": g["source_organism"],
+                "description": g["description"],
+                "enhancement": g["enhancement"],
+                "paper_url": g["paper_url"],
+            }
             for g in GENE_LIBRARY
             if g["category"] in self.selected_categories
         ]
+
+    @rx.var
+    def selected_animals(self) -> list[dict]:
+        """Group selected genes by source organism for the report.
+
+        Pulls the short per-organism superpower blurb from ANIMAL_LIBRARY.
+        """
+        by_org: dict[str, dict] = {}
+        for g in GENE_LIBRARY:
+            if g["category"] not in self.selected_categories:
+                continue
+            org = g["source_organism"]
+            if org not in by_org:
+                by_org[org] = {
+                    "organism": org,
+                    "superpower": "",
+                    "genes": [],
+                    "traits": [],
+                    "puzzle_svg": "",
+                    "puzzle_src": "",
+                }
+            by_org[org]["genes"].append(g["gene"])
+            if g["trait"] not in by_org[org]["traits"]:
+                by_org[org]["traits"].append(g["trait"])
+
+        for a in ANIMAL_LIBRARY:
+            if a["organism"] in by_org:
+                by_org[a["organism"]]["superpower"] = a["superpower"]
+                ps = a["puzzle_svg"]
+                by_org[a["organism"]]["puzzle_svg"] = ps
+                by_org[a["organism"]]["puzzle_src"] = f"/puzzle/{quote(ps)}" if ps else ""
+
+        for row in by_org.values():
+            traits: list[str] = row["traits"]
+            row["traits_csv"] = ", ".join(traits)
+            row["primary_trait"] = traits[0] if traits else "\u2014"
+
+        return list(by_org.values())
+
+    @rx.var
+    def export_categories_csv(self) -> str:
+        """Comma-separated categories for client-side PDF export."""
+        return ", ".join(self.selected_categories)
+
+    @rx.var
+    def export_animals_summary(self) -> str:
+        """One line per organism (legacy fallback; PDF prefers export_animals_json)."""
+        lines: list[str] = []
+        for a in self.selected_animals:
+            lines.append(f"{a['organism']} — {a['superpower']}")
+        return "\n".join(lines)
+
+    @rx.var
+    def export_animals_json(self) -> str:
+        """Structured organism rows for PDF cover: puzzle art URL + traits (browser reads as JSON)."""
+        payload: list[dict[str, Any]] = []
+        for a in self.selected_animals:
+            payload.append(
+                {
+                    "organism": a["organism"],
+                    "puzzle_svg": a.get("puzzle_svg", ""),
+                    "puzzle_src": a.get("puzzle_src", ""),
+                    "traits": a.get("traits", []),
+                    "primary_trait": a.get("primary_trait", ""),
+                }
+            )
+        return json.dumps(payload)
+
+    @rx.var
+    def export_gene_names_csv(self) -> str:
+        """Comma-separated gene symbols for PDF cover."""
+        return ", ".join(g["gene"] for g in self.selected_genes)
+
+    @rx.var
+    def share_url(self) -> str:
+        """Build a URL-encoded shareable link that recreates this exact sculpture.
+
+        Uses the same 1-indexed category bitmask convention as sculpture._build_category_bitmask
+        so recipients regenerate the deterministic identical piece on page load.
+        """
+        if not self.selected_categories or not self.personal_tag.strip():
+            return ""
+        name_b64 = base64.urlsafe_b64encode(self.personal_tag.strip().encode("utf-8")).decode("ascii").rstrip("=")
+        bitmask = 0
+        for cat in self.selected_categories:
+            if cat in UNIQUE_CATEGORIES:
+                idx = UNIQUE_CATEGORIES.index(cat) + 1
+                bitmask |= 1 << (idx - 1)
+        return f"?tab=sculpture&report=1&name={quote(name_b64)}&cats={bitmask}"
+
+    def apply_shared_report(self):  # type: ignore[return]
+        """Decode ?report=1&name=<b64>&cats=<bitmask> and regenerate the same sculpture.
+
+        Runs as page on_load handler. No-op when the query params aren't present.
+        """
+        params = self.router.page.params
+        if str(params.get("report", "")) != "1":
+            return
+        name_b64 = str(params.get("name", ""))
+        cats_raw = str(params.get("cats", ""))
+        if not name_b64 or not cats_raw:
+            return
+
+        padding = "=" * (-len(name_b64) % 4)
+        try:
+            tag = base64.urlsafe_b64decode(name_b64 + padding).decode("utf-8")
+            bitmask = int(cats_raw)
+        except (binascii.Error, ValueError, UnicodeDecodeError):
+            logger.warning("apply_shared_report: invalid name/cats params")
+            return
+
+        cats: list[str] = []
+        for idx, cat in enumerate(UNIQUE_CATEGORIES, start=1):
+            if bitmask & (1 << (idx - 1)):
+                cats.append(cat)
+
+        if not cats or not tag:
+            return
+
+        self.personal_tag = tag
+        self.selected_categories = cats
+        self._recompute_params()
+        yield ComposeState.materialize
 
     @rx.var
     def budget_total(self) -> int:
