@@ -117,12 +117,34 @@ def _landing_tab() -> rx.Component:
             rx.el.p(
                 "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
                 style={
-                    "fontSize": "1.05rem",
-                    "lineHeight": "1.65",
-                    "color": "#374151",
+                    "fontSize": "1.35rem",
+                    "lineHeight": "1.55",
+                    "fontWeight": "600",
+                    "color": "#1f2937",
                     "textAlign": "center",
-                    "marginBottom": "14px",
+                    "marginBottom": "18px",
+                    "maxWidth": "36rem",
+                    "marginLeft": "auto",
+                    "marginRight": "auto",
                 },
+            ),
+            rx.el.div(
+                rx.el.img(
+                    src="/images/HOW_IT_WORKS.jpg",
+                    alt="Materialized Enhancements process: trait input, parametric geometry, STL output, and 3D fabrication.",
+                    loading="lazy",
+                    decoding="async",
+                    style={
+                        "width": "100%",
+                        "maxWidth": "100%",
+                        "height": "auto",
+                        "display": "block",
+                        "borderRadius": "8px",
+                        "marginBottom": "22px",
+                        "boxShadow": "0 4px 18px rgba(0, 0, 0, 0.08)",
+                    },
+                ),
+                style={"width": "100%", "marginTop": "4px"},
             ),
             rx.el.div(
                 rx.el.button(
@@ -151,7 +173,16 @@ def _landing_tab() -> rx.Component:
                 },
             ),
             rx.el.div(
-                rx.el.p("Team", style={"fontSize": "0.82rem", "fontWeight": "700", "color": "#6b7280", "margin": "0 0 8px 0"}),
+                rx.el.p(
+                    "Team",
+                    style={
+                        "fontSize": "1.35rem",
+                        "fontWeight": "700",
+                        "color": "#374151",
+                        "margin": "0 0 12px 0",
+                        "letterSpacing": "-0.02em",
+                    },
+                ),
                 rx.el.ul(
                     rx.el.li(
                         rx.el.strong("Newton Winter", style={"color": "#374151"}),

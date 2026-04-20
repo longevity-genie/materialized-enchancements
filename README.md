@@ -16,6 +16,14 @@ We built this as a highly extensible platform. We are actively inviting other ar
 
 ---
 
+## How it works
+
+The repository implements this pipeline: you choose enhancement traits in the UI, the backend combines gene data with a personal signature to drive parametric geometry, the app exports a unique STL (and report), and the form is ready for 3D printing or downstream tools such as ARTEX.
+
+![Materialized Enhancements — process flow from trait input through parametric logic to STL and physical fabrication](assets/images/HOW_IT_WORKS.jpg)
+
+---
+
 ## Gene Library
 
 35 genes · 9 categories · ~25 source organisms spanning bacteria to extinct hominins.

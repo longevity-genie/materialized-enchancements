@@ -156,6 +156,36 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 
 ---
 
+## Making a Reflex App Crawlable (Universal Guidelines)
+
+These rules apply to any Reflex project, not just this site. Copy-paste to another project's AGENTS.md and adapt.
+
+### Why Reflex is hard for crawlers by default
+
+Reflex is a WebSocket-first framework. Without extra work:
+
+- The initial HTML is an empty shell (`<div id="app"></div>`)
+- All content loads only after a WebSocket connection to the backend
+- Crawlers (including Googlebot) get empty pages or WebSocket errors
+
+### The fix: prerendering + static initial state
+
+**Step 1 — Enable prerendering** in `rxconfig.py`:
+
+```python
+os.environ.setdefault("REFLEX_SSR", "true")
+```
+
+This sets `prerender: true` in `react-router.config.js`, causing `reflex export` to generate a static HTML file for each registered route. No effect on the dev server.
+
+**Step 2 — Pre-populate initial state with content crawlers need.**
+
+Reflex pre-renders each page using the *default values* of `rx.State` vars — `on_load` handlers do NOT run at prerender time (they require WebSocket). Any content stored in state as empty strings will appear empty in the prerendered HTML.
+
+Rule: **content that must be indexable must be in the state's default value, not loaded by `on_load`.**
+
+---
+
 ## Design System
 
 **White Mirror aesthetic** — clean white backgrounds, subtle shadows, violet accents.
@@ -185,6 +215,7 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - When asked to build a feature on top of existing work, create a dedicated feature branch (e.g. `feature/share-report`) off `main` instead of committing to the current branch.
 - Export PNG "square format" means reformatting the layout to a square card (e.g. 1080×1080) with the intended content, NOT padding the existing rectangular view to become square.
 - For the extended gene library UI, keep the narrative visible by default; put mechanism, evidence, references, notes, and numeric biophysical fields behind an accordion; never show internal ids such as `gene_id`.
+- In the sculpture compose gene list, do not style unchecked genes with strikethrough; use muted text and the checkbox only—strikethrough reads as rejecting the gene.
 
 ## Learned Workspace Facts
 

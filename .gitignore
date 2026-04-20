@@ -219,7 +219,6 @@ __marimo__/
 
 # Repo-local runtime state / caches
 data/interim/
-data/input/
 data/output/
 data/module_specs/
 data/module_specs/generated/
