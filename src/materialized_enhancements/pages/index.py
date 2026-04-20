@@ -147,8 +147,9 @@ def _landing_tab() -> rx.Component:
             # ── How to Experience It ──
             _section_heading("How to experience it"),
             rx.el.p(
-                "Browse the Gene Library — 35 real genes from tardigrades, sharks, axolotls, mantis shrimp, "
-                "and more. Pick the traits that feel right to you. Enter something personal to sign your "
+                "Explore 35 real genes from tardigrades, sharks, axolotls, mantis shrimp, and more — each "
+                "with its description, enhancement potential, and research paper, right inside the gene "
+                "selection. Pick the traits that feel right to you. Enter something personal to sign your "
                 "composition. Generate your unique totem. On site, it is 3D-printed. Remotely, it is shared "
                 "as a downloadable file.",
                 style=_P_STYLE,
@@ -163,10 +164,8 @@ def _landing_tab() -> rx.Component:
                         style={"margin": "4px"},
                     )
                     for key, icon, label in [
-                        ("sculpture", "atom", "Parametric Sculpture"),
+                        ("sculpture", "atom", "Materialize 3D model"),
                         ("jigsaw", "puzzle piece", "Gene Jigsaw"),
-                        ("library", "dna", "Gene Library"),
-                        ("animals", "paw", "Animal Library"),
                     ]
                 ],
                 style={
@@ -291,7 +290,7 @@ def _landing_tab() -> rx.Component:
     )
 
 
-# ── Tab 1: Parametric Sculpture ──────────────────────────────────────────────
+# ── Tab 1: Materialize 3D model ────────────────────────────────────────────────
 
 
 def _category_button(category: str) -> rx.Component:
@@ -366,11 +365,11 @@ def _category_button(category: str) -> rx.Component:
 
 
 def _budget_bar() -> rx.Component:
-    """Budget indicator showing spent / total credits with a progress bar."""
+    """Budget indicator: enhancement credits (cr) spent / total with a progress bar."""
     return rx.el.div(
         rx.el.div(
             rx.el.span(
-                "Budget",
+                "Enhancement credits (cr)",
                 style={"fontSize": "0.78rem", "fontWeight": "600", "color": "#6b7280"},
             ),
             rx.el.span(
@@ -405,7 +404,7 @@ def _budget_bar() -> rx.Component:
         ),
         rx.el.div(
             rx.el.span(ComposeState.budget_remaining, style={"fontWeight": "700"}),
-            " cr remaining",
+            " cr left",
             style={"fontSize": "0.72rem", "color": "#9ca3af", "textAlign": "right", "marginTop": "2px"},
         ),
         style={
@@ -413,6 +412,31 @@ def _budget_bar() -> rx.Component:
             "borderRadius": "6px",
             "backgroundColor": "#f9f5ff",
             "border": "1px solid #ede9fe",
+            "marginBottom": "12px",
+        },
+    )
+
+
+def _sculpture_how_it_works_callout() -> rx.Component:
+    """Full-width explainer above credits, category pick, and Choice: cr → 3D model + report."""
+    return rx.el.div(
+        rx.el.p(
+            "Spend enhancement credits (cr) to choose the genetic enhancement areas you want. "
+            "You get a printable 3D model and a report you can share with friends.",
+            style={
+                "fontSize": "0.8rem",
+                "lineHeight": "1.5",
+                "color": "#4b5563",
+                "margin": "0",
+            },
+        ),
+        style={
+            "width": "100%",
+            "boxSizing": "border-box",
+            "padding": "10px 12px",
+            "borderRadius": "6px",
+            "backgroundColor": "#f0f9ff",
+            "border": "1px solid #bae6fd",
             "marginBottom": "12px",
         },
     )
@@ -437,8 +461,8 @@ def _sculpture_left_pane() -> rx.Component:
             ),
             rx.el.p(
                 "Each combination drives a generative algorithm that "
-                "translates your biological identity into a one-of-a-kind "
-                "parametric sculpture — printable in resin, ceramic, or metal.",
+                "turns your choices into a one-of-a-kind parametric 3D model — "
+                "printable in resin, ceramic, or metal.",
                 style={
                     "fontSize": "0.78rem",
                     "color": "#9ca3af",
@@ -483,70 +507,403 @@ def _trait_item(trait: rx.Var) -> rx.Component:
     )
 
 
+def _gene_selection_text_block(title: str, body: rx.Var) -> rx.Component:
+    return rx.cond(
+        body != "",
+        rx.el.div(
+            rx.el.div(
+                title,
+                style={
+                    "fontSize": "0.72rem",
+                    "fontWeight": "600",
+                    "color": "#64748b",
+                    "marginBottom": "4px",
+                    "letterSpacing": "0.02em",
+                },
+            ),
+            rx.el.p(
+                body,
+                style={
+                    "fontSize": "0.8rem",
+                    "color": "#4b5563",
+                    "margin": "0 0 10px 0",
+                    "lineHeight": "1.55",
+                    "whiteSpace": "pre-wrap",
+                },
+            ),
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_selection_prop_row(label: str, value: rx.Var) -> rx.Component:
+    return rx.cond(
+        value != "",
+        rx.el.div(
+            rx.el.span(label, style={"fontSize": "0.75rem", "color": "#9ca3af", "flex": "1 1 55%"}),
+            rx.el.span(value, style={"fontSize": "0.75rem", "color": "#374151", "fontWeight": "500", "textAlign": "right"}),
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "gap": "8px",
+                "padding": "3px 0",
+                "borderBottom": "1px solid #f3f4f6",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_confidence_badge(bucket: rx.Var, confidence: rx.Var) -> rx.Component:
+    pill_high = {
+        "fontSize": "0.76rem",
+        "fontWeight": "600",
+        "padding": "2px 10px",
+        "borderRadius": "999px",
+        "backgroundColor": "#d1fae7",
+        "color": "#047857",
+        "border": "1px solid #6ee7b7",
+    }
+    pill_mh = {
+        "fontSize": "0.76rem",
+        "fontWeight": "600",
+        "padding": "2px 10px",
+        "borderRadius": "999px",
+        "backgroundColor": "#cffafe",
+        "color": "#0e7490",
+        "border": "1px solid #67e8f9",
+    }
+    pill_med = {
+        "fontSize": "0.76rem",
+        "fontWeight": "600",
+        "padding": "2px 10px",
+        "borderRadius": "999px",
+        "backgroundColor": "#fef3c7",
+        "color": "#b45309",
+        "border": "1px solid #fcd34d",
+    }
+    pill_low = {
+        "fontSize": "0.76rem",
+        "fontWeight": "600",
+        "padding": "2px 10px",
+        "borderRadius": "999px",
+        "backgroundColor": "#fee2e2",
+        "color": "#b91c1c",
+        "border": "1px solid #fecaca",
+    }
+    pill_unk = {
+        "fontSize": "0.76rem",
+        "fontWeight": "600",
+        "padding": "2px 10px",
+        "borderRadius": "999px",
+        "backgroundColor": "#f3f4f6",
+        "color": "#4b5563",
+        "border": "1px solid #e5e7eb",
+    }
+    return rx.cond(
+        confidence != "",
+        rx.el.div(
+            rx.el.span(
+                "Confidence",
+                style={
+                    "fontSize": "0.68rem",
+                    "fontWeight": "600",
+                    "color": "#9ca3af",
+                    "marginRight": "8px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                },
+            ),
+            rx.match(
+                bucket,
+                ("high", rx.el.span(confidence, style=pill_high)),
+                ("medium_high", rx.el.span(confidence, style=pill_mh)),
+                ("medium", rx.el.span(confidence, style=pill_med)),
+                ("low", rx.el.span(confidence, style=pill_low)),
+                ("unknown", rx.el.span(confidence, style=pill_unk)),
+            ),
+            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap"},
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_tested_on_row(host_text: rx.Var) -> rx.Component:
+    return rx.cond(
+        host_text != "",
+        rx.el.div(
+            rx.el.span(
+                "Tested on",
+                style={
+                    "fontSize": "0.68rem",
+                    "fontWeight": "600",
+                    "color": "#9ca3af",
+                    "marginRight": "8px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                    "flexShrink": "0",
+                },
+            ),
+            rx.el.span(
+                host_text,
+                style={"fontSize": "0.78rem", "color": "#374151", "lineHeight": "1.45"},
+            ),
+            style={"display": "flex", "alignItems": "baseline", "gap": "4px", "flexWrap": "wrap"},
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_key_reference_segment(seg: rx.Var) -> rx.Component:
+    return rx.cond(
+        seg["kind"] == "link",
+        rx.el.a(
+            seg["v"],
+            href=seg["href"],
+            target="_blank",
+            rel="noopener noreferrer",
+            style={
+                "color": "#2563eb",
+                "textDecoration": "underline",
+                "textUnderlineOffset": "2px",
+                "fontSize": "0.8rem",
+                "wordBreak": "break-all",
+            },
+        ),
+        rx.el.span(seg["v"], style={"fontSize": "0.8rem", "color": "#4b5563"}),
+    )
+
+
+def _gene_key_references_linked(segments: rx.Var) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            "Key references",
+            style={
+                "fontSize": "0.72rem",
+                "fontWeight": "600",
+                "color": "#64748b",
+                "marginBottom": "4px",
+                "letterSpacing": "0.02em",
+            },
+        ),
+        rx.el.p(
+            rx.foreach(segments, _gene_key_reference_segment),
+            style={
+                "fontSize": "0.8rem",
+                "margin": "0 0 10px 0",
+                "lineHeight": "1.55",
+                "whiteSpace": "pre-wrap",
+            },
+        ),
+    )
+
+
+def _gene_category_border_left(category: rx.Var) -> rx.Var:
+    """Thin left accent matching sidebar category color (parent `category` key)."""
+    return rx.match(
+        category,
+        ("Radiation & Extremophile", "2px solid #e67e22"),
+        ("Longevity & Cancer Resistance", "2px solid #27ae60"),
+        ("Immunity & Physiology", "2px solid #2980b9"),
+        ("Biological Immortality & Regeneration", "2px solid #16a085"),
+        ("Sleep & Consciousness", "2px solid #8e44ad"),
+        ("New Senses", "2px solid #e84393"),
+        ("Display & Expression", "2px solid #d63031"),
+        ("Energy", "2px solid #f39c12"),
+        ("Materials", "2px solid #00b894"),
+        "2px solid #cbd5e1",
+    )
+
+
 def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
     included = gene_item["included"]
-    return rx.el.label(
-        rx.el.input(
-            type="checkbox",
-            checked=included,
-            on_change=ComposeState.toggle_gene(gene_item["gene"]),
-            style={"marginRight": "6px", "accentColor": "#7c3aed", "cursor": "pointer", "flexShrink": "0"},
+    gene_sym = gene_item["gene"]
+    is_expanded = ComposeState.expanded_genes.contains(gene_sym)
+
+    return rx.el.div(
+        # Header row: checkbox + labels + expand toggle
+        rx.el.div(
+            rx.el.label(
+                rx.el.input(
+                    type="checkbox",
+                    checked=included,
+                    on_change=ComposeState.toggle_gene(gene_sym),
+                    style={"marginRight": "6px", "accentColor": "#7c3aed", "cursor": "pointer", "flexShrink": "0"},
+                ),
+                rx.el.span(
+                    gene_sym,
+                    style={
+                        "fontSize": "0.84rem",
+                        "fontWeight": "600",
+                        "color": rx.cond(included, "#1a1a2e", "#9ca3af"),
+                        "textDecoration": rx.cond(included, "none", "line-through"),
+                        "width": "38%",
+                        "flexShrink": "0",
+                    },
+                ),
+                rx.el.span(
+                    gene_item["category_detail"],
+                    style={
+                        "fontSize": "0.72rem",
+                        "fontWeight": "500",
+                        "color": rx.cond(included, "#6b7280", "#d1d5db"),
+                        "maxWidth": "28%",
+                        "overflow": "hidden",
+                        "textOverflow": "ellipsis",
+                        "whiteSpace": "nowrap",
+                    },
+                ),
+                rx.el.span(
+                    gene_item["source_organism"],
+                    style={
+                        "fontSize": "0.72rem",
+                        "color": "#9ca3af",
+                        "marginLeft": "6px",
+                        "flex": "1",
+                        "textAlign": "right",
+                        "minWidth": "0",
+                        "overflow": "hidden",
+                        "textOverflow": "ellipsis",
+                        "whiteSpace": "nowrap",
+                    },
+                ),
+                rx.el.span(
+                    gene_item["price"],
+                    " cr",
+                    style={
+                        "fontSize": "0.72rem",
+                        "fontWeight": "700",
+                        "padding": "1px 6px",
+                        "borderRadius": "10px",
+                        "backgroundColor": rx.cond(included, "#f3f0ff", "#f3f4f6"),
+                        "color": rx.cond(included, "#7c3aed", "#d1d5db"),
+                        "whiteSpace": "nowrap",
+                        "marginLeft": "6px",
+                    },
+                ),
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "flex": "1",
+                    "cursor": "pointer",
+                    "padding": "5px 8px",
+                },
+            ),
+            rx.el.button(
+                rx.cond(
+                    is_expanded,
+                    fomantic_icon("chevron-up", size=11, color="#9ca3af"),
+                    fomantic_icon("chevron-down", size=11, color="#9ca3af"),
+                ),
+                on_click=ComposeState.toggle_gene_details(gene_sym),
+                style={
+                    "background": "none",
+                    "border": "none",
+                    "cursor": "pointer",
+                    "padding": "4px 8px",
+                    "flexShrink": "0",
+                    "display": "flex",
+                    "alignItems": "center",
+                },
+            ),
+            style={"display": "flex", "alignItems": "center"},
         ),
-        rx.el.span(
-            gene_item["trait"],
+        rx.el.p(
+            gene_item["narrative"],
             style={
-                "fontSize": "0.84rem",
-                "fontWeight": "500",
-                "color": rx.cond(included, "#1a1a2e", "#9ca3af"),
-                "textDecoration": rx.cond(included, "none", "line-through"),
-                "width": "45%",
-                "flexShrink": "0",
+                "fontSize": "0.83rem",
+                "color": "#374151",
+                "margin": "4px 14px 8px 36px",
+                "lineHeight": "1.55",
+                "whiteSpace": "pre-wrap",
             },
         ),
-        rx.el.span(
-            gene_item["gene"],
+        rx.el.div(
+            _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
+            _gene_tested_on_row(gene_item["best_host_tested"]),
             style={
-                "fontSize": "0.78rem",
-                "fontWeight": "600",
-                "fontFamily": "monospace",
-                "color": rx.cond(included, "#7c3aed", "#d1d5db"),
-                "marginLeft": "4px",
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "8px",
+                "margin": "0 14px 10px 36px",
             },
         ),
-        rx.el.span(
-            gene_item["source_organism"],
-            style={
-                "fontSize": "0.72rem",
-                "color": "#9ca3af",
-                "marginLeft": "6px",
-                "flex": "1",
-                "textAlign": "right",
-            },
-        ),
-        rx.el.span(
-            gene_item["price"],
-            " cr",
-            style={
-                "fontSize": "0.72rem",
-                "fontWeight": "700",
-                "padding": "1px 6px",
-                "borderRadius": "10px",
-                "backgroundColor": rx.cond(included, "#f3f0ff", "#f3f4f6"),
-                "color": rx.cond(included, "#7c3aed", "#d1d5db"),
-                "whiteSpace": "nowrap",
-                "marginLeft": "6px",
-            },
+        rx.cond(
+            is_expanded,
+            rx.el.div(
+                _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
+                _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                _gene_selection_text_block("Highest evidence tier", gene_item["evidence_tier"]),
+                _gene_selection_text_block("Translational gaps", gene_item["translational_gaps"]),
+                rx.cond(
+                    gene_item["key_references"] != "",
+                    _gene_key_references_linked(gene_item["key_reference_segments"]),
+                    rx.fragment(),
+                ),
+                _gene_selection_text_block("Notes", gene_item["notes"]),
+                rx.el.div(
+                    rx.el.div(
+                        "Biophysical / metadata",
+                        style={
+                            "fontSize": "0.72rem",
+                            "fontWeight": "600",
+                            "color": "#64748b",
+                            "margin": "4px 0 6px 0",
+                        },
+                    ),
+                    _gene_selection_prop_row("Protein length (aa)", gene_item["protein_length_aa"]),
+                    _gene_selection_prop_row("Protein mass (kDa)", gene_item["protein_mass_kda"]),
+                    _gene_selection_prop_row("Exon count", gene_item["exon_count"]),
+                    _gene_selection_prop_row("Genes in system", gene_item["genes_in_system"]),
+                    _gene_selection_prop_row("Recipient organism count", gene_item["recipient_organism_count"]),
+                    _gene_selection_prop_row("Disorder (%)", gene_item["disorder_pct"]),
+                    _gene_selection_prop_row("Isoelectric point (pI)", gene_item["isoelectric_point_pI"]),
+                    _gene_selection_prop_row("GRAVY score", gene_item["gravy_score"]),
+                    _gene_selection_prop_row("Key publication year", gene_item["key_publication_year"]),
+                    style={"padding": "4px 14px 10px 36px"},
+                ),
+                rx.cond(
+                    gene_item["paper_url"] != "",
+                    rx.el.div(
+                        rx.el.a(
+                            fomantic_icon("external-link", size=11),
+                            rx.el.span(" Open first linked reference", style={"marginLeft": "4px"}),
+                            href=gene_item["paper_url"],
+                            target="_blank",
+                            style={
+                                "fontSize": "0.78rem",
+                                "display": "inline-flex",
+                                "alignItems": "center",
+                                "color": "#7c3aed",
+                            },
+                        ),
+                        style={"padding": "0 14px 10px 36px"},
+                    ),
+                    rx.fragment(),
+                ),
+                style={
+                    "borderTop": "1px solid #f3f4f6",
+                    "backgroundColor": "#fafafa",
+                },
+            ),
+            rx.fragment(),
         ),
         style={
-            "display": "flex",
-            "alignItems": "center",
-            "padding": "5px 8px",
             "borderRadius": "4px",
-            "cursor": "pointer",
-            "border": "1px solid",
-            "borderColor": rx.cond(included, "#e5e7eb", "#f3f4f6"),
+            "borderTop": "1px solid",
+            "borderRight": "1px solid",
+            "borderBottom": "1px solid",
+            "borderTopColor": rx.cond(included, "#e5e7eb", "#f3f4f6"),
+            "borderRightColor": rx.cond(included, "#e5e7eb", "#f3f4f6"),
+            "borderBottomColor": rx.cond(included, "#e5e7eb", "#f3f4f6"),
+            "borderLeft": rx.cond(
+                included,
+                _gene_category_border_left(gene_item["category"]),
+                "2px solid #e5e7eb",
+            ),
             "backgroundColor": rx.cond(included, "#ffffff", "#fafafa"),
             "transition": "all 0.15s ease",
+            "overflow": "hidden",
         },
     )
 
@@ -620,7 +977,7 @@ def _explanations_panel() -> rx.Component:
                 ),
                 rx.el.p(
                     "Your name is hashed (CRC32) and XORed with your category bitmask "
-                    "to produce a unique seed — the number that makes every sculpture unrepeatable.",
+                    "to produce a unique seed — the number that makes every 3D model unrepeatable.",
                     style={"color": "#4b5563", "margin": "2px 0 0 0", "lineHeight": "1.5"},
                 ),
                 rx.el.div(
@@ -643,7 +1000,7 @@ def _explanations_panel() -> rx.Component:
             _explanation_item(
                 "Protein mass (kDa)",
                 "Median molecular weight of the selected proteins. "
-                "Heavier proteins produce wider sculptures with larger circle radii.",
+                "Heavier proteins produce wider 3D models with larger circle radii.",
                 maps_to="-> radius",
             ),
             _explanation_item(
@@ -723,7 +1080,7 @@ def _sculpture_params_panel() -> rx.Component:
     """Compact panel: computed sculpture geometry parameters."""
     return rx.el.div(
         rx.el.label(
-            "Sculpture parameters",
+            "3D model parameters",
             style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
         ),
         rx.el.div(
@@ -816,7 +1173,7 @@ def _choice_section() -> rx.Component:
                     ),
                     rx.el.div(class_name="ui divider"),
                     rx.el.label(
-                        "Trait",
+                        "Genes in selection",
                         style={"fontSize": "0.75rem", "color": "#9ca3af", "width": "45%", "marginLeft": "22px"},
                     ),
                     rx.el.div(
@@ -938,7 +1295,7 @@ def _sculpture_section() -> rx.Component:
         _section_header(
             expanded=ComposeState.sculpture_expanded,
             icon_name="sparkles",
-            title="Sculpture",
+            title="Printable 3D model",
             on_toggle=ComposeState.toggle_sculpture_expanded,
             right_badge=rx.cond(
                 ComposeState.generating,
@@ -1187,7 +1544,6 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
             rx.el.span(
                 gene_item["gene"],
                 style={
-                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontWeight": "700",
                     "color": "#1a1a2e",
                     "marginRight": "10px",
@@ -1196,14 +1552,18 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
                 },
             ),
             rx.el.span(
-                gene_item["trait"],
+                gene_item["category_detail"],
                 style={"fontSize": "0.88rem", "color": "#7c3aed", "fontWeight": "600"},
             ),
             style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
         ),
         rx.el.p(
-            gene_item["enhancement"],
+            gene_item["description"],
             style={"fontSize": "0.86rem", "color": "#374151", "margin": "2px 0 0 0", "lineHeight": "1.5"},
+        ),
+        rx.el.p(
+            gene_item["enhancement"],
+            style={"fontSize": "0.82rem", "color": "#6b7280", "margin": "4px 0 0 0", "lineHeight": "1.5", "fontStyle": "italic"},
         ),
         style={"padding": "8px 0", "borderBottom": "1px solid #f3f4f6"},
     )
@@ -1860,7 +2220,7 @@ def _report_pdf_long_content() -> rx.Component:
             style={"fontSize": "1.3rem", "fontWeight": "700", "color": "#1a1a2e", "marginBottom": "8px"},
         ),
         rx.el.p(
-            "The sculpture you just generated was shaped by the following genes. Each entry "
+            "The 3D model you just generated was shaped by the following genes. Each entry "
             "summarises what the gene does in its source organism and what it could mean for "
             "a future human.",
             style={"fontSize": "0.82rem", "color": "#374151", "lineHeight": "1.6", "marginBottom": "10px"},
@@ -1874,11 +2234,10 @@ def _report_pdf_long_content() -> rx.Component:
                         style={
                             "fontWeight": "700",
                             "color": "#1a1a2e",
-                            "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                         },
                     ),
                     rx.el.span(" \u2014 ", style={"color": "#9ca3af"}),
-                    rx.el.span(g["trait"], style={"color": "#7c3aed", "fontWeight": "600"}),
+                    rx.el.span(g["category_detail"], style={"color": "#7c3aed", "fontWeight": "600"}),
                     rx.el.span("  (", style={"color": "#9ca3af"}),
                     rx.el.span(g["source_organism"], style={"color": "#0d9488", "fontWeight": "600"}),
                     rx.el.span(")", style={"color": "#9ca3af"}),
@@ -2058,7 +2417,7 @@ def _report_section() -> rx.Component:
                     _report_action_bar(),
                 ),
                 rx.el.p(
-                    "Generate a sculpture first, then come back here to build your identity report.",
+                    "Generate a 3D model first, then come back here to build your identity report.",
                     style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
                 ),
             ),
@@ -2107,7 +2466,7 @@ def _viewer_section() -> rx.Component:
                 ),
             ),
             rx.el.p(
-                "Click Materialize to generate a sculpture.",
+                "Click Materialize to build a printable 3D model.",
                 style={"color": "#9ca3af", "fontSize": "0.85rem", "textAlign": "center", "padding": "24px 12px"},
             ),
         ),
@@ -2154,9 +2513,18 @@ def _sculpture_right_pane() -> rx.Component:
 
 
 def _sculpture_tab() -> rx.Component:
-    return two_column_layout(
-        left=_sculpture_left_pane(),
-        right=_sculpture_right_pane(),
+    return rx.el.div(
+        _sculpture_how_it_works_callout(),
+        two_column_layout(
+            left=_sculpture_left_pane(),
+            right=_sculpture_right_pane(),
+        ),
+        style={
+            "width": "100%",
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "stretch",
+        },
     )
 
 
@@ -2519,10 +2887,6 @@ def _jigsaw_tab() -> rx.Component:
 # ── Tab 3: Gene Library ──────────────────────────────────────────────────────
 
 
-def _trait_badge(trait: str) -> rx.Component:
-    return rx.el.span(trait, class_name="ui mini violet label")
-
-
 def _source_tag(organism: str) -> rx.Component:
     return rx.el.span(
         fomantic_icon("paw-print", size=11),
@@ -2534,50 +2898,61 @@ def _source_tag(organism: str) -> rx.Component:
 
 def _gene_card(entry: dict) -> rx.Component:
     cat_color = CATEGORY_COLORS.get(str(entry.get("category", "")), "#7c3aed")
+    paper = str(entry.get("paper_url", "") or "")
+    detail = str(entry.get("category_detail", "") or entry.get("category", ""))
     return rx.el.div(
         rx.el.div(
             rx.el.span(
                 entry["gene"],  # type: ignore[index]
                 style={"fontWeight": "700", "fontSize": "1rem", "color": "#1a1a2e", "marginRight": "10px"},
             ),
-            _trait_badge(entry["trait"]),  # type: ignore[index]
-            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
-        ),
-        rx.el.div(
             rx.el.span(
-                entry["category"],  # type: ignore[index]
+                detail,
                 class_name="ui mini label",
                 style={
                     "backgroundColor": f"{cat_color}18 !important",
                     "color": f"{cat_color} !important",
                     "border": f"1px solid {cat_color}40 !important",
+                    "maxWidth": "100%",
+                    "whiteSpace": "normal",
                 },
             ),
+            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
+        ),
+        rx.el.div(
             _source_tag(entry["source_organism"]),  # type: ignore[index]
             style={"margin": "6px 0 4px 0", "display": "flex", "gap": "4px", "flexWrap": "wrap"},
         ),
         rx.el.p(
-            entry["description"],  # type: ignore[index]
+            entry["narrative"],  # type: ignore[index]
             style={"fontSize": "0.88rem", "color": "#4b5563", "margin": "4px 0 6px 0", "lineHeight": "1.5"},
         ),
-        rx.el.div(
-            fomantic_icon("sparkles", size=12, color="#7c3aed"),
-            rx.el.span(
-                entry["enhancement"],  # type: ignore[index]
-                style={"fontSize": "0.83rem", "color": "#6b7280", "marginLeft": "6px"},
-            ),
-            style={"display": "flex", "alignItems": "flex-start", "gap": "2px"},
+        (
+            rx.el.p(
+                entry["mechanism"],  # type: ignore[index]
+                style={
+                    "fontSize": "0.83rem",
+                    "color": "#6b7280",
+                    "margin": "0 0 6px 0",
+                    "lineHeight": "1.5",
+                    "fontStyle": "italic",
+                },
+            )
+            if str(entry.get("mechanism", "") or "").strip()
+            else rx.fragment()
         ),
         rx.el.div(
             rx.el.a(
                 fomantic_icon("external-link", size=11),
-                rx.el.span(" Research paper", style={"marginLeft": "4px"}),
-                href=entry["paper_url"],  # type: ignore[index]
+                rx.el.span(" First linked reference", style={"marginLeft": "4px"}),
+                href=paper,
                 target="_blank",
                 style={"fontSize": "0.78rem"},
             ),
-            style={"marginTop": "8px"},
-        ),
+            style={"marginTop": "4px"},
+        )
+        if paper
+        else rx.fragment(),
         style={
             "padding": "14px 16px",
             "borderRadius": "6px",
@@ -2713,10 +3088,8 @@ def _animal_library_tab() -> rx.Component:
 
 _TABS = [
     ("landing", "home", "About"),
-    ("sculpture", "atom", "Parametric Sculpture"),
+    ("sculpture", "atom", "Materialize 3D model"),
     ("jigsaw", "puzzle piece", "Gene Jigsaw"),
-    ("library", "dna", "Gene Library"),
-    ("animals", "paw", "Animal Library"),
 ]
 
 
@@ -2742,8 +3115,6 @@ def _tab_content() -> rx.Component:
             ("landing", _landing_tab()),
             ("sculpture", _sculpture_tab()),
             ("jigsaw", _jigsaw_tab()),
-            ("library", _gene_library_tab()),
-            ("animals", _animal_library_tab()),
             _landing_tab(),
         ),
         class_name="ui bottom attached segment",
@@ -2758,14 +3129,12 @@ def _tab_content() -> rx.Component:
     route="/",
     on_load=[
         AppState.apply_tab_from_query,
-        GeneGridState.load_grid,
-        AnimalGridState.load_grid,
         JigsawState.init_jigsaw,
         ComposeState.apply_shared_report,
     ],
 )
 def index_page() -> rx.Component:
-    """Single-page app: tab navigation with landing, sculpture, jigsaw, gene library, animal library."""
+    """Single-page app: tab navigation with landing, sculpture, and jigsaw."""
     return template(
         _tab_menu(),
         _tab_content(),

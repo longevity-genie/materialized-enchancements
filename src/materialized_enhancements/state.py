@@ -6,8 +6,9 @@ import binascii
 import datetime
 import json
 import logging
+import re
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict
+from typing import Any, AsyncIterator, Dict, TypedDict
 from urllib.parse import quote
 
 import reflex as rx
@@ -26,9 +27,9 @@ from materialized_enhancements.gene_data import (
 from materialized_enhancements.puzzle import build_jigsaw_svg
 from materialized_enhancements.sculpture import (
     DEFAULT_EXPORT_DIR,
-    GENE_PROPERTIES,
     compute_sculpture_params,
     generate_sculpture,
+    resolve_gene_properties_row,
 )
 from materialized_enhancements.artex import create_artex_project_sync
 from materialized_enhancements.env import (
@@ -39,6 +40,141 @@ from materialized_enhancements.env import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class KeyReferenceSegment(TypedDict):
+    """One text or link fragment in Key references (Reflex foreach needs typed list)."""
+
+    kind: str
+    v: str
+    href: str
+
+
+class SculptureSelectedGene(TypedDict):
+    """Row passed to foreach for sculpture gene checkboxes (nested segments must be typed)."""
+
+    gene_id: str
+    gene: str
+    trait: str
+    category: str
+    category_detail: str
+    source_organism: str
+    narrative: str
+    mechanism: str
+    achievements: str
+    evidence_tier: str
+    confidence: str
+    confidence_bucket: str
+    best_host_tested: str
+    translational_gaps: str
+    key_references: str
+    key_reference_segments: list[KeyReferenceSegment]
+    notes: str
+    description: str
+    enhancement: str
+    paper_url: str
+    included: bool
+    price: int
+    protein_length_aa: str
+    protein_mass_kda: str
+    exon_count: str
+    genes_in_system: str
+    recipient_organism_count: str
+    disorder_pct: str
+    isoelectric_point_pI: str
+    gravy_score: str
+    key_publication_year: str
+
+
+_GENE_PROP_GRID_KEYS: tuple[tuple[str, str], ...] = (
+    ("protein_length_aa", "Protein length (aa)"),
+    ("protein_mass_kda", "Protein mass (kDa)"),
+    ("exon_count", "Exon count"),
+    ("genes_in_system", "Genes in system"),
+    ("recipient_organism_count", "Recipient organism count"),
+    ("disorder_pct", "Disorder (%)"),
+    ("isoelectric_point_pI", "Isoelectric point (pI)"),
+    ("gravy_score", "GRAVY score"),
+    ("key_publication_year", "Key publication year"),
+)
+
+
+def _gene_props_flat(gene: str, gene_id: str) -> dict[str, str]:
+    raw = resolve_gene_properties_row(gene, gene_id)
+    out: dict[str, str] = {}
+    for key, _ in _GENE_PROP_GRID_KEYS:
+        v = raw.get(key)
+        out[key] = "" if v is None else str(v)
+    return out
+
+
+def _gene_row_price_cr(gene: dict[str, Any]) -> int:
+    return int(
+        resolve_gene_properties_row(str(gene["gene"]), str(gene.get("gene_id", ""))).get(
+            "gene_price", 0
+        )
+    )
+
+
+_REF_TOKEN_RE = re.compile(
+    r"https?://[^\s|<>]+|(?:doi:\s*)?(?:10\.\d{4,9}/[^\s|<>]+)",
+    re.IGNORECASE,
+)
+
+
+def _href_for_reference_token(raw: str) -> str:
+    t = raw.strip().rstrip(".,;)")
+    tl = t.lower()
+    if tl.startswith("http"):
+        return t
+    if tl.startswith("doi:"):
+        t = t[4:].strip()
+    if re.match(r"^10\.\d", t):
+        return f"https://doi.org/{t}"
+    return raw
+
+
+def _split_key_references_with_links(text: str) -> list[KeyReferenceSegment]:
+    """Split key-references prose into alternating text and link segments for Reflex."""
+    if not text.strip():
+        return []
+    matches = list(_REF_TOKEN_RE.finditer(text))
+    if not matches:
+        seg: KeyReferenceSegment = {"kind": "text", "v": text, "href": ""}
+        return [seg]
+    out: list[KeyReferenceSegment] = []
+    pos = 0
+    for m in matches:
+        if m.start() > pos:
+            out.append({"kind": "text", "v": text[pos:m.start()], "href": ""})
+        raw = m.group(0)
+        out.append(
+            {
+                "kind": "link",
+                "v": raw,
+                "href": _href_for_reference_token(raw),
+            }
+        )
+        pos = m.end()
+    if pos < len(text):
+        out.append({"kind": "text", "v": text[pos:], "href": ""})
+    return out
+
+
+def _confidence_bucket(raw: str) -> str:
+    """Normalize CSV confidence text to a small set of keys for UI styling."""
+    s = raw.strip().lower().replace("–", "-").replace("—", "-")
+    if not s:
+        return "unknown"
+    if "medium-high" in s or "medium high" in s:
+        return "medium_high"
+    if "medium" in s:
+        return "medium"
+    if "high" in s:
+        return "high"
+    if "low" in s:
+        return "low"
+    return "unknown"
 
 
 CATEGORY_COLORS: dict[str, str] = {
@@ -82,11 +218,12 @@ class AppState(rx.State):
 
 
 class ComposeState(rx.State):
-    """State for the Parametric Sculpture tab."""
+    """State for the Materialize 3D model tab."""
 
     personal_tag: str = "A new human, to be"
     selected_categories: list[str] = []
     excluded_genes: list[str] = []
+    expanded_genes: list[str] = []
 
     sculpture_params: Dict[str, Any] = {}
     generating: bool = False
@@ -140,6 +277,12 @@ class ComposeState(rx.State):
         else:
             self.excluded_genes = [*self.excluded_genes, gene]
         self._recompute_params()
+
+    def toggle_gene_details(self, gene: str) -> None:
+        if gene in self.expanded_genes:
+            self.expanded_genes = [g for g in self.expanded_genes if g != gene]
+        else:
+            self.expanded_genes = [*self.expanded_genes, gene]
 
     def _prune_excluded_genes(self) -> None:
         """Remove exclusions for genes no longer in any selected category."""
@@ -354,22 +497,40 @@ class ComposeState(rx.State):
         return traits
 
     @rx.var
-    def selected_genes(self) -> list[dict]:
-        return [
-            {
+    def selected_genes(self) -> list[SculptureSelectedGene]:
+        rows: list[SculptureSelectedGene] = []
+        for g in GENE_LIBRARY:
+            if g["category"] not in self.selected_categories:
+                continue
+            prop_row = resolve_gene_properties_row(g["gene"], g["gene_id"])
+            price = int(prop_row.get("gene_price", 0))
+            row: SculptureSelectedGene = {
+                "gene_id": g["gene_id"],
                 "gene": g["gene"],
                 "trait": g["trait"],
                 "category": g["category"],
+                "category_detail": g["category_detail"],
                 "source_organism": g["source_organism"],
+                "narrative": g["narrative"],
+                "mechanism": g["mechanism"],
+                "achievements": g["achievements"],
+                "evidence_tier": g["evidence_tier"],
+                "confidence": g["confidence"],
+                "confidence_bucket": _confidence_bucket(str(g.get("confidence", ""))),
+                "best_host_tested": g["best_host_tested"],
+                "translational_gaps": g["translational_gaps"],
+                "key_references": g["key_references"],
+                "key_reference_segments": _split_key_references_with_links(str(g.get("key_references", ""))),
+                "notes": g["notes"],
                 "description": g["description"],
                 "enhancement": g["enhancement"],
                 "paper_url": g["paper_url"],
                 "included": g["gene"] not in self.excluded_genes,
-                "price": GENE_PROPERTIES.get(g["gene"], {}).get("gene_price", 0),
+                "price": price,
+                **_gene_props_flat(g["gene"], g["gene_id"]),
             }
-            for g in GENE_LIBRARY
-            if g["category"] in self.selected_categories
-        ]
+            rows.append(row)
+        return rows
 
     @rx.var
     def selected_animals(self) -> list[dict]:
@@ -504,7 +665,7 @@ class ComposeState(rx.State):
     @rx.var
     def budget_spent(self) -> int:
         return sum(
-            int(GENE_PROPERTIES.get(g["gene"], {}).get("gene_price", 0))
+            _gene_row_price_cr(g)
             for g in GENE_LIBRARY
             if g["category"] in self.selected_categories
             and g["gene"] not in self.excluded_genes
@@ -525,7 +686,7 @@ class ComposeState(rx.State):
     @rx.var
     def active_gene_counts(self) -> dict[str, int]:
         """Per-category count of included (non-excluded) genes."""
-        counts: dict[str, int] = {}
+        counts: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
         for g in GENE_LIBRARY:
             cat = g["category"]
             if g["gene"] not in self.excluded_genes:
@@ -535,11 +696,11 @@ class ComposeState(rx.State):
     @rx.var
     def active_category_prices(self) -> dict[str, int]:
         """Per-category sum of included gene prices."""
-        totals: dict[str, int] = {}
+        totals: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
         for g in GENE_LIBRARY:
             cat = g["category"]
             if g["gene"] not in self.excluded_genes:
-                price = int(GENE_PROPERTIES.get(g["gene"], {}).get("gene_price", 0))
+                price = _gene_row_price_cr(g)
                 totals[cat] = totals.get(cat, 0) + price
         return totals
 

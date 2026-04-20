@@ -21,14 +21,15 @@ import matplotlib.pyplot as plt
 import polars as pl
 import typer
 
+from materialized_enhancements.gene_data import GENE_LIBRARY, UNIQUE_CATEGORIES
+from materialized_enhancements.sculpture import GENE_PROPERTIES, resolve_gene_properties_row
+
 matplotlib.use("Agg")
 
 # ---------------------------------------------------------------------------
 # Paths — resolve relative to this file so the script works from any cwd.
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_GENE_LIBRARY_CSV = _REPO_ROOT / "data" / "input" / "gene_library.csv"
-_GENE_PROPERTIES_CSV = _REPO_ROOT / "data" / "input" / "gene_properties.csv"
 _DEFAULT_OUT = _REPO_ROOT / "data" / "output" / "param_histograms.png"
 
 
@@ -69,33 +70,6 @@ def _median(values: List[float]) -> float:
 # Data loaders
 # ---------------------------------------------------------------------------
 
-def _load_library() -> Tuple[List[Dict[str, Any]], List[str]]:
-    """Return (gene_library rows, ordered unique categories)."""
-    df = pl.read_csv(_GENE_LIBRARY_CSV).rename({
-        "Gene": "gene",
-        "Source Organism": "source_organism",
-        "Category": "category",
-        "Enhancement Category": "trait",
-        "Potential Human Enhancement": "enhancement",
-        "Paper URL": "paper_url",
-        "Description": "description",
-        "Ported To": "ported_to",
-    }).with_columns(
-        pl.col("gene").str.strip_chars(),
-        pl.col("category").str.strip_chars(),
-    )
-    rows = df.to_dicts()
-    seen: Dict[str, None] = {}
-    for r in rows:
-        seen[r["category"]] = None
-    return rows, list(seen)
-
-
-def _load_gene_properties() -> Dict[str, Dict[str, Any]]:
-    df = pl.read_csv(_GENE_PROPERTIES_CSV)
-    return {row["gene"]: row for row in df.to_dicts()}
-
-
 # ---------------------------------------------------------------------------
 # Core computation — mirrors compute_sculpture_params() from sculpture.py
 # without any name/seed dependency so we get purely category-driven values.
@@ -108,7 +82,11 @@ def _compute_for_combo(
 ) -> Dict[str, float]:
     """Compute all deterministic compass input features for one category combination."""
     pool = [g for g in gene_library if g["category"] in selected] if selected else list(gene_library)
-    props_pool = [gene_properties[g["gene"]] for g in pool if g["gene"] in gene_properties]
+    props_pool: List[Dict[str, Any]] = []
+    for g in pool:
+        r = resolve_gene_properties_row(str(g["gene"]), str(g.get("gene_id", "")))
+        if r:
+            props_pool.append(r)
     if not props_pool:
         props_pool = list(gene_properties.values())
 
@@ -291,8 +269,9 @@ def main(
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     typer.echo("Loading gene library and properties…")
-    gene_library, all_categories = _load_library()
-    gene_properties = _load_gene_properties()
+    gene_library: List[Dict[str, Any]] = [dict(g) for g in GENE_LIBRARY]
+    all_categories = list(UNIQUE_CATEGORIES)
+    gene_properties = GENE_PROPERTIES
 
     typer.echo(f"  {len(all_categories)} categories → {2 ** len(all_categories)} combinations")
     typer.echo("Computing parameters for all combinations…")
