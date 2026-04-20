@@ -36,9 +36,12 @@ We built this as a highly extensible platform. We are actively inviting other ar
 
 ## Team
 
-- **Newton Winter** — Concept / Biology
-- **Anton Kulaga** — Engineering / Data
-- **Livia Zaharia** — Design / Storytelling
+- **Newton Winter** — concept, biology — [GitHub @winternewt](https://github.com/winternewt)
+- **Anton Kulaga** — engineering, data — [GitHub @antonkulaga](https://github.com/antonkulaga)
+- **Livia Zaharia** — parametric geometry, form generation — [livia.glucosedao.org](http://livia.glucosedao.org/)
+- **Marko Prakhov-Donets** — video editing
+
+The project is **open source** ([repository](https://github.com/winternewt/materialized-enchancements)) and built so other artists can plug their own generative models into the same biological input engine.
 
 ---
 
@@ -84,7 +87,7 @@ Any Bearer token ≥8 chars works in dev (`dev-token-12345678`). In `--dev` mode
 
 For installations, activate kiosk behaviour per URL with `?interaction=artex`:
 
-- A 60-second inactivity band appears above the topbar, resets on any user activity, turns red in the last 5 seconds, and redirects to `ARTEX_IDLE_URL` on expiry.
+- A 60-second inactivity band appears at the top of the page, resets on any user activity, turns red in the last 5 seconds, and redirects to `ARTEX_IDLE_URL` on expiry.
 - Works in both dev and prod; no query param → band stays hidden.
 - Optional `&redirect=<url>` overrides both the idle-expiry AND post-create destinations. Supports `{project_id}` substitution, e.g. `?interaction=artex&redirect=https://artex.live/wall/{project_id}`.
 

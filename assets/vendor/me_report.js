@@ -121,7 +121,8 @@
         while (n && n !== document.body) {
           if (n.id === 'report-qr' ||
               n.id === 'me-report-pdf-long' || n.id === 'me-report-png-card' ||
-              n.id === 'report-export-animals-json') return;
+              n.id === 'report-export-animals-json' ||
+              n.id === 'report-export-composition-genes-json') return;
           n = n.parentNode;
         }
       }
@@ -314,8 +315,10 @@
    * Each row in that element is laid out as
    *   <div>               ← wrapper
    *     <div>             ← header: <span>GENE</span> — <span>trait</span>  (<span>organism</span>)
-   *     <p>description</p>
-   *     <p>enhancement</p>  (italic)
+   *     optional <p class="me-report-evidence-tier">…
+   *     optional <p class="me-report-confidence">…
+   *     optional <p class="me-report-tested">…
+   *     <p class="me-report-desc">description (narrative)</p>
    * We read text content instead of relying on Reflex state so this helper
    * stays self-contained in the browser. */
   function readGeneRows() {
@@ -326,18 +329,23 @@
     for (var i = 0; i < entries.length; i++) {
       var entry = entries[i];
       var header = entry.querySelector('div');
-      var paras = entry.querySelectorAll('p');
       if (!header) continue;
       var spans = header.querySelectorAll('span');
       var gene = spans[0] ? (spans[0].textContent || '').trim() : '';
       var trait = spans[2] ? (spans[2].textContent || '').trim() : '';
       var organism = spans[4] ? (spans[4].textContent || '').trim() : '';
+      var descEl = entry.querySelector('.me-report-desc');
+      var tierEl = entry.querySelector('.me-report-evidence-tier');
+      var confEl = entry.querySelector('.me-report-confidence');
+      var testedEl = entry.querySelector('.me-report-tested');
       rows.push({
         gene: gene,
         trait: trait,
         organism: organism,
-        description: paras[0] ? (paras[0].textContent || '').trim() : '',
-        enhancement: paras[1] ? (paras[1].textContent || '').trim() : '',
+        evidenceTier: tierEl ? (tierEl.textContent || '').replace(/^\s*Evidence tier:\s*/i, '').trim() : '',
+        confidence: confEl ? (confEl.textContent || '').replace(/^\s*Confidence:\s*/i, '').trim() : '',
+        testedOn: testedEl ? (testedEl.textContent || '').replace(/^\s*Tested on:\s*/i, '').trim() : '',
+        description: descEl ? (descEl.textContent || '').trim() : '',
       });
     }
     return rows;
@@ -373,8 +381,8 @@
     var introLines = pdf.splitTextToSize(
       pdfSafeWinAnsi(
         'The sculpture you just generated was shaped by the following genes. ' +
-        'Each entry summarises what the gene does in its source organism and ' +
-        'what it could mean for a future human.'
+        'Each entry is a short narrative about the gene in its source organism ' +
+        '(mechanistic detail is available in the Gene Library tab).'
       ),
       contentW
     );
@@ -396,6 +404,21 @@
       pdf.text(titleLines, margin, y + 4);
       y += titleLines.length * 4.5 + 2;
 
+      function metaBlock(label, text) {
+        if (!text) return;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor('#6b7280');
+        var line = pdfSafeWinAnsi(label + ': ' + text);
+        var lines = pdf.splitTextToSize(line, contentW);
+        ensureSpace(lines.length * 3.8 + 1);
+        pdf.text(lines, margin, y + 3);
+        y += lines.length * 3.8 + 1;
+      }
+      metaBlock('Evidence tier', r.evidenceTier || '');
+      metaBlock('Confidence', r.confidence || '');
+      metaBlock('Tested on', r.testedOn || '');
+
       if (r.description) {
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
@@ -404,15 +427,6 @@
         ensureSpace(descLines.length * 4);
         pdf.text(descLines, margin, y + 3);
         y += descLines.length * 4 + 1;
-      }
-      if (r.enhancement) {
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(9);
-        pdf.setTextColor('#6b7280');
-        var enhLines = pdf.splitTextToSize(pdfSafeWinAnsi(r.enhancement), contentW);
-        ensureSpace(enhLines.length * 4);
-        pdf.text(enhLines, margin, y + 3);
-        y += enhLines.length * 4 + 1;
       }
 
       y += 3;
@@ -505,8 +519,8 @@
 
   /**
    * Page 1 — native A4 layout: header, metadata, three views, categories,
-   * source organisms (three columns, one primary trait each), then QR + URL
-   * directly under content (no fixed bottom gap). Gene list lives on following pages only.
+   * source organisms (three columns, one primary trait each), genes-in-composition
+   * summary lines, then QR + URL. Full gene narratives are appended on later pages.
    */
   async function renderCoverPageA4(pdf, layout) {
     var m = layout.margin;
@@ -514,6 +528,14 @@
     var pageH = layout.pageH;
     var w = pageW - m * 2;
     var y = m;
+    var coverMaxY = pageH - m - 36;
+
+    function ensureCoverSpace(h) {
+      if (y + h > coverMaxY) {
+        pdf.addPage();
+        y = m;
+      }
+    }
 
     var name = pdfSafeWinAnsi((document.getElementById('report-share-name') || {}).value || '');
     var seed = pdfSafeWinAnsi(String((document.getElementById('report-share-seed') || {}).value || ''));
@@ -533,7 +555,7 @@
     pdf.text(pdfSafeWinAnsi('MATERIALIZED ENHANCEMENTS'), m, y + 4);
     pdf.setFontSize(18);
     pdf.setTextColor(26, 26, 46);
-    pdf.text(pdfSafeWinAnsi('IDENTITY REPORT'), m, y + 12);
+    pdf.text(pdfSafeWinAnsi('Personal enhancement report'), m, y + 12);
     y += 16;
 
     pdf.setDrawColor(26, 26, 46);
@@ -722,7 +744,41 @@
       y += animFallback.length * 3.2 + 4;
     }
 
-    /* Footer immediately after organisms (no genes block here — appendix follows). */
+    var compositionGenes = [];
+    try {
+      var cgRaw = (document.getElementById('report-export-composition-genes-json') || {}).value || '[]';
+      compositionGenes = JSON.parse(cgRaw);
+    } catch (_e) {
+      compositionGenes = [];
+    }
+
+    if (compositionGenes.length) {
+      ensureCoverSpace(10);
+      y += 4;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.setTextColor(107, 114, 128);
+      pdf.text(pdfSafeWinAnsi('GENES IN COMPOSITION'), m, y);
+      y += 4;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.2);
+      pdf.setTextColor(55, 65, 81);
+      for (var gi = 0; gi < compositionGenes.length; gi++) {
+        var cg = compositionGenes[gi];
+        var gLine =
+          String(cg.gene || '') +
+          ' \u2014 ' +
+          String(cg.category_detail || '') +
+          (cg.source_organism ? ' (' + String(cg.source_organism) + ')' : '');
+        var gLines = pdf.splitTextToSize(pdfSafeWinAnsi(gLine), w);
+        ensureCoverSpace(gLines.length * 3.1 + 1);
+        pdf.text(gLines, m, y + 3);
+        y += gLines.length * 3.1 + 0.4;
+      }
+      y += 2;
+    }
+
+    /* Footer after organisms + composition summary (full narratives: appendix pages). */
     y += 6;
     var urlLines = pdf.splitTextToSize(urlText, w - 26);
     var footerH = 22 + Math.max(18, urlLines.length * 3.2);
@@ -789,7 +845,7 @@
 
   window.__meShareIntent = function (network) {
     var url = encodeURIComponent(absoluteShareUrl());
-    var text = encodeURIComponent('My Materialized Enhancements identity report');
+    var text = encodeURIComponent('My Materialized Enhancements personal enhancement report');
     var target = '';
     if (network === 'twitter')       target = 'https://twitter.com/intent/tweet?text=' + text + '&url=' + url;
     else if (network === 'facebook') target = 'https://www.facebook.com/sharer/sharer.php?u=' + url;

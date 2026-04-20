@@ -148,8 +148,8 @@ _WS_WATCHDOG_JS = """
     if (banner) return;
     banner = document.createElement('div');
     banner.style.cssText =
-      'position:fixed;top:56px;left:0;right:0;z-index:99999;background:#7c3aed;' +
-      'color:#fff;text-align:center;padding:10px 16px;font-size:14px;' +
+      'position:fixed;top:0;left:0;right:0;z-index:99999;background:#7c3aed;' +
+      'color:#fff;text-align:center;padding:0.65rem 1.1rem;font-size:0.95rem;' +
       'font-family:sans-serif;cursor:pointer;letter-spacing:.3px';
     banner.onclick = function () { window.location.reload(); };
     document.body && document.body.appendChild(banner);
@@ -222,7 +222,7 @@ def report_libs() -> rx.Component:
     )
 
 
-IDLE_BAND_HEIGHT_PX = 28
+IDLE_BAND_HEIGHT_PX = 34
 
 _IDLE_BAND_JS_TEMPLATE = """
 (function () {
@@ -244,16 +244,14 @@ _IDLE_BAND_JS_TEMPLATE = """
   var band = document.getElementById('idle-band');
   var text = document.getElementById('idle-band-text');
   var fill = document.getElementById('idle-band-fill');
-  var topbar = document.getElementById('topbar');
   var content = document.getElementById('me-app-content');
   if (!band || !text || !fill) return;
 
   // Unhide the band and shift the rest of the layout down to make room.
   band.style.display = 'flex';
-  if (topbar) topbar.style.top = BAND_H + 'px';
   if (content) {
-    content.style.marginTop = (56 + BAND_H) + 'px';
-    content.style.minHeight = 'calc(100vh - ' + (56 + BAND_H) + 'px)';
+    content.style.marginTop = BAND_H + 'px';
+    content.style.minHeight = 'calc(100vh - ' + BAND_H + 'px)';
   }
 
   var remaining = TIMEOUT;
@@ -329,7 +327,7 @@ def idle_band() -> rx.Component:
                 style={
                     "position": "relative",
                     "zIndex": "1",
-                    "fontSize": "0.78rem",
+                    "fontSize": "0.88rem",
                     "fontWeight": "600",
                     "letterSpacing": "0.04em",
                     "color": "#e5e7eb",
@@ -355,46 +353,16 @@ def idle_band() -> rx.Component:
     )
 
 
-def topbar(top_offset_px: int = 0) -> rx.Component:
-    """Top navigation bar — logo only, tabs live in page content."""
-    return rx.el.div(
-        rx.el.a(
-            rx.el.span(
-                "Materialized Enhancements",
-                style={
-                    "fontSize": "1.2rem",
-                    "fontWeight": "700",
-                    "color": "#7c3aed",
-                    "letterSpacing": "0.03em",
-                },
-            ),
-            href="/",
-            style={"display": "flex", "alignItems": "center", "textDecoration": "none"},
-        ),
-        style={
-            "position": "fixed",
-            "top": f"{top_offset_px}px",
-            "left": "0",
-            "right": "0",
-            "height": "56px",
-            "backgroundColor": "#ffffff",
-            "borderBottom": "1px solid #e5e7eb",
-            "boxShadow": "0 1px 3px rgba(0,0,0,0.06)",
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "flex-start",
-            "padding": "0 24px",
-            "zIndex": "1000",
-        },
-        id="topbar",
-    )
-
-
 def template(*children: rx.Component) -> rx.Component:
     """Main page template — White Mirror light theme."""
     global_css = rx.el.style(
         """
-        body { background-color: #f8f9fa !important; color: #1a1a2e !important; }
+        /* Slightly larger type for projection / kiosk; between default (100%) and the prior 125% pass */
+        html { font-size: 112.5%; }
+        body { background-color: #f8f9fa !important; color: #1a1a2e !important; line-height: 1.5; }
+        .ui.button { font-size: 1rem !important; padding: 0.6em 1em !important; }
+        .ui.primary.button { font-size: 1.02rem !important; }
+        .ui.top.attached.tabular.menu .item { font-size: 1.03rem !important; padding: 0.72em 1em !important; }
         .ui.segment { background-color: #ffffff !important; border-color: #e5e7eb !important; color: #1a1a2e !important; }
         .ui.raised.segment { box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important; }
         .ui.button { background-color: #f3f0ff !important; color: #7c3aed !important; border: 1px solid #d4c5f9 !important; }
@@ -420,8 +388,8 @@ def template(*children: rx.Component) -> rx.Component:
         a:hover { color: #6d28d9 !important; }
         """
     )
-    # Default layout has no band. The idle_band() JS shifts the topbar and
-    # content down at runtime when ?interaction=artex activates the kiosk.
+    # Default layout has no band. The idle_band() JS shifts content down at runtime
+    # when ?interaction=artex activates the kiosk.
     return rx.el.div(
         fomantic_stylesheets(),
         mui_theme_shim(),
@@ -429,7 +397,6 @@ def template(*children: rx.Component) -> rx.Component:
         report_libs(),
         global_css,
         idle_band(),
-        topbar(top_offset_px=0),
         rx.el.div(
             rx.el.div(
                 *children,
@@ -437,9 +404,10 @@ def template(*children: rx.Component) -> rx.Component:
             ),
             id="me-app-content",
             style={
-                "marginTop": "56px",
-                "padding": "20px",
-                "minHeight": "calc(100vh - 56px)",
+                "marginTop": "0",
+                "padding": "1.25rem",
+                "minHeight": "100vh",
+                "boxSizing": "border-box",
                 "backgroundColor": "#f8f9fa",
             },
         ),
@@ -452,7 +420,7 @@ def two_column_layout(
     right: rx.Component,
 ) -> rx.Component:
     """Two-column layout using flexbox. Left narrow, right wide."""
-    column_height = "calc(100vh - 96px)"
+    column_height = "calc(100vh - 3rem)"
     column_base = {
         "height": column_height,
         "overflowY": "auto",

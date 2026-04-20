@@ -13,7 +13,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _positive_int_from_env(name: str, default: int) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return max(1, value)
+
+
 DEV_MODE: bool = os.getenv("MATERIALIZED_DEV_MODE", "").lower() in ("1", "true", "yes", "on")
+
+# Minimum enhancement credits (cr) in Choice required to run Materialize (STL pipeline).
+MIN_CREDITS_TO_MATERIALIZE: int = _positive_int_from_env("MIN_CREDITS_TO_MATERIALIZE", 25)
 
 # ARTEX Platform API — credentials & instance target
 ARTEX_API_URL: str = os.getenv("ARTEX_API_URL", "http://localhost:8080/v1")

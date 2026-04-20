@@ -30,7 +30,7 @@ materialized-enhancements/          ← repo root
     ├── gene_data.py                ← CSV loader → GENE_LIBRARY, GENE_LIBRARY_LF, CATEGORY_TRAITS, ANIMAL_LIBRARY
     │                                  also owns _ORGANISM_PUZZLE_MAP (organism → SVG filename)
     ├── components/
-    │   └── layout.py               ← template, two_column_layout, fomantic_icon, topbar
+    │   └── layout.py               ← template, two_column_layout, fomantic_icon
     └── pages/
         └── index.py                ← route "/" (landing + 4 tabs: Sculpture, Jigsaw, Gene Library, Animal Library)
 ```
