@@ -694,6 +694,8 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
     included = gene_item["included"]
     gene_sym = gene_item["gene"]
     is_expanded = ComposeState.expanded_genes.contains(gene_sym)
+    gene_price = gene_item["price"].to(int)
+    cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
 
     return rx.el.div(
         # Header row: checkbox + labels + expand toggle
@@ -702,8 +704,15 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 rx.el.input(
                     type="checkbox",
                     checked=included,
+                    disabled=cannot_afford,
                     on_change=ComposeState.toggle_gene(gene_sym),
-                    style={"marginRight": "6px", "accentColor": "#7c3aed", "cursor": "pointer", "flexShrink": "0"},
+                    style={
+                        "marginRight": "6px",
+                        "accentColor": "#7c3aed",
+                        "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
+                        "flexShrink": "0",
+                        "opacity": rx.cond(cannot_afford, "0.45", "1"),
+                    },
                 ),
                 rx.el.span(
                     gene_sym,
@@ -749,8 +758,21 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                         "fontWeight": "700",
                         "padding": "1px 6px",
                         "borderRadius": "10px",
-                        "backgroundColor": rx.cond(included, "#f3f0ff", "#f3f4f6"),
-                        "color": rx.cond(included, "#7c3aed", "#d1d5db"),
+                        "border": rx.cond(
+                            included,
+                            "1px solid transparent",
+                            rx.cond(cannot_afford, "1px solid #fecaca", "1px solid transparent"),
+                        ),
+                        "backgroundColor": rx.cond(
+                            included,
+                            "#f3f0ff",
+                            rx.cond(cannot_afford, "#fef2f2", "#f3f4f6"),
+                        ),
+                        "color": rx.cond(
+                            included,
+                            "#7c3aed",
+                            rx.cond(cannot_afford, "#dc2626", "#d1d5db"),
+                        ),
                         "whiteSpace": "nowrap",
                         "marginLeft": "6px",
                     },
@@ -759,7 +781,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                     "display": "flex",
                     "alignItems": "center",
                     "flex": "1",
-                    "cursor": "pointer",
+                    "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
                     "padding": "5px 8px",
                 },
             ),
@@ -1196,20 +1218,20 @@ def _choice_section() -> rx.Component:
                 rx.fragment(),
             ),
             rx.cond(
-                ComposeState.materialize_credits_shortfall_notice != "",
+                ComposeState.materialize_totem_diversity_notice != "",
                 rx.el.div(
-                    fomantic_icon("circle-alert", size=14, color="#dc2626"),
+                    fomantic_icon("circle-alert", size=14, color="#b45309"),
                     rx.el.span(
-                        ComposeState.materialize_credits_shortfall_notice,
-                        style={"marginLeft": "6px", "fontSize": "0.82rem", "color": "#dc2626"},
+                        ComposeState.materialize_totem_diversity_notice,
+                        style={"marginLeft": "6px", "fontSize": "0.82rem", "color": "#92400e"},
                     ),
                     style={
                         "display": "flex",
                         "alignItems": "flex-start",
                         "padding": "10px",
                         "borderRadius": "6px",
-                        "border": "1px solid #fca5a5",
-                        "backgroundColor": "#fef2f2",
+                        "border": "1px solid #fcd34d",
+                        "backgroundColor": "#fffbeb",
                         "marginBottom": "10px",
                     },
                 ),

@@ -27,9 +27,6 @@ def _positive_int_from_env(name: str, default: int) -> int:
 
 DEV_MODE: bool = os.getenv("MATERIALIZED_DEV_MODE", "").lower() in ("1", "true", "yes", "on")
 
-# Minimum enhancement credits (cr) in Choice required to run Materialize (STL pipeline).
-MIN_CREDITS_TO_MATERIALIZE: int = _positive_int_from_env("MIN_CREDITS_TO_MATERIALIZE", 25)
-
 # ARTEX Platform API — credentials & instance target
 ARTEX_API_URL: str = os.getenv("ARTEX_API_URL", "http://localhost:8080/v1")
 ARTEX_API_TOKEN: str = os.getenv("ARTEX_API_TOKEN", "")
@@ -45,6 +42,9 @@ ARTEX_IDLE_URL: str = os.getenv("ARTEX_IDLE_URL", "https://artex.live/")
 ARTEX_DEV_REDIRECT_URL: str = os.getenv(
     "ARTEX_DEV_REDIRECT_URL", "https://example.com/artex-dev-redirect"
 )
+
+# Public frontend URL used for share/report links.
+PUBLIC_APP_URL: str = os.getenv("PUBLIC_APP_URL", "http://localhost:3000").rstrip("/")
 
 # Kiosk idle timer (only rendered in prod). Seconds.
 IDLE_TIMEOUT_SECONDS: int = int(os.getenv("IDLE_TIMEOUT_SECONDS", "60"))

@@ -16,6 +16,7 @@
   function absoluteShareUrl() {
     var p = sharePath();
     if (!p) return window.location.origin + '/';
+    if (/^https?:\/\//i.test(p)) return p;
     return window.location.origin + '/' + (p.charAt(0) === '?' ? '' : '') + p;
   }
   function safeName() {

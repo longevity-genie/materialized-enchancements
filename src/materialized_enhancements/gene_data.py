@@ -262,44 +262,100 @@ ORGANISM_MEMBERS: dict[str, set[str]] = _build_organism_members(GENE_LIBRARY)
 
 
 # ---------------------------------------------------------------------------
-# Budget system — per-gene prices summed into category costs.
-# Prices are loaded from gene_properties_extended.csv (gene_price column); the budget
-# constrains category selection so users pick 2–4 categories, not all nine.
+# Budget system — prices resolved by gene_id from gene_properties_extended.csv.
+# We intentionally join via gene_id (not gene name) because display gene labels can
+# differ between gene_library_extended.csv and gene_properties_extended.csv.
+# CATEGORY_PRICES sums all genes in a category (UI: max spend if every gene is on).
+# CATEGORY_MIN_GENE_PRICES is the cheapest gene in each category (gate for selecting
+# a category: user only needs room for one gene, not the full category total).
 # ---------------------------------------------------------------------------
 GENE_PRICES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties_extended.csv"
 
 DEFAULT_BUDGET: int = 100
 
 
-def _load_category_prices(path: Path = GENE_PRICES_PATH) -> dict[str, int]:
-    """Sum per-gene prices into category totals from gene_properties_extended.csv."""
-    df = pl.read_csv(path)
-    totals: dict[str, int] = {}
-    for row in df.to_dicts():
-        cat = row.get("category", "")
-        price = int(row.get("gene_price", 0))
-        if cat:
-            totals[cat] = totals.get(cat, 0) + price
-    return totals
+def _build_pricing_table(
+    library: list[GeneEntry],
+    path: Path = GENE_PRICES_PATH,
+) -> pl.DataFrame:
+    """Create canonical per-gene pricing table by joining on gene_id."""
+    lib_df = pl.DataFrame(
+        {
+            "gene_id": [entry["gene_id"] for entry in library],
+            "gene": [entry["gene"] for entry in library],
+            "category": [entry["category"] for entry in library],
+        }
+    ).with_columns(
+        pl.col("gene_id").str.strip_chars(),
+        pl.col("gene").str.strip_chars(),
+        pl.col("category").str.strip_chars(),
+    )
+    prices_df = pl.read_csv(path).select(["gene_id", "gene_price"]).with_columns(
+        pl.col("gene_id").str.strip_chars(),
+        pl.col("gene_price").cast(pl.Int64),
+    )
+    joined = lib_df.join(prices_df, on="gene_id", how="left")
+
+    missing = joined.filter(pl.col("gene_price").is_null())
+    if missing.height > 0:
+        missing_ids = ", ".join(sorted(set(missing["gene_id"].to_list())))
+        raise ValueError(
+            "Missing gene_price entries in gene_properties_extended.csv for gene_id(s): "
+            f"{missing_ids}"
+        )
+
+    non_positive = joined.filter(pl.col("gene_price") <= 0)
+    if non_positive.height > 0:
+        bad_rows = ", ".join(
+            sorted(
+                {
+                    f"{row['gene_id']}:{row['gene']}={row['gene_price']}"
+                    for row in non_positive.select(["gene_id", "gene", "gene_price"]).to_dicts()
+                }
+            )
+        )
+        raise ValueError(
+            "gene_price must be > 0 for all genes in gene_properties_extended.csv. "
+            f"Bad rows: {bad_rows}"
+        )
+
+    return joined
 
 
-CATEGORY_PRICES: dict[str, int] = _load_category_prices()
+PRICING_TABLE: pl.DataFrame = _build_pricing_table(GENE_LIBRARY)
 
 
-def _load_gene_prices(path: Path = GENE_PRICES_PATH) -> dict[str, int]:
-    """Per-gene price lookup from gene_properties.csv."""
-    df = pl.read_csv(path)
-    return {row["gene"]: int(row.get("gene_price", 0)) for row in df.to_dicts()}
+def _load_category_prices(pricing_table: pl.DataFrame) -> dict[str, int]:
+    """Category total prices from canonical pricing table."""
+    grouped = pricing_table.group_by("category").agg(pl.col("gene_price").sum().alias("sum_price"))
+    return {row["category"]: int(row["sum_price"]) for row in grouped.to_dicts()}
 
 
-GENE_PRICES: dict[str, int] = _load_gene_prices()
+CATEGORY_PRICES: dict[str, int] = _load_category_prices(PRICING_TABLE)
+
+
+def _load_gene_prices(pricing_table: pl.DataFrame) -> dict[str, int]:
+    """Per-gene price lookup keyed by display gene name from canonical pricing table."""
+    return {row["gene"]: int(row["gene_price"]) for row in pricing_table.to_dicts()}
+
+
+GENE_PRICES: dict[str, int] = _load_gene_prices(PRICING_TABLE)
+
+
+def _category_min_gene_prices(pricing_table: pl.DataFrame) -> dict[str, int]:
+    """Smallest single-gene price (cr) per category."""
+    grouped = pricing_table.group_by("category").agg(pl.col("gene_price").min().alias("min_price"))
+    return {row["category"]: int(row["min_price"]) for row in grouped.to_dicts()}
+
+
+CATEGORY_MIN_GENE_PRICES: dict[str, int] = _category_min_gene_prices(PRICING_TABLE)
 
 
 def _build_animal_prices(animals: list[AnimalEntry]) -> dict[str, int]:
     """Sum gene prices per merged animal."""
     prices: dict[str, int] = {}
     for a in animals:
-        prices[a["organism"]] = sum(GENE_PRICES.get(g, 0) for g in a["genes"])
+        prices[a["organism"]] = sum(GENE_PRICES[g] for g in a["genes"])
     return prices
 
 

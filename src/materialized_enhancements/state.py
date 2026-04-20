@@ -17,7 +17,7 @@ from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     ANIMAL_LIBRARY_LF,
     ANIMAL_PRICES,
-    CATEGORY_PRICES,
+    CATEGORY_MIN_GENE_PRICES,
     CATEGORY_TRAITS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
@@ -39,7 +39,7 @@ from materialized_enhancements.env import (
     ARTEX_API_URL,
     ARTEX_INSTANCE_ID,
     DEV_MODE,
-    MIN_CREDITS_TO_MATERIALIZE,
+    PUBLIC_APP_URL,
     project_redirect_url,
 )
 
@@ -132,6 +132,20 @@ def _sum_credits_for_included_genes(
         for g in GENE_LIBRARY
         if g["category"] in sel and g["gene"] in inc
     )
+
+
+def _count_included_genes_in_choice(
+    selected_categories: list[str],
+    included_genes: list[str],
+) -> int:
+    """How many genes are both included and in a selected category (Choice size)."""
+    sel = set(selected_categories)
+    inc = set(included_genes)
+    return sum(1 for g in GENE_LIBRARY if g["category"] in sel and g["gene"] in inc)
+
+
+# Soft UX hint only: materialize stays allowed below this count.
+RECOMMENDED_MIN_INCLUDED_GENES_FOR_TOTEM: int = 3
 
 
 _REF_TOKEN_RE = re.compile(
@@ -276,9 +290,12 @@ class ComposeState(rx.State):
         if category in self.selected_categories:
             self.selected_categories = [c for c in self.selected_categories if c != category]
         else:
-            price = CATEGORY_PRICES.get(category, 0)
-            spent = sum(CATEGORY_PRICES.get(c, 0) for c in self.selected_categories)
-            if spent + price > DEFAULT_BUDGET:
+            remaining = DEFAULT_BUDGET - _sum_credits_for_included_genes(
+                self.selected_categories,
+                self.included_genes,
+            )
+            min_one = CATEGORY_MIN_GENE_PRICES[category]
+            if min_one > remaining:
                 return
             self.selected_categories = [*self.selected_categories, category]
         self._prune_included_genes()
@@ -293,6 +310,10 @@ class ComposeState(rx.State):
         if gene in self.included_genes:
             self.included_genes = [g for g in self.included_genes if g != gene]
         else:
+            spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
+            add_price = int(GENE_PRICES.get(gene, 0))
+            if spent + add_price > DEFAULT_BUDGET:
+                return
             self.included_genes = [*self.included_genes, gene]
         self._recompute_params()
 
@@ -307,6 +328,28 @@ class ComposeState(rx.State):
         active = {g["gene"] for g in GENE_LIBRARY if g["category"] in self.selected_categories}
         self.included_genes = [g for g in self.included_genes if g in active]
 
+    def _shrink_included_genes_to_budget(self) -> None:
+        """If Choice spend exceeds DEFAULT_BUDGET, drop highest-priced counted genes until it fits."""
+        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
+        if spent <= DEFAULT_BUDGET:
+            return
+        sel = set(self.selected_categories)
+        inc = set(self.included_genes)
+        priced: list[tuple[int, str]] = []
+        for g in GENE_LIBRARY:
+            if g["category"] not in sel or g["gene"] not in inc:
+                continue
+            priced.append((int(GENE_PRICES.get(str(g["gene"]), 0)), str(g["gene"])))
+        priced.sort(reverse=True, key=lambda t: t[0])
+        drop: set[str] = set()
+        total = spent
+        for price, name in priced:
+            if total <= DEFAULT_BUDGET:
+                break
+            drop.add(name)
+            total -= price
+        self.included_genes = [g for g in self.included_genes if g not in drop]
+
     def _active_gene_library(self) -> list[dict]:
         """Gene library filtered to selected categories and explicitly included genes."""
         return [
@@ -317,6 +360,7 @@ class ComposeState(rx.State):
 
     def _recompute_params(self) -> None:
         """Recompute sculpture params live as the user changes selections."""
+        self._shrink_included_genes_to_budget()
         if not self.selected_categories or not self.personal_tag.strip():
             self.sculpture_params = {}
             return
@@ -344,12 +388,6 @@ class ComposeState(rx.State):
                 return
             credits = _sum_credits_for_included_genes(cats, self.included_genes)
             if credits <= 0:
-                return
-            if credits < MIN_CREDITS_TO_MATERIALIZE:
-                self.generation_error = (
-                    f"Materialize needs at least {MIN_CREDITS_TO_MATERIALIZE} cr in Choice. "
-                    f"You have {credits} cr — include more genes."
-                )
                 return
             active = self._active_gene_library()
             if not active:
@@ -676,7 +714,7 @@ class ComposeState(rx.State):
             if cat in UNIQUE_CATEGORIES:
                 idx = UNIQUE_CATEGORIES.index(cat) + 1
                 bitmask |= 1 << (idx - 1)
-        return f"?tab=sculpture&report=1&name={quote(name_b64)}&cats={bitmask}"
+        return f"{PUBLIC_APP_URL}/?tab=sculpture&report=1&name={quote(name_b64)}&cats={bitmask}"
 
     def apply_shared_report(self):  # type: ignore[return]
         """Decode ?report=1&name=<b64>&cats=<bitmask> and regenerate the same sculpture.
@@ -732,7 +770,8 @@ class ComposeState(rx.State):
         remaining = DEFAULT_BUDGET - self.budget_spent
         return [
             cat for cat in UNIQUE_CATEGORIES
-            if cat in self.selected_categories or CATEGORY_PRICES.get(cat, 0) <= remaining
+            if cat in self.selected_categories
+            or CATEGORY_MIN_GENE_PRICES[cat] <= remaining
         ]
 
     @rx.var
@@ -772,27 +811,20 @@ class ComposeState(rx.State):
         return (
             len(self.selected_categories) > 0
             and len(self.personal_tag.strip()) > 0
-            and spent >= MIN_CREDITS_TO_MATERIALIZE
+            and spent > 0
         )
 
     @rx.var
-    def materialize_credits_shortfall_notice(self) -> str:
-        """Non-empty when Choice has categories but included genes sum below the materialize minimum."""
+    def materialize_totem_diversity_notice(self) -> str:
+        """Non-empty soft hint when Choice has few genes; materialize is not blocked."""
         if not self.selected_categories:
             return ""
-        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
-        minimum = MIN_CREDITS_TO_MATERIALIZE
-        if spent >= minimum:
+        n = _count_included_genes_in_choice(self.selected_categories, self.included_genes)
+        if n <= 0 or n >= RECOMMENDED_MIN_INCLUDED_GENES_FOR_TOTEM:
             return ""
-        need = minimum - spent
-        if spent <= 0:
-            return (
-                f"You have 0 cr in Choice. Materializing a model requires at least {minimum} cr. "
-                "Add genes until you reach the minimum."
-            )
         return (
-            f"You have {spent} cr in Choice; materializing requires at least {minimum} cr. "
-            f"Include at least {need} more cr worth of genes."
+            "For a more diverse, representative totem we recommend including at least three genes. "
+            "You can still materialize with one or two if you prefer."
         )
 
     @rx.var
