@@ -5,7 +5,7 @@ from typing import TypedDict
 
 import polars as pl
 
-from materialized_enhancements.puzzle import resolve_puzzle_svg
+from materialized_enhancements.puzzle import HUMAN_ORGANISM, resolve_puzzle_svg
 
 
 DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_library_extended.csv"
@@ -170,22 +170,50 @@ def build_category_traits(library: list[GeneEntry]) -> dict[str, list[str]]:
     return cat_traits
 
 
+_ORGANISM_NORMALIZE: dict[str, str] = {
+    "Deinococcus radiodurans / Conserved across species": "Deinococcus radiodurans (Conan the Bacterium)",
+    "Naked Mole Rat / Long-lived species (Heterocephalus glaber)": "Naked Mole Rat (Heterocephalus glaber)",
+    "Immortal Jellyfish (Turritopsis dohrnii)": "Jellyfish (Cnidaria)",
+    "Crystal Jellyfish (Aequorea victoria)": "Jellyfish (Cnidaria)",
+    "Human / Conserved across mammals (Homo sapiens)": HUMAN_ORGANISM,
+    "Tibetan Highlanders (Denisovan introgression into Homo sapiens)": HUMAN_ORGANISM,
+}
+
+_ORGANISM_SPLIT: dict[str, list[str]] = {
+    "Echolocating Bats & Dolphins (convergent evolution)": [
+        "Bats (Order Chiroptera)",
+        "Bottlenose Dolphin (Tursiops truncatus)",
+    ],
+}
+
+
+def _normalize_organism(raw: str) -> list[str]:
+    """Return the target organism name(s) for a raw organism string."""
+    if raw in _ORGANISM_SPLIT:
+        return _ORGANISM_SPLIT[raw]
+    return [_ORGANISM_NORMALIZE.get(raw, raw)]
+
+
 def build_animal_library(library: list[GeneEntry]) -> list[AnimalEntry]:
-    """Build a per-organism library from the gene data."""
+    """Build a per-organism library from the gene data, merging related organisms."""
     org_data: dict[str, AnimalEntry] = {}
     for entry in library:
-        org = entry["source_organism"]
-        if org not in org_data:
-            org_data[org] = AnimalEntry(
-                organism=org,
-                genes=[],
-                traits=[],
-                superpower=entry["narrative"],
-                puzzle_svg=entry["puzzle_svg"],
-            )
-        org_data[org]["genes"].append(entry["gene"])
-        if entry["trait"] not in org_data[org]["traits"]:
-            org_data[org]["traits"].append(entry["trait"])
+        targets = _normalize_organism(entry["source_organism"])
+        for org in targets:
+            if org not in org_data:
+                org_data[org] = AnimalEntry(
+                    organism=org,
+                    genes=[],
+                    traits=[],
+                    superpower=entry["narrative"],
+                    puzzle_svg=resolve_puzzle_svg(org),
+                )
+            if entry["gene"] not in org_data[org]["genes"]:
+                org_data[org]["genes"].append(entry["gene"])
+            if entry["trait"] not in org_data[org]["traits"]:
+                org_data[org]["traits"].append(entry["trait"])
+            if not org_data[org]["superpower"]:
+                org_data[org]["superpower"] = entry["enhancement"]
     return list(org_data.values())
 
 
@@ -220,6 +248,19 @@ ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
 ANIMAL_LIBRARY_LF: pl.LazyFrame = build_animal_library_lf(GENE_LIBRARY)
 
 
+def _build_organism_members(library: list[GeneEntry]) -> dict[str, set[str]]:
+    """Reverse map: merged organism name → set of raw source_organism strings."""
+    members: dict[str, set[str]] = {}
+    for entry in library:
+        raw = entry["source_organism"]
+        for target in _normalize_organism(raw):
+            members.setdefault(target, set()).add(raw)
+    return members
+
+
+ORGANISM_MEMBERS: dict[str, set[str]] = _build_organism_members(GENE_LIBRARY)
+
+
 # ---------------------------------------------------------------------------
 # Budget system — per-gene prices summed into category costs.
 # Prices are loaded from gene_properties_extended.csv (gene_price column); the budget
@@ -243,3 +284,23 @@ def _load_category_prices(path: Path = GENE_PRICES_PATH) -> dict[str, int]:
 
 
 CATEGORY_PRICES: dict[str, int] = _load_category_prices()
+
+
+def _load_gene_prices(path: Path = GENE_PRICES_PATH) -> dict[str, int]:
+    """Per-gene price lookup from gene_properties.csv."""
+    df = pl.read_csv(path)
+    return {row["gene"]: int(row.get("gene_price", 0)) for row in df.to_dicts()}
+
+
+GENE_PRICES: dict[str, int] = _load_gene_prices()
+
+
+def _build_animal_prices(animals: list[AnimalEntry]) -> dict[str, int]:
+    """Sum gene prices per merged animal."""
+    prices: dict[str, int] = {}
+    for a in animals:
+        prices[a["organism"]] = sum(GENE_PRICES.get(g, 0) for g in a["genes"])
+    return prices
+
+
+ANIMAL_PRICES: dict[str, int] = _build_animal_prices(ANIMAL_LIBRARY)

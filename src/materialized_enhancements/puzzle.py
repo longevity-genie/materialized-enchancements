@@ -28,6 +28,8 @@ _ORGANISM_PUZZLE_MAP: dict[str, str] = {
     "axolotl": "10_axolotl.svg",
     "bat": "11_bat.svg",
     "seal": "12_seal.svg",
+    "cuttlefish": "19_octopus.svg",
+    "octopus": "19_octopus.svg",
     "fish": "13_fish.svg",
     "dolphin": "14_dolphin.svg",
     "pit viper": "15_Pit Viper.svg",
@@ -35,8 +37,6 @@ _ORGANISM_PUZZLE_MAP: dict[str, str] = {
     "mantis shrimp": "16_Mantis Shrimp.svg",
     "robin": "17_European Robin.svg",
     "cat": "18_cat.svg",
-    "octopus": "19_octopus.svg",
-    "cuttlefish": "19_octopus.svg",
     "firefly": "20._fireflysvg.svg",
     "eel": "21_eel.svg",
     "sea slug": "22_sea slug.svg",
@@ -76,6 +76,8 @@ _ORGANISM_LAYER_MAP: dict[str, str] = {
     "axolotl": "10_axolotl",
     "bat": "11_bat",
     "seal": "12_seal",
+    "cuttlefish": "19_octopus",
+    "octopus": "19_octopus",
     "fish": "13_fish",
     "dolphin": "14_dolphin",
     "pit viper": "15_pit viper",
@@ -83,8 +85,6 @@ _ORGANISM_LAYER_MAP: dict[str, str] = {
     "mantis shrimp": "16_mantis shrimp",
     "robin": "17_european robin",
     "cat": "18_cat",
-    "octopus": "18_octopus",
-    "cuttlefish": "18_octopus",
     "firefly": "20_firefly",
     "eel": "21_eel",
     "sea slug": "22_sea slug",
@@ -127,8 +127,15 @@ _ALL_ANIMALS_SVG_RAW: str = (
 )
 
 
-def build_jigsaw_svg(selected_organisms: list[str]) -> str:
-    """Build a filtered SVG keeping only the base silhouette + selected organism layers."""
+HUMAN_ORGANISM = "Human (Homo sapiens)"
+
+
+def build_jigsaw_svg(selected_organisms: list[str], bold_base: bool = False) -> str:
+    """Build a filtered SVG keeping only the base silhouette + selected organism layers.
+
+    When bold_base is True the base silhouette outline is thickened to indicate
+    that a human-specific gene selection is active.
+    """
     if not _ALL_ANIMALS_SVG_RAW:
         return ""
 
@@ -140,6 +147,11 @@ def build_jigsaw_svg(selected_organisms: list[str]) -> str:
         label = child.get(_INKSCAPE_LABEL, "")
         if label and label not in keep_labels:
             to_remove.append(child)
+        if bold_base and label == "0_base":
+            import re
+            style = child.get("style", "")
+            style = re.sub(r"stroke-width:[^;]+", "stroke-width:3", style)
+            child.set("style", style)
 
     for child in to_remove:
         root.remove(child)

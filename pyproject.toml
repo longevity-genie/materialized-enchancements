@@ -12,6 +12,7 @@ dependencies = [
   "reflex-mui-datagrid>=0.2.3",
   "compass-web>=0.2.3",
   "dotenv>=0.9.9",
+  "pillow>=12.2.0",
 ]
 
 [project.scripts]
