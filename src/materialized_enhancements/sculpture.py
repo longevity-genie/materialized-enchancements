@@ -21,7 +21,7 @@ from compass_web.config import MAX_MODEL_SPAN
 
 logger = logging.getLogger(__name__)
 
-GENE_PROPERTIES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties.csv"
+GENE_PROPERTIES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties_extended.csv"
 DEFAULT_EXPORT_DIR = Path(__file__).resolve().parents[2] / "data" / "output" / "sculptures"
 
 NUM_CIRCLES = 8
@@ -54,7 +54,7 @@ _BASE_MIN_SCALE = DEFAULT_SCALE  # below 0.1 the mesh nearly collapses in one ax
 _BASE_MAX_SCALE = 1.5  # beyond 1.5× the silhouette distorts unpleasantly
 
 # ---------------------------------------------------------------------------
-# Source ranges — observed min/max from gene_properties.csv
+# Source ranges — observed min/max from gene_properties_extended.csv
 # ---------------------------------------------------------------------------
 _SRC_RANGES: Dict[str, Tuple[float, float]] = {
     "protein_mass_kda": (12.2, 208.0),
@@ -99,14 +99,43 @@ MIN_RADIUS = _BASE_MIN_RADIUS * DST_LOWER_SCALE  # consistent with _DST_RANGES f
 MAX_RADIUS = _BASE_MAX_RADIUS * DST_UPPER_SCALE
 
 
-def load_gene_properties(path: Path = GENE_PROPERTIES_PATH) -> Dict[str, Dict[str, Any]]:
-    """Load gene_properties.csv into a dict keyed by gene name."""
+def load_gene_property_indexes(
+    path: Path = GENE_PROPERTIES_PATH,
+) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    """Load properties keyed by short `gene` label and by stable `gene_id` (slug).
+
+    The extended gene library uses display names (e.g. \"MGMT (P140K)\"); the
+    properties file uses the short protein label (\"MGMT\"). Matching by
+    `gene_id` keeps prices and biophysics aligned.
+    """
     df = pl.read_csv(path)
     rows = df.to_dicts()
-    return {row["gene"]: row for row in rows}
+    by_gene: Dict[str, Dict[str, Any]] = {}
+    by_gene_id: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        gid = str(row.get("gene_id", "") or "").strip()
+        row_out = {k: v for k, v in row.items() if k != "gene_id"}
+        gname = str(row_out.get("gene", "") or "").strip()
+        if gname:
+            by_gene[gname] = row_out
+        if gid:
+            by_gene_id[gid] = row_out
+    return by_gene, by_gene_id
 
 
-GENE_PROPERTIES: Dict[str, Dict[str, Any]] = load_gene_properties()
+GENE_PROPERTIES: Dict[str, Dict[str, Any]]
+GENE_PROPERTIES_BY_GENE_ID: Dict[str, Dict[str, Any]]
+GENE_PROPERTIES, GENE_PROPERTIES_BY_GENE_ID = load_gene_property_indexes()
+
+
+def resolve_gene_properties_row(gene_display: str, gene_id: str) -> Dict[str, Any]:
+    """Resolve a properties row from display name and/or stable gene_id."""
+    if gene_display in GENE_PROPERTIES:
+        return GENE_PROPERTIES[gene_display]
+    gid = gene_id.strip()
+    if gid and gid in GENE_PROPERTIES_BY_GENE_ID:
+        return GENE_PROPERTIES_BY_GENE_ID[gid]
+    return {}
 
 
 def _remap(value: float, src_min: float, src_max: float, dst_min: float, dst_max: float) -> float:
@@ -175,8 +204,10 @@ def compute_sculpture_params(
     props_pool: List[Dict[str, Any]] = []
     for g in pool:
         gene_name = g["gene"]
-        if gene_name in gene_properties:
-            props_pool.append(gene_properties[gene_name])
+        gid = str(g.get("gene_id", "") or "")
+        row = resolve_gene_properties_row(gene_name, gid)
+        if row:
+            props_pool.append(row)
 
     if not props_pool:
         props_pool = list(gene_properties.values())

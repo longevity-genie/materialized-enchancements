@@ -8,16 +8,26 @@ import polars as pl
 from materialized_enhancements.puzzle import HUMAN_ORGANISM, resolve_puzzle_svg
 
 
-DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_library.csv"
+DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_library_extended.csv"
 
 
 class GeneEntry(TypedDict):
+    gene_id: str
     gene: str
     source_organism: str
-    description: str
-    ported_to: str
     category: str
+    category_detail: str
     trait: str
+    narrative: str
+    mechanism: str
+    achievements: str
+    evidence_tier: str
+    confidence: str
+    best_host_tested: str
+    translational_gaps: str
+    key_references: str
+    notes: str
+    description: str
     enhancement: str
     paper_url: str
     puzzle_svg: str
@@ -31,15 +41,19 @@ class AnimalEntry(TypedDict):
     puzzle_svg: str
 
 
-_COLUMN_MAP: dict[str, str] = {
+_LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Gene": "gene",
     "Source Organism": "source_organism",
-    "Description": "description",
-    "Ported To": "ported_to",
-    "Category": "category",
-    "Enhancement Category": "trait",
-    "Potential Human Enhancement": "enhancement",
-    "Paper URL": "paper_url",
+    "Category": "category_detail",
+    "Narrative": "narrative",
+    "Mechanism": "mechanism",
+    "Achievements (effect sizes)": "achievements",
+    "Highest Evidence Tier": "evidence_tier",
+    "Confidence": "confidence",
+    "Best Host Tested": "best_host_tested",
+    "Translational Gaps": "translational_gaps",
+    "Key References (DOIs)": "key_references",
+    "Notes (limitations, contradictions, caveats)": "notes",
 }
 
 
@@ -47,12 +61,20 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
     """Load and return the gene library from the CSV source of truth."""
     df = (
         pl.read_csv(path)
-        .rename(_COLUMN_MAP)
+        .rename(_LIBRARY_COLUMN_MAP)
         .with_columns(
+            pl.col("gene_id").str.strip_chars(),
             pl.col("gene").str.strip_chars(),
             pl.col("source_organism").str.strip_chars(),
-            pl.col("category").str.strip_chars(),
-            pl.col("trait").str.strip_chars(),
+            pl.col("category_detail").str.strip_chars(),
+            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
+            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("trait"),
+            pl.col("narrative").alias("description"),
+            pl.col("mechanism").alias("enhancement"),
+            pl.col("key_references")
+            .str.extract(r"(https?://[^\s|]+)", 1)
+            .fill_null("")
+            .alias("paper_url"),
         )
     )
     rows: list[GeneEntry] = df.to_dicts()  # type: ignore[assignment]
@@ -65,14 +87,38 @@ def load_gene_library_lf(path: Path = DATA_PATH) -> pl.LazyFrame:
     """Load gene library as a polars LazyFrame for DataGrid display."""
     return (
         pl.read_csv(path)
-        .rename(_COLUMN_MAP)
+        .rename(_LIBRARY_COLUMN_MAP)
         .with_columns(
+            pl.col("gene_id").str.strip_chars(),
             pl.col("gene").str.strip_chars(),
             pl.col("source_organism").str.strip_chars(),
-            pl.col("category").str.strip_chars(),
-            pl.col("trait").str.strip_chars(),
+            pl.col("category_detail").str.strip_chars(),
+            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
+            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("trait"),
+            pl.col("narrative").alias("description"),
+            pl.col("mechanism").alias("enhancement"),
+            pl.col("key_references")
+            .str.extract(r"(https?://[^\s|]+)", 1)
+            .fill_null("")
+            .alias("paper_url"),
         )
-        .select("gene", "source_organism", "category", "trait", "enhancement", "description", "paper_url")
+        .select(
+            "gene_id",
+            "gene",
+            "source_organism",
+            "category",
+            "category_detail",
+            "trait",
+            "narrative",
+            "mechanism",
+            "achievements",
+            "evidence_tier",
+            "confidence",
+            "best_host_tested",
+            "translational_gaps",
+            "key_references",
+            "notes",
+        )
         .lazy()
     )
 
@@ -159,7 +205,7 @@ def build_animal_library(library: list[GeneEntry]) -> list[AnimalEntry]:
                     organism=org,
                     genes=[],
                     traits=[],
-                    superpower=entry["enhancement"],
+                    superpower=entry["narrative"],
                     puzzle_svg=resolve_puzzle_svg(org),
                 )
             if entry["gene"] not in org_data[org]["genes"]:
@@ -182,7 +228,7 @@ def build_animal_library_lf(library: list[GeneEntry]) -> pl.LazyFrame:
                 "category": entry["category"],
                 "genes": entry["gene"],
                 "traits": entry["trait"],
-                "enhancement": entry["enhancement"],
+                "enhancement": entry["narrative"],
             }
         else:
             seen[org]["genes"] += f", {entry['gene']}"
@@ -217,16 +263,16 @@ ORGANISM_MEMBERS: dict[str, set[str]] = _build_organism_members(GENE_LIBRARY)
 
 # ---------------------------------------------------------------------------
 # Budget system — per-gene prices summed into category costs.
-# Prices are loaded from gene_properties.csv (gene_price column); the budget
+# Prices are loaded from gene_properties_extended.csv (gene_price column); the budget
 # constrains category selection so users pick 2–4 categories, not all nine.
 # ---------------------------------------------------------------------------
-GENE_PRICES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties.csv"
+GENE_PRICES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties_extended.csv"
 
 DEFAULT_BUDGET: int = 100
 
 
 def _load_category_prices(path: Path = GENE_PRICES_PATH) -> dict[str, int]:
-    """Sum per-gene prices into category totals from gene_properties.csv."""
+    """Sum per-gene prices into category totals from gene_properties_extended.csv."""
     df = pl.read_csv(path)
     totals: dict[str, int] = {}
     for row in df.to_dicts():
