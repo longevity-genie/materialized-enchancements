@@ -7,12 +7,14 @@ from materialized_enhancements.components.layout import fomantic_icon, template,
 from materialized_enhancements.env import DEV_MODE
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
+    ANIMAL_PRICES,
     CATEGORY_COUNTS,
     CATEGORY_PRICES,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     UNIQUE_CATEGORIES,
 )
+from materialized_enhancements.puzzle import HUMAN_ORGANISM
 from materialized_enhancements.state import (
     CATEGORY_COLORS,
     CATEGORY_ICONS,
@@ -2162,18 +2164,41 @@ def _sculpture_tab() -> rx.Component:
 
 # ── Tab 2: Gene Jigsaw ────────────────────────────────────────────────────────
 
+_JIGSAW_ACCENT = "#16a085"
+
 
 def _organism_button(animal: dict) -> rx.Component:
     organism = str(animal["organism"])
     gene_count = len(animal["genes"])
+    price = ANIMAL_PRICES.get(organism, 0)
     is_selected = JigsawState.selected_organisms.contains(organism)
+    is_affordable = JigsawState.affordable_organisms.contains(organism)
+    is_enabled = is_selected | is_affordable
+    is_human = organism == HUMAN_ORGANISM
+    icon_name = "user" if is_human else "paw"
 
     return rx.el.div(
         rx.el.div(
-            fomantic_icon("paw", size=14, color=rx.cond(is_selected, "#ffffff", "#16a085")),
+            fomantic_icon(
+                icon_name,
+                size=14,
+                color=rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, _JIGSAW_ACCENT, "#d1d5db")),
+            ),
             rx.el.span(
                 organism,
                 style={"fontSize": "0.85rem", "flex": "1", "marginLeft": "8px", "lineHeight": "1.3"},
+            ),
+            rx.el.span(
+                f"{price} cr",
+                style={
+                    "fontSize": "0.72rem",
+                    "fontWeight": "700",
+                    "padding": "2px 6px",
+                    "borderRadius": "10px",
+                    "backgroundColor": rx.cond(is_selected, "rgba(255,255,255,0.25)", "#f3f4f6"),
+                    "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, _JIGSAW_ACCENT, "#d1d5db")),
+                    "marginRight": "4px",
+                },
             ),
             rx.el.span(
                 str(gene_count),
@@ -2193,14 +2218,57 @@ def _organism_button(animal: dict) -> rx.Component:
         style={
             "marginBottom": "4px",
             "textAlign": "left",
-            "cursor": "pointer",
+            "cursor": rx.cond(is_enabled, "pointer", "not-allowed"),
             "padding": "8px 12px",
             "borderRadius": "6px",
             "border": "1px solid",
-            "borderColor": rx.cond(is_selected, "#16a085", "#e5e7eb"),
-            "backgroundColor": rx.cond(is_selected, "#16a085", "#ffffff"),
-            "color": rx.cond(is_selected, "#ffffff", "#1a1a2e"),
+            "borderColor": rx.cond(is_selected, _JIGSAW_ACCENT, rx.cond(is_enabled, "#e5e7eb", "#f3f4f6")),
+            "backgroundColor": rx.cond(is_selected, _JIGSAW_ACCENT, "#ffffff"),
+            "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
+            "opacity": rx.cond(is_enabled, "1", "0.5"),
             "transition": "all 0.15s ease",
+        },
+    )
+
+
+def _jigsaw_budget_bar() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span("Budget", style={"fontSize": "0.78rem", "fontWeight": "600", "color": "#6b7280"}),
+            rx.el.span(
+                rx.el.span(JigsawState.budget_spent, style={"fontWeight": "700", "color": _JIGSAW_ACCENT}),
+                f" / {DEFAULT_BUDGET} cr",
+                style={"fontSize": "0.82rem", "color": "#6b7280"},
+            ),
+            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "4px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                style={
+                    "height": "100%",
+                    "borderRadius": "4px",
+                    "backgroundColor": rx.cond(JigsawState.budget_remaining > 20, _JIGSAW_ACCENT, "#e74c3c"),
+                    "width": rx.cond(
+                        JigsawState.budget_spent > 0,
+                        f"calc({JigsawState.budget_spent} * 100% / {DEFAULT_BUDGET})",
+                        "0%",
+                    ),
+                    "transition": "width 0.3s ease, background-color 0.3s ease",
+                },
+            ),
+            style={"height": "6px", "borderRadius": "4px", "backgroundColor": "#f3f4f6", "overflow": "hidden"},
+        ),
+        rx.el.div(
+            rx.el.span(JigsawState.budget_remaining, style={"fontWeight": "700"}),
+            " cr remaining",
+            style={"fontSize": "0.72rem", "color": "#9ca3af", "textAlign": "right", "marginTop": "2px"},
+        ),
+        style={
+            "padding": "8px 12px",
+            "borderRadius": "6px",
+            "backgroundColor": "#f0fdfa",
+            "border": "1px solid #99f6e4",
+            "marginBottom": "12px",
         },
     )
 
@@ -2208,10 +2276,11 @@ def _organism_button(animal: dict) -> rx.Component:
 def _jigsaw_left_pane() -> rx.Component:
     return rx.el.div(
         rx.el.h3(
-            fomantic_icon("paw", size=18, color="#16a085"),
+            fomantic_icon("paw", size=18, color=_JIGSAW_ACCENT),
             rx.el.span(" Choose Organisms", style={"marginLeft": "8px"}),
             style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
         ),
+        _jigsaw_budget_bar(),
         rx.el.div(
             *[_organism_button(a) for a in ANIMAL_LIBRARY],  # type: ignore[arg-type]
         ),
@@ -2220,6 +2289,11 @@ def _jigsaw_left_pane() -> rx.Component:
             rx.el.p(
                 f"{len(ANIMAL_LIBRARY)} organisms · {len(GENE_LIBRARY)} genes",
                 style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center"},
+            ),
+            rx.el.p(
+                "Select organisms to compose your genetic jigsaw. "
+                "Each organism contributes its unique genes and traits.",
+                style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "8px", "lineHeight": "1.45"},
             ),
             style={"marginTop": "12px"},
         ),
@@ -2251,268 +2325,518 @@ def _jigsaw_organism_tag(org_item: rx.Var) -> rx.Component:
 
 def _jigsaw_trait_item(trait: rx.Var) -> rx.Component:
     return rx.el.div(
-        fomantic_icon("check", size=10, color="#16a085"),
+        fomantic_icon("check", size=10, color=_JIGSAW_ACCENT),
         rx.el.span(trait, style={"marginLeft": "6px", "fontSize": "0.88rem", "color": "#374151"}),
         style={"display": "flex", "alignItems": "center", "padding": "4px 0"},
     )
 
 
-def _jigsaw_gene_chip(gene_item: rx.Var) -> rx.Component:
-    return rx.el.span(
-        gene_item["gene"],
+def _jigsaw_gene_row(gene_item: rx.Var) -> rx.Component:
+    return rx.el.div(
+        fomantic_icon("check", size=10, color=_JIGSAW_ACCENT),
+        rx.el.span(
+            gene_item["trait"],
+            style={"fontSize": "0.84rem", "fontWeight": "500", "color": "#1a1a2e", "width": "45%", "flexShrink": "0"},
+        ),
+        rx.el.span(
+            gene_item["gene"],
+            style={"fontSize": "0.78rem", "fontWeight": "600", "fontFamily": "monospace", "color": _JIGSAW_ACCENT, "marginLeft": "4px"},
+        ),
+        rx.el.span(
+            gene_item["organism"],
+            style={"fontSize": "0.72rem", "color": "#9ca3af", "flex": "1", "textAlign": "right", "marginLeft": "8px"},
+        ),
+        rx.el.span(
+            gene_item["price"], " cr",
+            style={"fontSize": "0.72rem", "fontWeight": "600", "color": "#6b7280", "marginLeft": "8px", "flexShrink": "0"},
+        ),
+        style={"display": "flex", "alignItems": "center", "padding": "4px 0", "gap": "4px"},
+    )
+
+
+def _jigsaw_choice_section() -> rx.Component:
+    body = rx.cond(
+        JigsawState.choice_expanded,
+        rx.el.div(
+            rx.el.input(
+                placeholder="Name or personal tag...",
+                value=JigsawState.personal_tag,
+                on_change=JigsawState.set_personal_tag,
+                style={
+                    "width": "100%",
+                    "padding": "10px 14px",
+                    "borderRadius": "6px",
+                    "border": "1px solid #d1d5db",
+                    "fontSize": "0.95rem",
+                    "marginBottom": "12px",
+                    "outline": "none",
+                    "backgroundColor": "#ffffff",
+                    "color": "#1a1a2e",
+                },
+            ),
+            rx.cond(
+                JigsawState.has_selection,
+                rx.el.div(
+                    rx.el.label(
+                        "Selected organisms:",
+                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+                    ),
+                    rx.el.div(
+                        rx.foreach(JigsawState.selected_organisms, _jigsaw_organism_tag),
+                        style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "12px"},
+                    ),
+                    rx.el.div(class_name="ui divider"),
+                    # Gene table + SVG preview side by side
+                    rx.el.div(
+                        rx.el.div(
+                            rx.foreach(JigsawState.selected_genes, _jigsaw_gene_row),
+                            style={"flex": "1", "minWidth": "0", "display": "flex", "flexDirection": "column", "gap": "3px"},
+                        ),
+                        rx.cond(
+                            JigsawState.jigsaw_svg != "",
+                            rx.el.div(
+                                rx.html(JigsawState.jigsaw_svg),
+                                style={
+                                    "width": "180px",
+                                    "flexShrink": "0",
+                                    "border": "1px solid #e5e7eb",
+                                    "borderRadius": "8px",
+                                    "padding": "8px",
+                                    "backgroundColor": "#f9fafb",
+                                    "marginLeft": "12px",
+                                },
+                            ),
+                            rx.fragment(),
+                        ),
+                        style={"display": "flex", "alignItems": "flex-start", "marginBottom": "12px"},
+                    ),
+                ),
+                rx.el.p(
+                    "Select organisms from the left panel to assemble your jigsaw.",
+                    style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+                ),
+            ),
+            rx.el.button(
+                rx.cond(
+                    JigsawState.generating,
+                    fomantic_icon("sync", size=16, style={"animation": "me-spin 1s linear infinite"}),
+                    fomantic_icon("puzzle piece", size=16),
+                ),
+                rx.el.span(
+                    rx.cond(JigsawState.generating, " Generating\u2026", " Materialize"),
+                    style={"marginLeft": "8px"},
+                ),
+                on_click=JigsawState.open_jigsaw_generator,
+                class_name=rx.cond(
+                    JigsawState.generating,
+                    "ui disabled teal button",
+                    rx.cond(JigsawState.has_selection, "ui teal button", "ui disabled teal button"),
+                ),
+                style={"width": "100%", "padding": "12px", "fontSize": "1rem"},
+            ),
+            rx.el.style("@keyframes me-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }"),
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=JigsawState.choice_expanded,
+            icon_name="puzzle piece",
+            title="Choice",
+            on_toggle=JigsawState.toggle_choice_expanded,
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
+def _jigsaw_prod_view() -> rx.Component:
+    """Prod view: b/w SVG preview + jigsaw inputs + download button."""
+    return rx.cond(
+        JigsawState.has_generated_svg,
+        rx.el.div(
+            rx.el.div(
+                # Left: print preview — width follows SVG; avoid a wide empty flex lane beside a tall narrow figure
+                rx.el.div(
+                    rx.el.div(
+                        rx.html(JigsawState.generated_jigsaw_svg),
+                        style={
+                            "width": "max-content",
+                            "maxWidth": "100%",
+                            "border": "1px solid #e5e7eb",
+                            "borderRadius": "8px",
+                            "padding": "8px",
+                            "backgroundColor": "#ffffff",
+                            "overflow": "auto",
+                            # ~220 mm tall at 96dpi is ~830px; 600px clipped legs. Cap by viewport, not an arbitrary px.
+                            "maxHeight": "min(92vh, 920px)",
+                        },
+                    ),
+                    style={
+                        "flex": "0 0 auto",
+                        "minWidth": "0",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "alignItems": "center",
+                    },
+                ),
+                # Right: scale note + inputs — takes all remaining horizontal space
+                rx.el.div(
+                    rx.el.p(
+                        fomantic_icon("expand", size=10, color="#9ca3af"),
+                        " 1 : 1 print preview (CSS mm)",
+                        style={
+                            "fontSize": "0.72rem",
+                            "color": "#9ca3af",
+                            "margin": "0 0 8px 0",
+                            "textAlign": "left",
+                        },
+                    ),
+                    rx.el.label(
+                        "Jigsaw inputs",
+                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
+                    ),
+                    rx.el.div(
+                        rx.el.div(
+                            fomantic_icon("dna", size=14, color=_JIGSAW_ACCENT),
+                            rx.el.span(" Name: ", style={"fontWeight": "600", "color": "#6b7280"}),
+                            rx.el.span(
+                                JigsawState.personal_tag,
+                                style={"fontWeight": "700", "color": "#1a1a2e"},
+                            ),
+                            style={"display": "flex", "alignItems": "center", "gap": "4px", "padding": "4px 0"},
+                        ),
+                        rx.el.div(
+                            rx.el.span("CRC32 ", style={"color": "#9ca3af"}),
+                            rx.el.span(JigsawState.jigsaw_name_crc, style={"fontWeight": "600"}),
+                            rx.el.span(" XOR mask ", style={"color": "#9ca3af"}),
+                            rx.el.span(JigsawState.jigsaw_bitmask, style={"fontWeight": "600"}),
+                            rx.el.span(" = seed ", style={"color": _JIGSAW_ACCENT}),
+                            rx.el.span(JigsawState.jigsaw_seed, style={"fontWeight": "700", "color": _JIGSAW_ACCENT}),
+                            style={"fontSize": "0.88rem", "color": "#1a1a2e", "padding": "4px 0", "borderBottom": "1px solid #f3f4f6"},
+                        ),
+                        _param_row("Seed", JigsawState.jigsaw_seed),
+                        rx.cond(
+                            JigsawState.jigsaw_pieces > 0,
+                            rx.el.div(
+                                _param_row("Pieces", JigsawState.jigsaw_pieces),
+                                _param_row("Size", JigsawState.jigsaw_dimensions, "mm"),
+                                style={"padding": "4px 0", "borderBottom": "1px solid #f3f4f6"},
+                            ),
+                            rx.fragment(),
+                        ),
+                        rx.el.div(
+                            rx.el.span("Organisms", style={"fontSize": "0.82rem", "color": "#6b7280", "flex": "0 0 100px"}),
+                            rx.el.span(
+                                rx.foreach(
+                                    JigsawState.selected_organisms,
+                                    lambda o: rx.el.span(o, class_name="ui mini teal label", style={"margin": "1px"}),
+                                ),
+                                style={"display": "flex", "flexWrap": "wrap", "gap": "2px"},
+                            ),
+                            style={"display": "flex", "alignItems": "flex-start", "gap": "8px", "padding": "4px 0"},
+                        ),
+                        style={
+                            "padding": "10px 14px",
+                            "borderRadius": "6px",
+                            "backgroundColor": "#f0fdfa",
+                            "border": "1px solid #99f6e4",
+                        },
+                    ),
+                    style={
+                        "flex": "1 1 280px",
+                        "minWidth": "min(100%, 280px)",
+                        "maxWidth": "100%",
+                    },
+                ),
+                style={
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "flexWrap": "wrap",
+                    "gap": "16px",
+                    "alignItems": "flex-start",
+                    "width": "100%",
+                    "marginBottom": "12px",
+                },
+            ),
+            rx.el.div(
+                rx.el.button(
+                    fomantic_icon("download", size=14),
+                    rx.el.span(" Download SVG + Params", style={"marginLeft": "6px"}),
+                    on_click=JigsawState.download_jigsaw_artifacts,
+                    class_name="ui teal button",
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                ),
+                rx.el.button(
+                    fomantic_icon("cube", size=14),
+                    rx.el.span(" Download 3D STL", style={"marginLeft": "6px"}),
+                    on_click=JigsawState.download_stl,
+                    class_name="ui teal basic button",
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                ),
+                style={"display": "flex", "gap": "8px", "width": "100%"},
+            ),
+        ),
+        rx.cond(
+            JigsawState.generating,
+            rx.el.p(
+                "Generating jigsaw\u2026",
+                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+            ),
+            rx.el.p(
+                "Click Materialize in the Choice section to start.",
+                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+            ),
+        ),
+    )
+
+
+def _jigsaw_dev_view() -> rx.Component:
+    """Dev view: full iframe + result-ready download buttons."""
+    return rx.el.div(
+        rx.el.iframe(
+            src="/jigsaw/index.html",
+            id="jigsaw-generator-iframe",
+            style={
+                "width": "100%",
+                "height": "700px",
+                "border": "1px solid #e5e7eb",
+                "borderRadius": "8px",
+                "backgroundColor": "#ffffff",
+            },
+        ),
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("check circle", size=16, color=_JIGSAW_ACCENT),
+                rx.el.span(
+                    " Jigsaw generated",
+                    style={"marginLeft": "6px", "fontWeight": "600", "color": _JIGSAW_ACCENT},
+                ),
+                style={"display": "flex", "alignItems": "center", "marginBottom": "10px"},
+            ),
+            rx.el.div(
+                rx.el.button(
+                    fomantic_icon("download", size=14),
+                    rx.el.span(" Download Pieces SVG", style={"marginLeft": "6px"}),
+                    on_click=rx.call_script(
+                        "window.__jigsawResult || ''",
+                        callback=JigsawState.receive_generated_svg,
+                    ),
+                    class_name="ui teal button",
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                ),
+                rx.el.button(
+                    fomantic_icon("cube", size=14),
+                    rx.el.span(" Download 3D STL", style={"marginLeft": "6px"}),
+                    on_click=JigsawState.download_stl,
+                    class_name="ui teal basic button",
+                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                ),
+                style={"display": "flex", "gap": "8px"},
+            ),
+            id="jigsaw-result-ready",
+            style={
+                "display": "none",
+                "flexDirection": "column",
+                "padding": "12px",
+                "marginTop": "12px",
+                "borderRadius": "6px",
+                "border": "1px solid #99f6e4",
+                "backgroundColor": "#f0fdfa",
+            },
+        ),
+    )
+
+
+def _jigsaw_generator_section() -> rx.Component:
+    _progress_js = (
+        "window.__jigsawResult = null;"
+        "window.__jigsawMeta = {};"
+        "window.addEventListener('message', function(e) {"
+        "  if (!e.data) return;"
+        "  if (e.data.type === 'jigsaw_progress') {"
+        "    var pt = document.getElementById('jigsaw-progress-text');"
+        "    if (pt) pt.textContent = ' ' + (e.data.detail || 'Generating\\u2026');"
+        "  }"
+        "  if (e.data.type === 'jigsaw_result' && e.data.svg) {"
+        "    window.__jigsawResult = e.data.svg;"
+        "    window.__jigsawMeta = {"
+        "      pieces: e.data.pieces || 0,"
+        "      dimensions: e.data.dimensions || '',"
+        "      gridRLE: e.data.gridRLE || null,"
+        "      gridRows: e.data.gridRows || 0,"
+        "      gridCols: e.data.gridCols || 0,"
+        "      cellScale: e.data.cellScale || 0"
+        "    };"
+        "    var rr = document.getElementById('jigsaw-result-ready');"
+        "    if (rr) rr.style.display = 'flex';"
+        "    var trigger = document.getElementById('jigsaw-complete-trigger');"
+        "    if (trigger) trigger.click();"
+        "  }"
+        "});"
+    )
+
+    _IFRAME_VISIBLE: dict = {
+        "width": "100%",
+        "height": "700px",
+        "border": "1px solid #e5e7eb",
+        "borderRadius": "8px",
+        "backgroundColor": "#ffffff",
+    }
+    _IFRAME_HIDDEN: dict = {
+        "width": "100%",
+        "height": "700px",
+        "border": "none",
+        "position": "absolute",
+        "left": "-9999px",
+        "top": "0",
+    }
+
+    if DEV_MODE:
+        dev_toggle = rx.el.div(
+            rx.el.button(
+                fomantic_icon("code", size=12),
+                rx.el.span(
+                    rx.cond(JigsawState.dev_view, " Dev view", " Prod view"),
+                    style={"marginLeft": "4px"},
+                ),
+                on_click=JigsawState.toggle_dev_view,
+                class_name="ui mini basic button",
+                style={"marginBottom": "8px"},
+            ),
+        )
+        generator_content = rx.cond(
+            JigsawState.show_generator,
+            rx.el.div(
+                rx.cond(JigsawState.dev_view, _jigsaw_dev_view(), rx.fragment()),
+                rx.cond(
+                    JigsawState.dev_view,
+                    rx.fragment(),
+                    rx.el.div(
+                        rx.el.iframe(
+                            src="/jigsaw/index.html",
+                            id="jigsaw-generator-iframe",
+                            style=_IFRAME_HIDDEN,
+                        ),
+                        _jigsaw_prod_view(),
+                    ),
+                ),
+            ),
+            rx.el.p(
+                "Click Materialize in the Choice section to start.",
+                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+            ),
+        )
+    else:
+        dev_toggle = rx.fragment()
+        generator_content = rx.cond(
+            JigsawState.show_generator,
+            rx.el.div(
+                rx.el.iframe(
+                    src="/jigsaw/index.html",
+                    id="jigsaw-generator-iframe",
+                    style=_IFRAME_HIDDEN,
+                ),
+                _jigsaw_prod_view(),
+            ),
+            rx.el.p(
+                "Click Materialize in the Choice section to start.",
+                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
+            ),
+        )
+
+    body = rx.cond(
+        JigsawState.generator_expanded,
+        rx.el.div(
+            rx.script(_progress_js),
+            rx.el.button(
+                id="jigsaw-complete-trigger",
+                on_click=JigsawState.on_jigsaw_complete,
+                style={"display": "none"},
+            ),
+            dev_toggle,
+            generator_content,
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=JigsawState.generator_expanded,
+            icon_name="cogs",
+            title="Jigsaw Generator",
+            on_toggle=JigsawState.toggle_generator_expanded,
+            right_badge=rx.cond(
+                JigsawState.generating,
+                rx.el.div(
+                    fomantic_icon("sync", size=12, style={"animation": "me-spin 1s linear infinite"}),
+                    rx.el.span(" Generating\u2026", id="jigsaw-progress-text", style={"marginLeft": "4px", "fontSize": "0.75rem", "color": _JIGSAW_ACCENT}),
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+                rx.cond(
+                    JigsawState.has_generated_svg,
+                    rx.el.span("Ready", class_name="ui mini green label"),
+                    rx.fragment(),
+                ),
+            ),
+        ),
+        body,
+        style=_COLLAPSIBLE_STYLE,
+    )
+
+
+def _jigsaw_pipeline_banner() -> rx.Component:
+    return rx.el.div(
+        rx.el.span(
+            fomantic_icon("arrow right", size=12, color="#0d9488"),
+            " Select organisms ",
+            fomantic_icon("arrow right", size=12, color="#0d9488"),
+            " Generate Pieces ",
+            rx.el.small("(Voronoi) "),
+            fomantic_icon("arrow right", size=12, color="#0d9488"),
+            " Extrude to 3D ",
+            rx.el.a(
+                "(svg_extrude)",
+                href="https://github.com/deffi/svg_extrude",
+                target="_blank",
+                style={"color": "#0d9488", "textDecoration": "underline"},
+            ),
+            " ",
+            fomantic_icon("arrow right", size=12, color="#0d9488"),
+            " 3D-print your jigsaw",
+        ),
         style={
-            "display": "inline-block",
-            "padding": "2px 8px",
-            "borderRadius": "4px",
-            "backgroundColor": "#f9fafb",
-            "color": "#374151",
-            "fontSize": "0.8rem",
-            "margin": "2px",
-            "border": "1px solid #e5e7eb",
+            "padding": "10px 14px",
+            "borderRadius": "6px",
+            "backgroundColor": "#f0fdfa",
+            "border": "1px solid #99f6e4",
+            "color": "#134e4a",
+            "fontSize": "0.88rem",
+            "fontWeight": "500",
+            "marginBottom": "10px",
+            "lineHeight": "1.6",
         },
     )
 
 
 def _jigsaw_right_pane() -> rx.Component:
     return rx.el.div(
-        rx.el.h3(
-            fomantic_icon("user", size=18, color="#16a085"),
-            rx.el.span(" Your Identity", style={"marginLeft": "8px"}),
-            style={"color": "#1a1a2e", "marginBottom": "10px", "display": "flex", "alignItems": "center"},
+        rx.el.textarea(
+            value=JigsawState.jigsaw_svg,
+            id="jigsaw-svg-data",
+            style={"display": "none"},
         ),
-        rx.el.input(
-            placeholder="Name or personal tag...",
-            value=JigsawState.personal_tag,
-            on_change=JigsawState.set_personal_tag,
-            style={
-                "width": "100%",
-                "padding": "10px 14px",
-                "borderRadius": "6px",
-                "border": "1px solid #d1d5db",
-                "fontSize": "0.95rem",
-                "marginBottom": "16px",
-                "outline": "none",
-                "backgroundColor": "#ffffff",
-                "color": "#1a1a2e",
-            },
-        ),
-        rx.el.div(class_name="ui divider", style={"marginBottom": "16px"}),
-        # Live SVG preview
-        rx.cond(
-            JigsawState.jigsaw_svg != "",
-            rx.el.div(
-                rx.html(JigsawState.jigsaw_svg),
-                style={
-                    "width": "100%",
-                    "maxWidth": "240px",
-                    "margin": "0 auto 16px auto",
-                    "border": "1px solid #e5e7eb",
-                    "borderRadius": "8px",
-                    "padding": "12px",
-                    "backgroundColor": "#f9fafb",
-                },
-            ),
-            rx.fragment(),
-        ),
-        rx.el.h3(
-            fomantic_icon("puzzle piece", size=18, color="#16a085"),
-            rx.el.span(" Your Jigsaw", style={"marginLeft": "8px"}),
-            style={"color": "#1a1a2e", "marginBottom": "16px", "display": "flex", "alignItems": "center"},
-        ),
-        rx.cond(
-            JigsawState.has_selection,
-            rx.el.div(
-                rx.el.label(
-                    "Selected organisms:",
-                    style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                ),
-                rx.el.div(
-                    rx.foreach(JigsawState.selected_organisms, _jigsaw_organism_tag),
-                    style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "16px"},
-                ),
-                rx.el.div(class_name="ui divider"),
-                rx.el.label(
-                    "Traits you obtain:",
-                    style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                ),
-                rx.el.div(
-                    rx.foreach(JigsawState.selected_traits, _jigsaw_trait_item),
-                    style={"marginBottom": "16px"},
-                ),
-                rx.el.div(class_name="ui divider"),
-                rx.el.label(
-                    "Genes in your jigsaw:",
-                    style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                ),
-                rx.el.div(
-                    rx.foreach(JigsawState.selected_genes, _jigsaw_gene_chip),
-                    style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "20px"},
-                ),
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "Select organisms from the left panel to assemble your jigsaw.",
-                    style={"color": "#9ca3af", "fontSize": "0.95rem", "textAlign": "center", "padding": "40px 20px"},
-                ),
-            ),
-        ),
-        rx.el.div(
-            # Hidden textarea holding SVG data for JS access
-            rx.el.textarea(
-                value=JigsawState.jigsaw_svg,
-                id="jigsaw-svg-data",
-                style={"display": "none"},
-            ),
-            # Pipeline action buttons
-            rx.el.div(
-                rx.el.button(
-                    fomantic_icon("download", size=14),
-                    rx.el.span(" Download SVG", style={"marginLeft": "6px"}),
-                    on_click=JigsawState.download_svg,
-                    class_name=rx.cond(JigsawState.has_selection, "ui button", "ui disabled button"),
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
-                ),
-                rx.el.button(
-                    fomantic_icon("puzzle piece", size=14),
-                    rx.el.span(" Generate Pieces", style={"marginLeft": "6px"}),
-                    on_click=JigsawState.open_jigsaw_generator,
-                    class_name=rx.cond(JigsawState.has_selection, "ui teal button", "ui disabled teal button"),
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
-                ),
-                style={"display": "flex", "gap": "8px", "marginBottom": "8px"},
-            ),
-            rx.el.a(
-                fomantic_icon("cube", size=14),
-                rx.el.span(" SVG → 3D Print (svg_extrude)", style={"marginLeft": "6px"}),
-                href="https://github.com/deffi/svg_extrude",
-                target="_blank",
-                class_name="ui basic button",
-                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem", "textDecoration": "none", "display": "block", "textAlign": "center"},
-            ),
-            # Pipeline description
-            rx.el.div(class_name="ui divider", style={"margin": "12px 0"}),
-            rx.el.p(
-                "Pipeline: ",
-                rx.el.strong("1. "),
-                "Select organisms → ",
-                rx.el.strong("2. "),
-                "Generate Pieces (Voronoi tessellation) → ",
-                rx.el.strong("3. "),
-                "Extrude to 3D model with svg_extrude → ",
-                rx.el.strong("4. "),
-                "3D print your jigsaw.",
-                style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center", "lineHeight": "1.5"},
-            ),
-            style={"marginTop": "auto", "paddingTop": "16px"},
-        ),
-    )
-
-
-def _jigsaw_generator_embed() -> rx.Component:
-    """Embedded jigsaw generator iframe, shown after clicking Generate Pieces."""
-    return rx.cond(
-        JigsawState.show_generator,
-        rx.el.div(
-            # JS listener: captures generated jigsaw SVG from iframe postMessage
-            rx.script(
-                "window.__jigsawResult = null;"
-                "window.addEventListener('message', function(e) {"
-                "  if (e.data && e.data.type === 'jigsaw_result' && e.data.svg) {"
-                "    window.__jigsawResult = e.data.svg;"
-                "    document.getElementById('jigsaw-result-ready').style.display = 'flex';"
-                "  }"
-                "});"
-            ),
-            rx.el.div(
-                rx.el.h3(
-                    fomantic_icon("puzzle piece", size=18, color="#16a085"),
-                    rx.el.span(" Jigsaw Generator", style={"marginLeft": "8px", "flex": "1"}),
-                    rx.el.button(
-                        fomantic_icon("times", size=14),
-                        on_click=JigsawState.hide_generator,
-                        class_name="ui mini icon button",
-                        style={"marginLeft": "auto"},
-                    ),
-                    style={
-                        "color": "#1a1a2e",
-                        "marginBottom": "12px",
-                        "display": "flex",
-                        "alignItems": "center",
-                    },
-                ),
-                rx.el.iframe(
-                    src="/jigsaw/index.html",
-                    id="jigsaw-generator-iframe",
-                    style={
-                        "width": "100%",
-                        "height": "700px",
-                        "border": "1px solid #e5e7eb",
-                        "borderRadius": "8px",
-                        "backgroundColor": "#ffffff",
-                    },
-                ),
-                # Result actions — shown after generation completes
-                rx.el.div(
-                    rx.el.div(
-                        fomantic_icon("check circle", size=16, color="#16a085"),
-                        rx.el.span(
-                            " Jigsaw generated",
-                            style={"marginLeft": "6px", "fontWeight": "600", "color": "#16a085"},
-                        ),
-                        style={"display": "flex", "alignItems": "center", "marginBottom": "10px"},
-                    ),
-                    rx.el.div(
-                        rx.el.button(
-                            fomantic_icon("download", size=14),
-                            rx.el.span(" Download Pieces SVG", style={"marginLeft": "6px"}),
-                            on_click=rx.call_script(
-                                "window.__jigsawResult || ''",
-                                callback=JigsawState.receive_generated_svg,
-                            ),
-                            class_name="ui teal button",
-                            style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
-                        ),
-                        rx.el.a(
-                            fomantic_icon("cube", size=14),
-                            rx.el.span(" SVG → 3D (svg_extrude)", style={"marginLeft": "6px"}),
-                            href="https://github.com/deffi/svg_extrude",
-                            target="_blank",
-                            class_name="ui basic button",
-                            style={"flex": "1", "padding": "10px", "fontSize": "0.88rem", "textDecoration": "none", "textAlign": "center"},
-                        ),
-                        style={"display": "flex", "gap": "8px"},
-                    ),
-                    id="jigsaw-result-ready",
-                    style={
-                        "display": "none",
-                        "flexDirection": "column",
-                        "padding": "12px",
-                        "marginTop": "12px",
-                        "borderRadius": "6px",
-                        "border": "1px solid #99f6e4",
-                        "backgroundColor": "#f0fdfa",
-                    },
-                ),
-                style={
-                    "padding": "16px",
-                    "borderRadius": "8px",
-                    "border": "1px solid #e5e7eb",
-                    "backgroundColor": "#f9fafb",
-                    "marginTop": "16px",
-                },
-            ),
-        ),
-        rx.fragment(),
+        _jigsaw_pipeline_banner(),
+        _jigsaw_choice_section(),
+        _jigsaw_generator_section(),
     )
 
 
 def _jigsaw_tab() -> rx.Component:
-    return rx.el.div(
-        two_column_layout(
-            left=_jigsaw_left_pane(),
-            right=_jigsaw_right_pane(),
-        ),
-        _jigsaw_generator_embed(),
+    return two_column_layout(
+        left=_jigsaw_left_pane(),
+        right=_jigsaw_right_pane(),
     )
 
 

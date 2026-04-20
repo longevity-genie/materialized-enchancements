@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
-import datetime
 import json
 import logging
 from pathlib import Path
@@ -16,14 +15,17 @@ from reflex_mui_datagrid import LazyFrameGridMixin
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     ANIMAL_LIBRARY_LF,
+    ANIMAL_PRICES,
     CATEGORY_PRICES,
     CATEGORY_TRAITS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     GENE_LIBRARY_LF,
+    GENE_PRICES,
+    ORGANISM_MEMBERS,
     UNIQUE_CATEGORIES,
 )
-from materialized_enhancements.puzzle import build_jigsaw_svg
+from materialized_enhancements.puzzle import HUMAN_ORGANISM, build_jigsaw_svg
 from materialized_enhancements.sculpture import (
     DEFAULT_EXPORT_DIR,
     GENE_PROPERTIES,
@@ -629,24 +631,57 @@ class ComposeState(rx.State):
 
 
 class JigsawState(rx.State):
-    """State for the Gene Jigsaw tab — animal/organism selection."""
+    """State for the Gene Jigsaw tab — animal/organism selection with budget."""
 
     personal_tag: str = "A new human, to be"
     selected_organisms: list[str] = []
     jigsaw_svg: str = ""
+    generating: bool = False
     show_generator: bool = False
     generated_jigsaw_svg: str = ""
+    jigsaw_pieces: int = 0
+    jigsaw_dimensions: str = ""
+    jigsaw_grid_rle: list[int] = []
+    jigsaw_grid_rows: int = 0
+    jigsaw_grid_cols: int = 0
+    jigsaw_cell_scale: float = 0.0
+    choice_expanded: bool = True
+    generator_expanded: bool = False
+    dev_view: bool = True
+
+    def _active_raw_organisms(self) -> set[str]:
+        """Expand selected merged organism names to the raw CSV organism names."""
+        raw: set[str] = set()
+        for org in self.selected_organisms:
+            raw |= ORGANISM_MEMBERS.get(org, {org})
+        return raw
+
+    def _unique_selected_genes(self) -> set[str]:
+        """Unique gene names across all selected organisms (for budget dedup)."""
+        raw_orgs = self._active_raw_organisms()
+        genes: set[str] = set()
+        for g in GENE_LIBRARY:
+            if g["source_organism"] in raw_orgs:
+                genes.add(g["gene"])
+        return genes
 
     def _rebuild_svg(self) -> None:
-        self.jigsaw_svg = build_jigsaw_svg(self.selected_organisms)
+        bold = HUMAN_ORGANISM in self.selected_organisms
+        self.jigsaw_svg = build_jigsaw_svg(self.selected_organisms, bold_base=bold)
 
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
+
+    def _compute_budget_spent(self) -> int:
+        return sum(GENE_PRICES.get(g, 0) for g in self._unique_selected_genes())
 
     def toggle_organism(self, organism: str) -> None:
         if organism in self.selected_organisms:
             self.selected_organisms = [o for o in self.selected_organisms if o != organism]
         else:
+            price = ANIMAL_PRICES.get(organism, 0)
+            if self._compute_budget_spent() + price > DEFAULT_BUDGET:
+                return
             self.selected_organisms = [*self.selected_organisms, organism]
         self._rebuild_svg()
 
@@ -654,74 +689,151 @@ class JigsawState(rx.State):
         self.selected_organisms = [o for o in self.selected_organisms if o != organism]
         self._rebuild_svg()
 
+    def toggle_choice_expanded(self) -> None:
+        self.choice_expanded = not self.choice_expanded
+
+    def toggle_generator_expanded(self) -> None:
+        self.generator_expanded = not self.generator_expanded
+
     def init_jigsaw(self) -> None:
-        """Initialize with base-only SVG on page load."""
         if not self.jigsaw_svg:
             self.jigsaw_svg = build_jigsaw_svg([])
 
     def download_svg(self) -> rx.event.EventSpec:
-        """Download the current jigsaw SVG as a file."""
         if not self.jigsaw_svg:
             return rx.toast.error("No SVG to download — select some organisms first.")
-        return rx.download(
-            data=self.jigsaw_svg,
-            filename="materialized_jigsaw.svg",
+        return rx.download(data=self.jigsaw_svg, filename="materialized_jigsaw.svg")
+
+    def download_stl(self):  # type: ignore[return]
+        if not self.jigsaw_grid_rle:
+            yield rx.toast.error("No grid data — generate a jigsaw first.")
+            return
+        from materialized_enhancements.jigsaw_stl import grid_to_stl
+        stl_bytes = grid_to_stl(
+            self.jigsaw_grid_rle,
+            self.jigsaw_grid_rows,
+            self.jigsaw_grid_cols,
+            self.jigsaw_cell_scale,
         )
+        yield rx.download(data=stl_bytes, filename="materialized_jigsaw.stl")
 
     def open_jigsaw_generator(self):  # type: ignore[return]
-        """Store SVG in localStorage then show the iframe (which reads it on load)."""
         if not self.jigsaw_svg:
             yield rx.toast.error("No SVG to generate — select some organisms first.")
             return
-        # 1. Write SVG to localStorage BEFORE the iframe renders
+        if self.generating:
+            return
+        self.generating = True
+        self.generated_jigsaw_svg = ""
+        self.generator_expanded = True
+        seed = self.jigsaw_seed
         yield rx.call_script(
             "localStorage.setItem('materialized_jigsaw_svg', "
             "document.getElementById('jigsaw-svg-data').value);"
+            f"localStorage.setItem('materialized_jigsaw_seed', '{seed}');"
         )
-        # 2. Show the iframe — it will read from localStorage via checkAutoLoad()
         self.show_generator = True
 
+    def on_jigsaw_complete(self):  # type: ignore[return]
+        self.generating = False
+        self.choice_expanded = False
+        self.generator_expanded = True
+        yield rx.call_script(
+            "JSON.stringify({"
+            "svg: window.__jigsawResult || '', "
+            "pieces: (window.__jigsawMeta || {}).pieces || 0, "
+            "dimensions: (window.__jigsawMeta || {}).dimensions || '', "
+            "gridRLE: (window.__jigsawMeta || {}).gridRLE || null, "
+            "gridRows: (window.__jigsawMeta || {}).gridRows || 0, "
+            "gridCols: (window.__jigsawMeta || {}).gridCols || 0, "
+            "cellScale: (window.__jigsawMeta || {}).cellScale || 0"
+            "})",
+            callback=JigsawState.set_jigsaw_result,
+        )
+
+    def set_jigsaw_result(self, payload: str) -> None:
+        import json as _json
+        try:
+            data = _json.loads(payload)
+        except (ValueError, TypeError):
+            return
+        if data.get("svg"):
+            self.generated_jigsaw_svg = data["svg"]
+        self.jigsaw_pieces = int(data.get("pieces", 0))
+        self.jigsaw_dimensions = str(data.get("dimensions", ""))
+        if data.get("gridRLE"):
+            self.jigsaw_grid_rle = data["gridRLE"]
+            self.jigsaw_grid_rows = int(data.get("gridRows", 0))
+            self.jigsaw_grid_cols = int(data.get("gridCols", 0))
+            self.jigsaw_cell_scale = float(data.get("cellScale", 0))
+
+    def toggle_dev_view(self) -> None:
+        self.dev_view = not self.dev_view
+
     def hide_generator(self) -> None:
-        """Hide the embedded jigsaw generator."""
         self.show_generator = False
 
     def receive_generated_svg(self, svg: str) -> rx.event.EventSpec:
-        """Receive the generated jigsaw SVG from the iframe and download it."""
         if not svg:
             return rx.toast.error("No generated jigsaw — click Generate in the tool first.")
         self.generated_jigsaw_svg = svg
-        return rx.download(
-            data=svg,
-            filename="materialized_jigsaw_pieces.svg",
-        )
+        return rx.download(data=svg, filename="materialized_jigsaw_pieces.svg")
 
     @rx.var
     def has_generated_svg(self) -> bool:
         return len(self.generated_jigsaw_svg) > 0
 
-    def materialize(self) -> rx.event.EventSpec:
-        """Stub — fires a toast with the jigsaw composition data."""
-        timestamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        tag = self.personal_tag.strip() or "Anonymous"
-        orgs = ", ".join(self.selected_organisms) if self.selected_organisms else "none"
-        return rx.toast.success(
-            f"Jigsaw assembled: {tag} | Organisms: {orgs} | {timestamp}",
-            duration=6000,
-        )
+    def download_jigsaw_artifacts(self):  # type: ignore[return]
+        if not self.generated_jigsaw_svg:
+            yield rx.toast.error("No jigsaw generated yet.")
+            return
+        yield rx.download(data=self.generated_jigsaw_svg, filename="materialized_jigsaw_pieces.svg")
+
+    @rx.var
+    def jigsaw_name_crc(self) -> int:
+        if not self.personal_tag.strip():
+            return 0
+        name_bytes = self.personal_tag.strip().lower().encode("utf-8")
+        return binascii.crc32(name_bytes) & 0xFFFFFFFF
+
+    @rx.var
+    def jigsaw_bitmask(self) -> int:
+        bitmask = 0
+        all_organisms = [a["organism"] for a in ANIMAL_LIBRARY]
+        for org in self.selected_organisms:
+            if org in all_organisms:
+                idx = all_organisms.index(org) + 1
+                bitmask |= (1 << (idx - 1))
+        return bitmask
+
+    @rx.var
+    def jigsaw_seed(self) -> int:
+        if not self.personal_tag.strip() or not self.selected_organisms:
+            return 0
+        return int((self.jigsaw_name_crc ^ self.jigsaw_bitmask) % 10000)
 
     @rx.var
     def selected_genes(self) -> list[dict]:
-        return [
-            {"gene": g["gene"], "organism": g["source_organism"], "trait": g["trait"]}
-            for g in GENE_LIBRARY
-            if g["source_organism"] in self.selected_organisms
-        ]
+        raw_orgs = self._active_raw_organisms()
+        seen: set[str] = set()
+        result: list[dict] = []
+        for g in GENE_LIBRARY:
+            if g["source_organism"] in raw_orgs and g["gene"] not in seen:
+                seen.add(g["gene"])
+                result.append({
+                    "gene": g["gene"],
+                    "organism": g["source_organism"],
+                    "trait": g["trait"],
+                    "price": GENE_PRICES.get(g["gene"], 0),
+                })
+        return result
 
     @rx.var
     def selected_traits(self) -> list[str]:
+        raw_orgs = self._active_raw_organisms()
         traits: list[str] = []
         for g in GENE_LIBRARY:
-            if g["source_organism"] in self.selected_organisms:
+            if g["source_organism"] in raw_orgs:
                 if g["trait"] not in traits:
                     traits.append(g["trait"])
         return traits
@@ -729,9 +841,37 @@ class JigsawState(rx.State):
     @rx.var
     def selected_animal_entries(self) -> list[dict]:
         return [
-            {"organism": a["organism"], "superpower": a["superpower"]}
+            {
+                "organism": a["organism"],
+                "superpower": a["superpower"],
+                "genes": a["genes"],
+                "traits": a["traits"],
+                "puzzle_svg": a["puzzle_svg"],
+            }
             for a in ANIMAL_LIBRARY
             if a["organism"] in self.selected_organisms
+        ]
+
+    @rx.var
+    def budget_total(self) -> int:
+        return DEFAULT_BUDGET
+
+    @rx.var
+    def budget_spent(self) -> int:
+        return self._compute_budget_spent()
+
+    @rx.var
+    def budget_remaining(self) -> int:
+        return DEFAULT_BUDGET - self._compute_budget_spent()
+
+    @rx.var
+    def affordable_organisms(self) -> list[str]:
+        remaining = DEFAULT_BUDGET - self._compute_budget_spent()
+        return [
+            a["organism"]
+            for a in ANIMAL_LIBRARY
+            if a["organism"] in self.selected_organisms
+            or ANIMAL_PRICES.get(a["organism"], 0) <= remaining
         ]
 
     @rx.var

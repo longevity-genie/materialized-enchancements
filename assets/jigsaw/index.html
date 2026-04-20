@@ -66,9 +66,19 @@
         var tab_size = 0.1;
         var tab_rel_size = 0.1
         var tab_abs_size = 2;
-        var tab_min_size = 1.5;
-        var tab_max_size = 3;
+        var tab_min_size = 30;
+        var tab_max_size = 50;
         var tab_jitter = 0.1;
+        function yieldThen(fn) {
+            var ch = new MessageChannel();
+            ch.port1.onmessage = function() {
+                try { fn(); } catch(e) {
+                    console.error('Generation error:', e);
+                    notifyParent('error', e.message || String(e));
+                }
+            };
+            ch.port2.postMessage(null);
+        }
         function $(id) { return document.getElementById(id); }
         function random() {
             if ($("ndr").checked) {
@@ -798,9 +808,61 @@
 
         var isEmbedded = (window.parent !== window);
 
+        function rleEncodeGrid(grid, rows, cols) {
+            var runs = [];
+            var prev = Math.abs(grid[0][0]);
+            var count = 1;
+            for (var i = 0; i < rows; i++) {
+                for (var j = 0; j < cols; j++) {
+                    if (i === 0 && j === 0) continue;
+                    var v = Math.abs(grid[i][j]);
+                    if (v === prev) {
+                        count++;
+                    } else {
+                        runs.push(count, prev);
+                        prev = v;
+                        count = 1;
+                    }
+                }
+            }
+            runs.push(count, prev);
+            return runs;
+        }
+
         function sendResultToParent() {
             if (isEmbedded && svgstrsave && window.parent) {
-                window.parent.postMessage({type: 'jigsaw_result', svg: svgstrsave}, '*');
+                var pieces = parseInt($("piececount").innerHTML) || 0;
+                var outputSvg = svgstrsave;
+                var dims = "";
+                // Rescale SVG physical dimensions to targetmax (generated at 10×)
+                var targetmax = parseFloat($("targetmax").value || "0");
+                if (targetmax > 0) {
+                    outputSvg = outputSvg.replace(
+                        /width="([0-9.]+)mm" height="([0-9.]+)mm"/,
+                        function(m, w, h) {
+                            var s = targetmax / Math.max(parseFloat(w), parseFloat(h));
+                            var pw = (parseFloat(w) * s).toFixed(1);
+                            var ph = (parseFloat(h) * s).toFixed(1);
+                            dims = Math.round(pw) + " x " + Math.round(ph);
+                            return 'width="' + pw + 'mm" height="' + ph + 'mm"';
+                        }
+                    );
+                }
+                if (!dims) dims = $("dimensions").innerHTML || "";
+                var gridData = null;
+                if (automata && automata.grid) {
+                    gridData = rleEncodeGrid(automata.grid, automata.rows, automata.columns);
+                }
+                window.parent.postMessage({
+                    type: 'jigsaw_result',
+                    svg: outputSvg,
+                    pieces: pieces,
+                    dimensions: dims,
+                    gridRLE: gridData,
+                    gridRows: automata ? automata.rows : 0,
+                    gridCols: automata ? automata.columns : 0,
+                    cellScale: parseFloat($("cell_scale").value)
+                }, '*');
             }
         }
 
@@ -811,6 +873,15 @@
             }
             window.alert("DISCLAIMER: This generator has no mechanism implemented to check and fix line intersections at this moment. Please check the output and fix any issues manually before cutting.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
             save("jigsaw.svg", svgstrsave);
+            if (automata && automata.grid) {
+                var gridJSON = JSON.stringify({
+                    gridRLE: rleEncodeGrid(automata.grid, automata.rows, automata.columns),
+                    gridRows: automata.rows,
+                    gridCols: automata.columns,
+                    cellScale: parseFloat($("cell_scale").value)
+                });
+                save("jigsaw_grid.json", gridJSON);
+            }
         }
 
         function generate() {
@@ -859,8 +930,20 @@
                     pgroup.setAttribute("transform", "matrix(" + vt.a + "," + vt.b + "," + vt.c + "," + vt.d + "," + vt.e + "," + vt.f + ")");
                     flatten($("svgcontainer"), false, true);
                 }
+                //Auto-fit: generate at 10× targetmax for resolution, rescale output later
+                var targetmax = parseFloat($("targetmax").value || "0");
+                var GEN_SCALE = 10;
+                var cbsfVal = parseFloat($("cbsf").value);
+                if (targetmax > 0) {
+                    var preBox = $("svgcontainer").getBBox();
+                    var preMax = Math.max(preBox.width + preBox.x, preBox.height + preBox.y);
+                    if (preMax > 0) {
+                        cbsfVal = (targetmax * GEN_SCALE) / preMax;
+                        $("cbsf").value = cbsfVal.toFixed(4);
+                    }
+                }
                 //Scale
-                pgroup.setAttribute("transform", "scale(" + parseFloat($("cbsf").value) + ")");
+                pgroup.setAttribute("transform", "scale(" + cbsfVal + ")");
                 flatten($("svgcontainer"), false, true);
                 //To left corner
                 pgroup.setAttribute("transform", "translate(" + (-($("svgcontainer").getBBox().x)) + "," + (-($("svgcontainer").getBBox().y)) + ")");
@@ -891,27 +974,22 @@
             }
 
             automata = new Automata(rows, cols);
+            notifyParent('generating', 'Preparing grid…');
 
+            yieldThen(function() {
             if (customborder.paths) {
                 automata.fillmask(customborder.paths, cell_scale);
                 pgroup.setAttribute("transform", "translate(" + (cell_scale / 2) + "," + (cell_scale / 2) + ")");
                 flatten($("svgcontainer"), false, true);
             }
 
-
-
             canvas = $("automata");
             canvas.setAttribute("width", cols * pixelsize + 5);
-            canvas.setAttribute("height", rows * pixelsize + 5);// * 2);
-
+            canvas.setAttribute("height", rows * pixelsize + 5);
 
             if (canvas.getContext) {
                 context = canvas.getContext('2d');
 
-
-                // if (customborder.paths) {
-                //     automata.paintmask(context,customborder.paths);
-                // }
                 automata.gridseed(gsize, gnoise);
                 palette = ImageTracer.generatepalette(automata.seedpoints.length + 1);
                 Shuffle(palette);
@@ -924,17 +1002,38 @@
                 radius = 0;
                 automata.get_empty_cells();
                 var stale = 0;
-                var prevgrowth = 0;
-                do {
-                    growncells = automata.step(context, radius);
-                    automata.empty_cells -= growncells;
-                    radius = radius + 1;
-                    if (growncells == 0) stale++;
-                    else stale = 0;
-                } while (automata.empty_cells && stale < 10);
-                paintoutput();
+                var totalCells = automata.empty_cells;
+                var CHUNK_MS = 200;
+
+                notifyParent('generating', 'Growing cells… 0%');
+                function growChunk() {
+                    var t0 = performance.now();
+                    do {
+                        growncells = automata.step(context, radius);
+                        automata.empty_cells -= growncells;
+                        radius = radius + 1;
+                        if (growncells == 0) stale++;
+                        else stale = 0;
+                    } while (automata.empty_cells && stale < 10 && (performance.now() - t0) < CHUNK_MS);
+
+                    var filled = totalCells - automata.empty_cells;
+                    var pct = totalCells > 0 ? Math.round(100 * filled / totalCells) : 100;
+                    notifyParent('generating', 'Growing cells… ' + pct + '%');
+
+                    if (automata.empty_cells > 0 && stale < 10) {
+                        yieldThen(growChunk);
+                    } else {
+                        yieldThen(function() {
+                            paintoutput();
+                            updatedimensions(1);
+                        });
+                    }
+                }
+                growChunk();
+            } else {
+                updatedimensions(1);
             }
-            updatedimensions(1);
+            });
 
         }
 
@@ -946,60 +1045,58 @@
             var minedgelen = parseFloat($("minedge").value);
             canvas = $("automata");
             canvas.setAttribute("width", cols * pixelsize + 5);
-            canvas.setAttribute("height", rows * pixelsize + 5);// * 2);
+            canvas.setAttribute("height", rows * pixelsize + 5);
             $("svgcontainer").setAttribute("width", cols * cellscale);
             $("svgcontainer").setAttribute("height", rows * cellscale);
-            // console.log("Painted");
-            var corners = automata.findcorners(customborder);
-            // console.log("Cornered");
-            automata.paint(context, palette);
-            // automata.paintcorners(context, automata.added, 20,"black");
 
-            // automata.paintcorners(context, corners, 10,"red");
+            notifyParent('rendering', 'Finding corners…');
+            yieldThen(function() {
+                var corners = automata.findcorners(customborder);
+                automata.paint(context, palette);
 
-            var edges = automata.findedges(corners, context);
-            // console.log("Edged");
+                notifyParent('rendering', 'Finding edges…');
+                yieldThen(function() {
+                    var edges = automata.findedges(corners, context);
 
-            var paths = [];
-            //convert to how svgtracejs wants this
-            edges.forEach((e) => {
-                var path = {};
-                path.points = [{ x: e[0].col, y: e[0].row }, { x: e[e.length - 1].col, y: e[e.length - 1].row }];
-                path.boundingbox = [];
-                path.holechildren = [];
-                path.isholepath = false;
-                paths.push(path);
+                    var paths = [];
+                    edges.forEach((e) => {
+                        var path = {};
+                        path.points = [{ x: e[0].col, y: e[0].row }, { x: e[e.length - 1].col, y: e[e.length - 1].row }];
+                        path.boundingbox = [];
+                        path.holechildren = [];
+                        path.isholepath = false;
+                        paths.push(path);
+                    });
+                    var options = { pal: palette, scale: cellscale, strokewidth: .5, layering: 0, layercontainerid: "layercnt", minedge: minedgelen };
 
+                    notifyParent('rendering', 'Building SVG…');
+                    yieldThen(function() {
+                        [svgstr, svgstrsave] = ImageTracer.pathsToSVG(paths, customborder, automata.cornertable, automata.columns, automata.rows, options, gentab);
+
+                        while ($("svgcontainer").firstChild) {
+                            $("svgcontainer").removeChild($("svgcontainer").firstChild);
+                        }
+                        ImageTracer.appendSVGString(svgstr, 'svgcontainer');
+
+                        if ($("stv").checked) {
+                            var parser = new DOMParser();
+                            xmldoc = parser.parseFromString(svgstr, "image/svg+xml");
+                            var svgjig = xmldoc.getElementsByTagName("svg")[0];
+                            var outpaths = svgjig.getElementsByTagName("path");
+                            context.strokeStyle = "black";
+                            context.lineWidth = 2 * (cellscale / pixelsize);
+                            context.scale((pixelsize / cellscale), (pixelsize / cellscale))
+                            for (let p of outpaths) {
+                                var p2d = new Path2D(p.getAttribute("d"));
+                                context.stroke(p2d);
+                            }
+                        }
+                        updatedimensions();
+                        notifyParent('complete', 'Done');
+                        sendResultToParent();
+                    });
+                });
             });
-            var options = { pal: palette, scale: cellscale, strokewidth: .5, layering: 0, layercontainerid: "layercnt", minedge: minedgelen };
-
-            // Getting ImageData from canvas with the helper function getImgdata().
-            [svgstr, svgstrsave] = ImageTracer.pathsToSVG(paths, customborder, automata.cornertable, automata.columns, automata.rows, options, gentab);
-            // console.log("SVG'd");
-
-            // Synchronous tracing to SVG string 
-            //var svgstr = ImageTracer.gridToSVG(automata.grid, palette, options);
-            while ($("svgcontainer").firstChild) {
-                $("svgcontainer").removeChild($("svgcontainer").firstChild);
-            }
-            // Appending SVG
-            ImageTracer.appendSVGString(svgstr, 'svgcontainer');
-
-            if ($("stv").checked) {
-                var parser = new DOMParser();
-                xmldoc = parser.parseFromString(svgstr, "image/svg+xml");
-                var svgjig = xmldoc.getElementsByTagName("svg")[0];
-                var outpaths = svgjig.getElementsByTagName("path");
-                context.strokeStyle = "black";
-                context.lineWidth = 2 * (cellscale / pixelsize);
-                context.scale((pixelsize / cellscale), (pixelsize / cellscale))
-                for (let p of outpaths) {
-                    var p2d = new Path2D(p.getAttribute("d"));
-                    context.stroke(p2d);
-                }
-            }
-            updatedimensions();
-            sendResultToParent();
         }
 
 
@@ -1118,7 +1215,14 @@
         }
 
 
-        function loadSvgAndGenerate(svgString) {
+        function notifyParent(stage, detail) {
+            if (window.parent !== window) {
+                window.parent.postMessage({type: 'jigsaw_progress', stage: stage, detail: detail || ''}, '*');
+            }
+        }
+
+        function loadSvgAndGenerate(svgString, seedValue) {
+            notifyParent('loading', 'Parsing SVG…');
             var parser = new DOMParser();
             xmldoc = parser.parseFromString(svgString, "image/svg+xml");
             var svgdata_p = xmldoc.getElementsByTagName("svg")[0];
@@ -1146,14 +1250,24 @@
                 }
             }
 
-            // Defaults tuned for the human silhouette (~81 pieces, ~755×1926 mm)
-            $("cbsf").value = "0.41";
-            $("gsize").value = "30";
-            $("gnoise").value = "0";
-            $("minedge").value = "20";
-            $("cell_scale").value = "2";
+            // Defaults tuned for the human silhouette; cbsf auto-computed from targetmax
+            $("targetmax").value = "220";
+            $("cbsf").value = "1";
+            $("gsize").value = "25";
+            $("gnoise").value = "0.4";
+            $("minedge").value = "30";
+            $("cell_scale").value = "3";
+            $("tabsizemode").value = "rabs";
+            $("mintab").value = "7.5";
+            $("maxtab").value = "20";
+
+            if (seedValue) {
+                $("_seed").value = seedValue;
+                $("seed").value = seedValue;
+            }
 
             updatedimensions();
+            notifyParent('generating', 'Growing Voronoi cells…');
             setTimeout(function() { generate(); }, 200);
         }
 
@@ -1161,13 +1275,15 @@
             var storedSvg = localStorage.getItem('materialized_jigsaw_svg');
             if (!storedSvg) return;
             localStorage.removeItem('materialized_jigsaw_svg');
-            loadSvgAndGenerate(storedSvg);
+            var storedSeed = localStorage.getItem('materialized_jigsaw_seed');
+            localStorage.removeItem('materialized_jigsaw_seed');
+            loadSvgAndGenerate(storedSvg, storedSeed);
         }
 
         // Accept SVG from parent frame via postMessage (for iframe embedding)
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'load_jigsaw_svg' && event.data.svg) {
-                loadSvgAndGenerate(event.data.svg);
+                loadSvgAndGenerate(event.data.svg, event.data.seed);
             }
         });
 
@@ -1231,9 +1347,9 @@
                 <td>Tab size mode (mm):</td>
                 <td>
                     <select id="tabsizemode" name="tabsizemode" onchange="changepiecetabmode()">
-                        <option value="rel" selected="selected">Relative (%)</option>
+                        <option value="rel">Relative (%)</option>
                         <option value="abs">Absolute (mm)</option>
-                        <option value="rabs">Restricted relative</option>
+                        <option value="rabs" selected="selected">Restricted relative</option>
                     </select>
                 </td>
             </tr>
@@ -1247,11 +1363,11 @@
             </tr>
             <tr class="rabstab">
                 <td>Minimum tab size (mm):</td>
-                <td><input id="mintab" type="text" value="1.5" size="5" /></td>
+                <td><input id="mintab" type="text" value="30" size="5" /></td>
             </tr>
             <tr class="rabstab">
                 <td>Maximum tab size (mm):</td>
-                <td><input id="maxtab" type="text" value="3" size="5" /></td>
+                <td><input id="maxtab" type="text" value="50" size="5" /></td>
             </tr>
             <tr>
                 <td> &nbsp;</td>
@@ -1385,6 +1501,7 @@
     <script>
         document.getElementById("default").click();
     </script>
+    <input id="targetmax" type="hidden" value="0" />
     <svg id="svgcontainer"></svg>
     <canvas id="automata"></canvas>
     <div id="layercnt"></div>
