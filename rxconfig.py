@@ -1,29 +1,14 @@
 from __future__ import annotations
 
-import os
-import socket
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import reflex as rx
 from reflex.plugins.sitemap import SitemapPlugin
 
-
-def _find_free_port(start: int = 8000, end: int = 9000) -> int:
-    for port in range(start, end):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(("localhost", port)) != 0:
-                return port
-    return start
-
-
-backend_port = int(os.getenv("BACKEND_PORT", "0")) or _find_free_port(8000)
-api_url = os.getenv("API_URL", f"http://localhost:{backend_port}")
-
-os.environ["API_URL"] = api_url
-
 config = rx.Config(
     app_name="materialized_enhancements",
-    backend_port=backend_port,
-    api_url=api_url,
     disable_plugins=[SitemapPlugin],
     stylesheets=[
         "https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.4/dist/semantic.min.css",
@@ -31,6 +16,7 @@ config = rx.Config(
     head_components=[
         rx.script(src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"),
         rx.script(src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.4/dist/semantic.min.js"),
+        rx.el.meta(name="google-site-verification", content="BoBYqc8A_Xkw0AHGsMrk9Y_Ms3zsltZZtvd8Rltrs4w"),
     ],
     tailwind=None,
     vite_allowed_hosts=["materialized-enhancements.longevity-genie.info"],
