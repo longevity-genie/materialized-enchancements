@@ -149,20 +149,20 @@ def _landing_tab() -> rx.Component:
                 style={"width": "100%", "marginTop": "4px"},
             ),
             rx.el.div(
-                rx.el.button(
+                rx.el.a(
                     fomantic_icon("atom", size=16),
                     rx.el.span(
                         " Materialize genetic enhancement",
                         style={"marginLeft": "8px", "fontWeight": "600"},
                     ),
-                    on_click=AppState.set_tab("sculpture"),
+                    href="/materialize",
                     class_name="ui primary button",
                     style={"fontSize": "1.05rem", "padding": "14px 26px", "margin": "4px"},
                 ),
-                rx.el.button(
+                rx.el.a(
                     fomantic_icon("puzzle piece", size=14),
                     rx.el.span(" Gene Jigsaw", style={"marginLeft": "6px"}),
-                    on_click=AppState.set_tab("jigsaw"),
+                    href="/jigsaw",
                     class_name="ui button",
                     style={"margin": "4px"},
                 ),
@@ -3620,56 +3620,64 @@ def _animal_library_tab() -> rx.Component:
 
 # ── Tab navigation ───────────────────────────────────────────────────────────
 
-_TABS = [
-    ("landing", "home", "About"),
-    ("sculpture", "atom", "Materialize genetic enhancement"),
-    ("jigsaw", "puzzle piece", "Gene Jigsaw"),
+_TABS: list[tuple[str, str, str]] = [
+    ("/", "home", "About"),
+    ("/materialize", "atom", "Materialize genetic enhancement"),
+    ("/jigsaw", "puzzle piece", "Gene Jigsaw"),
 ]
 
 
-def _tab_menu() -> rx.Component:
+def _tab_menu(active_route: str) -> rx.Component:
     return rx.el.div(
         *[
             rx.el.a(
                 fomantic_icon(icon, size=14),
                 rx.el.span(f" {label}", style={"marginLeft": "6px"}),
-                class_name=rx.cond(AppState.active_tab == key, "active item", "item"),
-                on_click=AppState.set_tab(key),
+                class_name="active item" if route == active_route else "item",
+                href=route,
             )
-            for key, icon, label in _TABS
+            for route, icon, label in _TABS
         ],
         class_name="ui top attached tabular menu",
     )
 
 
-def _tab_content() -> rx.Component:
-    return rx.el.div(
-        rx.match(
-            AppState.active_tab,
-            ("landing", _landing_tab()),
-            ("sculpture", _sculpture_tab()),
-            ("jigsaw", _jigsaw_tab()),
-            _landing_tab(),
+def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
+    return template(
+        _tab_menu(active_route),
+        rx.el.div(
+            content,
+            class_name="ui bottom attached segment",
+            style={"minHeight": "400px"},
         ),
-        class_name="ui bottom attached segment",
-        style={"minHeight": "400px"},
     )
 
 
-# ── Page ─────────────────────────────────────────────────────────────────────
+# ── Pages ────────────────────────────────────────────────────────────────────
 
 
 @rx.page(
     route="/",
-    on_load=[
-        AppState.apply_tab_from_query,
-        JigsawState.init_jigsaw,
-        ComposeState.apply_shared_report,
-    ],
+    on_load=[AppState.redirect_legacy_tab],
 )
 def index_page() -> rx.Component:
-    """Single-page app: tab navigation with landing, sculpture, and jigsaw."""
-    return template(
-        _tab_menu(),
-        _tab_content(),
-    )
+    """About / landing page — fully static, SSR-friendly."""
+    return _tab_page("/", _landing_tab())
+
+
+@rx.page(
+    route="/materialize",
+    on_load=[ComposeState.apply_shared_report],
+)
+def materialize_page() -> rx.Component:
+    """Materialize genetic enhancement — parametric sculpture composer."""
+    return _tab_page("/materialize", _sculpture_tab())
+
+
+@rx.page(
+    route="/jigsaw",
+    on_load=[JigsawState.init_jigsaw],
+)
+def jigsaw_page() -> rx.Component:
+    """Gene Jigsaw — organism-based composition with SVG puzzle."""
+    return _tab_page("/jigsaw", _jigsaw_tab())

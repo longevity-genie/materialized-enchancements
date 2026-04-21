@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+os.environ.setdefault("REFLEX_SSR", "true")
 
 import reflex as rx
 from reflex.plugins.sitemap import SitemapPlugin

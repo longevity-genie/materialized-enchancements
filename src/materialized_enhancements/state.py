@@ -234,19 +234,34 @@ CATEGORY_ICONS: dict[str, str] = {
 }
 
 
+_TAB_ROUTE_MAP: dict[str, str] = {
+    "landing": "/",
+    "sculpture": "/materialize",
+    "jigsaw": "/jigsaw",
+    "library": "/",
+    "animals": "/",
+}
+
+
 class AppState(rx.State):
     """Root application state."""
 
-    active_tab: str = "landing"
+    def redirect_legacy_tab(self):  # type: ignore[return]
+        """Redirect old ``?tab=<key>`` URLs to the proper route.
 
-    def set_tab(self, tab: str) -> None:
-        self.active_tab = tab
-
-    def apply_tab_from_query(self) -> None:
-        """Honour ?tab=<key> on page load (used by shared-report links)."""
-        tab = str(self.router.url.query_parameters.get("tab", "")).strip()
-        if tab in {"landing", "sculpture", "jigsaw", "library", "animals"}:
-            self.active_tab = tab
+        Preserves other query params (report, name, cats) so shared-report
+        links minted before the multi-route migration still work.
+        """
+        params = self.router.url.query_parameters
+        tab = str(params.get("tab", "")).strip()
+        if tab not in _TAB_ROUTE_MAP or _TAB_ROUTE_MAP[tab] == "/":
+            return
+        rest = {k: v for k, v in params.items() if k != "tab"}
+        query = "&".join(f"{k}={v}" for k, v in rest.items())
+        url = _TAB_ROUTE_MAP[tab]
+        if query:
+            url += f"?{query}"
+        yield rx.redirect(url)
 
 
 class ComposeState(rx.State):
@@ -714,7 +729,7 @@ class ComposeState(rx.State):
             if cat in UNIQUE_CATEGORIES:
                 idx = UNIQUE_CATEGORIES.index(cat) + 1
                 bitmask |= 1 << (idx - 1)
-        return f"{PUBLIC_APP_URL}/?tab=sculpture&report=1&name={quote(name_b64)}&cats={bitmask}"
+        return f"{PUBLIC_APP_URL}/materialize?report=1&name={quote(name_b64)}&cats={bitmask}"
 
     def apply_shared_report(self):  # type: ignore[return]
         """Decode ?report=1&name=<b64>&cats=<bitmask> and regenerate the same sculpture.
