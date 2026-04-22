@@ -129,7 +129,7 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 - `ui button`, `ui primary button` ✅
 - `ui label`, `ui mini label`, `ui green label` ✅
 - `ui divider`, `ui message` ✅
-- `ui top attached tabular menu` + `ui bottom attached segment` ✅ (state-based tabs)
+- `ui top attached tabular menu` + `ui bottom attached segment` ✅ (link-based tab navigation across routes)
 
 ### What Does NOT Work Reliably
 
@@ -149,10 +149,22 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 
 ### State Architecture
 
-- `AppState(rx.State)` — root state, manages active tab
+- `AppState(rx.State)` — root state, handles legacy `?tab=` redirects
 - `ComposeState(rx.State)` — parametric sculpture tab: category selection, personal tag, totem composition
-- `GeneGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for landing page gene listing
+- `JigsawState(rx.State)` — jigsaw tab: organism selection, SVG puzzle generation
+- `GeneGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for gene listing
+- `AnimalGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for animal listing
 - All states are independent `rx.State` subclasses (not substates)
+
+### Routing
+
+Three separate routes (no more state-based tab switching):
+- `/` — About / landing page (fully static, SSR-friendly)
+- `/materialize` — Materialize genetic enhancement (parametric composer)
+- `/jigsaw` — Gene Jigsaw (organism-based composition)
+
+Tab menu uses `<a href>` links. Active tab is determined at build time from the route parameter, not from state.
+Old `?tab=<key>` URLs are redirected by `AppState.redirect_legacy_tab` on the `/` on_load handler.
 
 ---
 
@@ -225,7 +237,7 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - `html-to-image` on this app: move off-screen capture nodes into the viewport for the snapshot; avoid `display: flex` on the snapshot root inside SVG `foreignObject`; call with `skipFonts: true` (Fomantic `semantic.min.css` pulls thousands of twemoji URLs and can exhaust the browser without it — see `h2iOptions()` in `assets/vendor/me_report.js`); for PNG export use full `opacity: 1`, high `z-index`, and `waitImages()` — very low opacity often rasterizes as blank in Chromium.
 - MutationObservers that repaint DOM (e.g. QR painter) must be idempotent with a signature guard, must ignore mutations inside the rewritten subtree, and must debounce via `requestAnimationFrame`; otherwise an `innerHTML` rewrite retriggers the observer and freezes the browser.
 - Sculpture capture: the hidden `<textarea id="stl-b64-data">` must stay mounted for same-origin iframes; `assets/sculpture_viewer/capture.html` is loaded with a changing `nonce` query param and postMessages front/side/back PNGs to the parent.
-- The shareable-report URL encodes state as `?tab=sculpture&report=1&name=<b64>&cats=<bitmask>`; `apply_shared_report` re-seeds `ComposeState` deterministically on page load so recipients regenerate the identical sculpture without server persistence.
+- The shareable-report URL encodes state as `/materialize?report=1&name=<b64>&cats=<bitmask>`; `apply_shared_report` re-seeds `ComposeState` deterministically on page load so recipients regenerate the identical sculpture without server persistence. Old `/?tab=sculpture&…` URLs are redirected by `AppState.redirect_legacy_tab`.
 - PDF export: do not rasterize `#me-report-pdf-long` per A4 page (balloons file size). Use jsPDF `text()` / `splitTextToSize()` from DOM rows. Page 1 is built in `renderCoverPageA4()` from hidden inputs and `window.__reportViews`, not from scaling a screenshot of `#me-report-card`.
 - In Reflex dev mode, `assets/` is copied to `.web/public/` at compile time; the dev server serves the `.web/public/` copy. When you edit vendored JS under `assets/vendor/` without restarting `reflex run`, copy into `.web/public/vendor/` or restart — otherwise you test a stale asset.
 - Gene/sculpture inputs use `data/input/gene_library_extended.csv` and `data/input/gene_properties_extended.csv` (see `gene_data.py` / `sculpture.py`). When the CSV `Category` is hierarchical (`Parent / Detail`), the loader keeps the full string as `category_detail` and derives the parent `category` segment for the nine-way budget, bitmask, and sculpture math so points stay aligned with the original model.

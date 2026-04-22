@@ -62,11 +62,12 @@ This project was literally built on the move across over 1,500 kilometers. We pi
 ## Running
 
 ```bash
-uv run start           # normal mode
-uv run start --dev     # exposes developer-only UI (ARTEX API config panel)
+uv run start           # development mode (hot-reload, separate frontend/backend ports)
+uv run start --dev     # development mode + developer-only UI (ARTEX API config panel)
+uv run serve           # production mode (single-port, Reflex 0.9+ unified server)
 ```
 
-Opens the Reflex Web UI at [http://localhost:3000](http://localhost:3000). Copy `.env.example` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout).
+Copy `.env.template` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout). For production, set `REFLEX_API_URL` to your public domain in `.env`.
 
 ---
 
@@ -129,7 +130,7 @@ Optional: confirm the running project responds to live updates with `npx tsx exa
 
 ### Configuration
 
-See [`.env.example`](.env.example) for the full list. Highlights:
+See [`.env.template`](.env.template) for the full list. Highlights:
 
 | Variable | Purpose |
 |---|---|

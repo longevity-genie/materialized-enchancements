@@ -240,3 +240,6 @@ tmp/
 
 # Cursor
 .cursor/
+
+# Claude
+.claude/
