@@ -6,6 +6,17 @@
 
 ---
 
+## Team
+
+- **Newton Winter** — web app, jigsaw generation, geometry optimization, devops, biology, UI — [GitHub @winternewt](https://github.com/winternewt)
+- **Anton Kulaga** — concept, biology, UI design, generative video, 3D printing — [GitHub @antonkulaga](https://github.com/antonkulaga)
+- **Livia Zaharia** — parametric geometry, personalized enhancement report, 3D printing — [livia.glucosedao.org](http://livia.glucosedao.org/)
+- **Marko Prakhov-Donets** — video editing
+
+The project is **open source** ([repository](https://github.com/winternewt/materialized-enchancements)) and built so other artists can plug their own generative models into the same biological input engine.
+
+---
+
 ## What is this?
 
 Upgrading human DNA isn't sci-fi — it is already happening in adults today. In alternative jurisdictions like Prospera, medical tourists are actively receiving gene therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens in 10 years as we unlock harder-to-implement targets to shape "The New Human"? Nature already has the code for extreme survival: shark longevity, tardigrade radiation shields, and axolotl regeneration.
@@ -39,17 +50,6 @@ The repository implements this pipeline: you choose enhancement traits in the UI
 | Display & Expression | 3 |
 | Energy | 2 |
 | Materials | 1 |
-
----
-
-## Team
-
-- **Newton Winter** — concept, biology — [GitHub @winternewt](https://github.com/winternewt)
-- **Anton Kulaga** — engineering, data — [GitHub @antonkulaga](https://github.com/antonkulaga)
-- **Livia Zaharia** — parametric geometry, form generation — [livia.glucosedao.org](http://livia.glucosedao.org/)
-- **Marko Prakhov-Donets** — video editing
-
-The project is **open source** ([repository](https://github.com/winternewt/materialized-enchancements)) and built so other artists can plug their own generative models into the same biological input engine.
 
 ---
 

@@ -189,17 +189,17 @@ def _landing_tab() -> rx.Component:
                 rx.el.ul(
                     rx.el.li(
                         rx.el.strong("Newton Winter", style={"color": "#374151"}),
-                        " — concept, biology — ",
+                        " — web app, jigsaw generation, geometry optimization, devops, biology, UI — ",
                         rx.el.a("GitHub", href="https://github.com/winternewt", target="_blank", rel="noopener noreferrer", style=_a),
                     ),
                     rx.el.li(
                         rx.el.strong("Anton Kulaga", style={"color": "#374151"}),
-                        " — engineering, data — ",
+                        " — concept, biology, UI design, generative video, 3D printing — ",
                         rx.el.a("GitHub", href="https://github.com/antonkulaga", target="_blank", rel="noopener noreferrer", style=_a),
                     ),
                     rx.el.li(
                         rx.el.strong("Livia Zaharia", style={"color": "#374151"}),
-                        " — parametric geometry — ",
+                        " — parametric geometry, personalized enhancement report, 3D printing — ",
                         rx.el.a(
                             "livia.glucosedao.org",
                             href="http://livia.glucosedao.org/",
