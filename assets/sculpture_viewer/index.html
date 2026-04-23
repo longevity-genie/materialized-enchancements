@@ -64,11 +64,20 @@ const errorEl   = document.getElementById('error');
 const infoEl    = document.getElementById('info');
 
 /* ---------- read STL data from parent textarea ---------- */
+const B64_ID = (() => {
+  try {
+    const q = new URLSearchParams(window.location.search).get('b64Id');
+    return (q && q.length) ? q : 'stl-b64-data';
+  } catch (_) {
+    return 'stl-b64-data';
+  }
+})();
+
 async function waitForData(maxWaitMs = 12000) {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     try {
-      const el = window.parent.document.getElementById('stl-b64-data');
+      const el = window.parent.document.getElementById(B64_ID);
       if (el && el.value && el.value.length > 100) return el.value;
     } catch (_) { /* cross-origin: ignore */ }
     await new Promise(r => setTimeout(r, 150));
@@ -102,6 +111,11 @@ scene.background = new THREE.Color('#1a1a2e');
 scene.fog = new THREE.FogExp2('#1a1a2e', 0.003);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+
+const preset = new URLSearchParams(window.location.search).get('preset') || '';
+if (preset === 'jigsaw') {
+  camera.up.set(0.27, 0.22, 0.94);
+}
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -163,11 +177,20 @@ const maxDim = Math.max(size.x, size.y, size.z);
 const fitDist = maxDim / (2 * Math.tan(Math.PI * camera.fov / 360));
 /* Pull camera back so the model does not fill the viewport as tightly. */
 const camPullBack = 1.32;
-camera.position.set(
-  fitDist * 0.35 * camPullBack,
-  fitDist * 0.28 * camPullBack,
-  fitDist * 0.40 * camPullBack,
-);
+
+if (preset === 'jigsaw') {
+  camera.position.set(
+    -fitDist * 0.40 * camPullBack,
+    fitDist * 0.28 * camPullBack,
+    fitDist * 0.35 * camPullBack,
+  );
+} else {
+  camera.position.set(
+    fitDist * 0.35 * camPullBack,
+    fitDist * 0.28 * camPullBack,
+    fitDist * 0.40 * camPullBack,
+  );
+}
 controls.target.set(0, 0, 0);
 controls.update();
 

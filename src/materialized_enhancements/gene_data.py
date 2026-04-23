@@ -171,18 +171,65 @@ def build_category_traits(library: list[GeneEntry]) -> dict[str, list[str]]:
 
 
 _ORGANISM_NORMALIZE: dict[str, str] = {
-    "Deinococcus radiodurans / Conserved across species": "Deinococcus radiodurans (Conan the Bacterium)",
-    "Naked Mole Rat / Long-lived species (Heterocephalus glaber)": "Naked Mole Rat (Heterocephalus glaber)",
+    # --- jellyfish variants ---
     "Immortal Jellyfish (Turritopsis dohrnii)": "Jellyfish (Cnidaria)",
+    "Turritopsis dohrnii (medusa→cyst→polyp reverse development)": "Jellyfish (Cnidaria)",
     "Crystal Jellyfish (Aequorea victoria)": "Jellyfish (Cnidaria)",
+    "Aequorea victoria (crystal jellyfish)": "Jellyfish (Cnidaria)",
+    # --- naked mole rat variants ---
+    "Naked Mole Rat / Long-lived species (Heterocephalus glaber)": "Naked Mole Rat (Heterocephalus glaber)",
+    "Naked mole-rat (Heterocephalus glaber)": "Naked Mole Rat (Heterocephalus glaber)",
+    "Naked mole-rat / conserved mammalian (Mn-SOD)": "Naked Mole Rat (Heterocephalus glaber)",
+    # --- deinococcus variants ---
+    "Deinococcus radiodurans / Conserved across species": "Deinococcus radiodurans (Conan the Bacterium)",
+    "Deinococcus radiodurans R1": "Deinococcus radiodurans (Conan the Bacterium)",
+    # --- tardigrade variants (two CSV rows, same animal) ---
+    "Tardigrade (Ramazzottius varieornatus / Hypsibius exemplaris)": "Tardigrade (Ramazzottius varieornatus)",
+    # --- elephant variants ---
+    "African elephant (Loxodonta africana) / Elephas maximus": "African Elephant (Loxodonta africana)",
+    "African elephant (Loxodonta africana)": "African Elephant (Loxodonta africana)",
+    # --- human / archaic-human (no SVG piece; bold-base treatment) ---
     "Human / Conserved across mammals (Homo sapiens)": HUMAN_ORGANISM,
+    "Human (centenarian-associated GWAS locus); C. elegans daf-16 ortholog": HUMAN_ORGANISM,
+    "Human (endogenous, Pro140Lys engineered variant)": HUMAN_ORGANISM,
+    "Mouse / human (KL-VS longevity variant)": HUMAN_ORGANISM,
     "Tibetan Highlanders (Denisovan introgression into Homo sapiens)": HUMAN_ORGANISM,
+    "Tibetan highlanders (archaic Denisovan introgression)": HUMAN_ORGANISM,
+    # --- organisms whose raw CSV name needs a human-readable label ---
+    "Bowhead whale (Balaena mysticetus)": "Bowhead Whale (Balaena mysticetus)",
+    "Somniosus microcephalus (lifespan 272–392 ± 120 yr)": "Greenland Shark (Somniosus microcephalus)",
+    "Cladosporium sphaerospermum / Cryptococcus neoformans / Wangiella dermatitidis (Chernobyl fungi)": "Melanizing Fungi (Chernobyl strains)",
+    "Schmidtea mediterranea (planarian)": "Planarian Flatworm (Schmidtea mediterranea)",
+    "Conserved vertebrate; axolotl high-expression (Ambystoma mexicanum)": "Axolotl (Ambystoma mexicanum)",
+    "Pteropus alecto, Rhinolophus sinicus, Myotis davidii (Chiroptera)": "Bat (Order Chiroptera)",
+    "Weddell seal (Leptonychotes weddellii)": "Weddell Seal (Leptonychotes weddellii)",
+    "Winter flounder (Type I), Antarctic notothenioids (AFGP), ocean pout (Type III)": "Antifreeze Fish (flounder, ice fish)",
+    "Bottlenose dolphin (Tursiops truncatus)": "Bottlenose Dolphin (Tursiops truncatus)",
+    "Pit vipers (Crotalinae), pythons, boas": "Pit Viper (Crotalinae)",
+    "European robin (Erithacus rubecula)": "European Robin (Erithacus rubecula)",
+    "Cat (Felis catus) and Carnivora": "Cat (Felis catus)",
+    "Cuttlefish/octopus (Sepia officinalis), Doryteuthis opalescens": "Octopus (Cephalopoda)",
+    "Australian water-holding frog (Cyclorana platycephala); mammalian AQP1 as baseline": "Water-Holding Frog (Cyclorana platycephala)",
+    "Photinus pyralis": "Firefly (Photinus pyralis)",
+    "Electrophorus electricus/voltai + gymnotiforms/mormyrids": "Electric Eel (Electrophorus electricus)",
+    "Gekko japonicus": "Tokay Gecko (Gekko japonicus)",
 }
 
 _ORGANISM_SPLIT: dict[str, list[str]] = {
+    # Prestin/SLC26A5 convergently evolved in both lineages — each gets the gene.
     "Echolocating Bats & Dolphins (convergent evolution)": [
-        "Bats (Order Chiroptera)",
+        "Bat (Order Chiroptera)",
         "Bottlenose Dolphin (Tursiops truncatus)",
+    ],
+    "Echolocating bats + dolphins (convergent)": [
+        "Bat (Order Chiroptera)",
+        "Bottlenose Dolphin (Tursiops truncatus)",
+    ],
+    # TERT longevity gene studied in mouse/human with lobster as longevity comparator.
+    # Both organisms contribute to the trait; each gets its own puzzle piece.
+    "Mouse / human; lobster (Homarus americanus) as comparator": [
+        "Mouse (Mus musculus)",
+        "Lobster (Homarus americanus)",
     ],
 }
 

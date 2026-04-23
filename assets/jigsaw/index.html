@@ -829,18 +829,40 @@
             return runs;
         }
 
+        /** True mm per grid step: base * (target / max side), same as SVG width/height rescaling. */
+        function cellScaleMmForStl(svgHeaderSource) {
+            var base = parseFloat($("cell_scale").value) || 0;
+            if (!base || !svgHeaderSource) return base;
+            var m = /width="([0-9.]+)mm" height="([0-9.]+)mm"/.exec(svgHeaderSource);
+            if (!m) return base;
+            var longSide = Math.max(parseFloat(m[1]), parseFloat(m[2]));
+            if (!(longSide > 0)) return base;
+            var targetmm = parseFloat($("targetmax").value || "0");
+            if (targetmm <= 0 && longSide > 400) {
+                targetmm = 220;
+            }
+            if (targetmm <= 0) return base;
+            return base * (targetmm / longSide);
+        }
+
         function sendResultToParent() {
             if (isEmbedded && svgstrsave && window.parent) {
                 var pieces = parseInt($("piececount").innerHTML) || 0;
                 var outputSvg = svgstrsave;
                 var dims = "";
-                // Rescale SVG physical dimensions to targetmax (generated at 10×)
-                var targetmax = parseFloat($("targetmax").value || "0");
-                if (targetmax > 0) {
+                // Rescale SVG physical dimensions to targetmax (generated at 10×); infer target 220 if hidden targetmax is missing
+                var targetmm = parseFloat($("targetmax").value || "0");
+                if (targetmm <= 0) {
+                    var mp = /width="([0-9.]+)mm" height="([0-9.]+)mm"/.exec(svgstrsave);
+                    if (mp && Math.max(parseFloat(mp[1]), parseFloat(mp[2])) > 400) {
+                        targetmm = 220;
+                    }
+                }
+                if (targetmm > 0) {
                     outputSvg = outputSvg.replace(
                         /width="([0-9.]+)mm" height="([0-9.]+)mm"/,
                         function(m, w, h) {
-                            var s = targetmax / Math.max(parseFloat(w), parseFloat(h));
+                            var s = targetmm / Math.max(parseFloat(w), parseFloat(h));
                             var pw = (parseFloat(w) * s).toFixed(1);
                             var ph = (parseFloat(h) * s).toFixed(1);
                             dims = Math.round(pw) + " x " + Math.round(ph);
@@ -861,7 +883,7 @@
                     gridRLE: gridData,
                     gridRows: automata ? automata.rows : 0,
                     gridCols: automata ? automata.columns : 0,
-                    cellScale: parseFloat($("cell_scale").value)
+                    cellScale: cellScaleMmForStl(svgstrsave)
                 }, '*');
             }
         }
@@ -878,7 +900,7 @@
                     gridRLE: rleEncodeGrid(automata.grid, automata.rows, automata.columns),
                     gridRows: automata.rows,
                     gridCols: automata.columns,
-                    cellScale: parseFloat($("cell_scale").value)
+                    cellScale: cellScaleMmForStl(svgstrsave)
                 });
                 save("jigsaw_grid.json", gridJSON);
             }

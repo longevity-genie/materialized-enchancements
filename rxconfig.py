@@ -24,4 +24,5 @@ config = rx.Config(
     ],
     tailwind=None,
     vite_allowed_hosts=["materialized-enhancements.longevity-genie.info"],
+    show_built_with_reflex=False,
 )

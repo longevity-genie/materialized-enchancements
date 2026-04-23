@@ -4,6 +4,7 @@ import reflex as rx
 from reflex_mui_datagrid import lazyframe_grid
 
 from materialized_enhancements.components.layout import fomantic_icon, template, two_column_layout
+from materialized_enhancements.artex import artex_publish_button
 from materialized_enhancements.env import DEV_MODE
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
@@ -1307,6 +1308,14 @@ def _sculpture_section() -> rx.Component:
                                 class_name="ui primary button",
                                 style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
                             ),
+                            rx.cond(
+                                ComposeState.artex_section_visible,
+                                rx.el.div(
+                                    artex_publish_button(ComposeState, ComposeState.create_artex_project),
+                                    style={"marginTop": "8px"},
+                                ),
+                                rx.fragment(),
+                            ),
                             style={"marginTop": "10px"},
                         ),
                         rx.fragment(),
@@ -1337,180 +1346,6 @@ def _sculpture_section() -> rx.Component:
                 rx.cond(
                     ComposeState.has_stl,
                     rx.el.span("Ready", class_name="ui mini green label"),
-                    rx.fragment(),
-                ),
-            ),
-        ),
-        body,
-        style=_COLLAPSIBLE_STYLE,
-    )
-
-
-def _artex_dev_inputs() -> rx.Component:
-    """Dev-only API configuration (URL + token). Hidden in production builds."""
-    if not DEV_MODE:
-        return rx.fragment()
-    return rx.el.div(
-        rx.el.label(
-            "API URL (dev)",
-            style={"fontSize": "0.78rem", "color": "#6b7280", "display": "block", "marginBottom": "4px"},
-        ),
-        rx.el.input(
-            placeholder="http://localhost:8080/v1",
-            value=ComposeState.artex_api_url,
-            on_change=ComposeState.set_artex_api_url,
-            style={
-                "width": "100%",
-                "padding": "8px 12px",
-                "borderRadius": "6px",
-                "border": "1px solid #d1d5db",
-                "fontSize": "0.85rem",
-                "marginBottom": "8px",
-                "outline": "none",
-                "backgroundColor": "#ffffff",
-                "color": "#1a1a2e",
-                "fontFamily": "monospace",
-            },
-        ),
-        rx.el.label(
-            "API Token (dev)",
-            style={"fontSize": "0.78rem", "color": "#6b7280", "display": "block", "marginBottom": "4px"},
-        ),
-        rx.el.input(
-            type="password",
-            placeholder="Bearer token (8+ characters)",
-            value=ComposeState.artex_api_token,
-            on_change=ComposeState.set_artex_api_token,
-            style={
-                "width": "100%",
-                "padding": "8px 12px",
-                "borderRadius": "6px",
-                "border": "1px solid #d1d5db",
-                "fontSize": "0.85rem",
-                "marginBottom": "12px",
-                "outline": "none",
-                "backgroundColor": "#ffffff",
-                "color": "#1a1a2e",
-                "fontFamily": "monospace",
-            },
-        ),
-    )
-
-
-def _artex_section() -> rx.Component:
-    """Collapsible ARTEX integration — create an ARTEX project from the Totem STL."""
-    body = rx.cond(
-        ComposeState.artex_expanded,
-        rx.el.div(
-            rx.el.p(
-                "Create an ARTEX project with your Totem as 3D media.",
-                style={"fontSize": "0.85rem", "color": "#6b7280", "marginBottom": "12px", "lineHeight": "1.5"},
-            ),
-            _artex_dev_inputs(),
-            # Error display
-            rx.cond(
-                ComposeState.artex_error != "",
-                rx.el.div(
-                    fomantic_icon("circle-alert", size=14, color="#dc2626"),
-                    rx.el.span(
-                        ComposeState.artex_error,
-                        style={"marginLeft": "6px", "fontSize": "0.82rem", "color": "#dc2626"},
-                    ),
-                    style={
-                        "display": "flex",
-                        "alignItems": "flex-start",
-                        "padding": "10px",
-                        "borderRadius": "6px",
-                        "border": "1px solid #fca5a5",
-                        "backgroundColor": "#fef2f2",
-                        "marginBottom": "10px",
-                    },
-                ),
-                rx.fragment(),
-            ),
-            # Success display
-            rx.cond(
-                ComposeState.has_artex_project,
-                rx.el.div(
-                    fomantic_icon("check circle", size=14, color="#16a085"),
-                    rx.el.span(
-                        " ARTEX project created: ",
-                        style={"marginLeft": "6px", "fontSize": "0.85rem", "color": "#16a085", "fontWeight": "600"},
-                    ),
-                    rx.el.span(
-                        ComposeState.artex_project_id,
-                        style={
-                            "fontSize": "0.82rem",
-                            "color": "#1a1a2e",
-                            "fontFamily": "monospace",
-                            "wordBreak": "break-all",
-                        },
-                    ),
-                    style={
-                        "display": "flex",
-                        "alignItems": "flex-start",
-                        "flexWrap": "wrap",
-                        "padding": "10px",
-                        "borderRadius": "6px",
-                        "border": "1px solid #99f6e4",
-                        "backgroundColor": "#f0fdfa",
-                        "marginBottom": "10px",
-                    },
-                ),
-                rx.fragment(),
-            ),
-            # Create button
-            rx.el.button(
-                rx.cond(
-                    ComposeState.artex_creating,
-                    fomantic_icon("sync", size=16, style={"animation": "me-spin 1s linear infinite"}),
-                    fomantic_icon("cloud upload", size=16),
-                ),
-                rx.el.span(
-                    rx.cond(ComposeState.artex_creating, " Creating\u2026", " Create ARTEX Project"),
-                    style={"marginLeft": "8px"},
-                ),
-                on_click=ComposeState.create_artex_project,
-                class_name=rx.cond(
-                    ComposeState.artex_creating,
-                    "ui disabled button",
-                    rx.cond(ComposeState.can_create_artex, "ui button", "ui disabled button"),
-                ),
-                style={
-                    "width": "100%",
-                    "padding": "10px",
-                    "fontSize": "0.88rem",
-                    "backgroundColor": rx.cond(
-                        ComposeState.artex_creating, "#e5e7eb",
-                        rx.cond(ComposeState.can_create_artex, "#1a1a2e", "#e5e7eb"),
-                    ),
-                    "color": rx.cond(
-                        ComposeState.can_create_artex & ~ComposeState.artex_creating,
-                        "#ffffff",
-                        "#9ca3af",
-                    ),
-                },
-            ),
-        ),
-        rx.fragment(),
-    )
-
-    return rx.el.div(
-        _section_header(
-            expanded=ComposeState.artex_expanded,
-            icon_name="cloud upload",
-            title="ARTEX",
-            on_toggle=ComposeState.toggle_artex_expanded,
-            right_badge=rx.cond(
-                ComposeState.artex_creating,
-                rx.el.div(
-                    fomantic_icon("sync", size=12, style={"animation": "me-spin 1s linear infinite"}),
-                    rx.el.span(" Creating\u2026", style={"marginLeft": "4px", "fontSize": "0.75rem", "color": "#7c3aed"}),
-                    style={"display": "flex", "alignItems": "center"},
-                ),
-                rx.cond(
-                    ComposeState.has_artex_project,
-                    rx.el.span("Published", class_name="ui mini green label"),
                     rx.fragment(),
                 ),
             ),
@@ -2720,7 +2555,6 @@ def _sculpture_right_pane() -> rx.Component:
         _sculpture_section(),
         _viewer_section(),
         _report_section(),
-        rx.cond(ComposeState.artex_section_visible, _artex_section(), rx.fragment()),
     )
 
 
@@ -2745,6 +2579,30 @@ def _sculpture_tab() -> rx.Component:
 _JIGSAW_ACCENT = "#16a085"
 
 
+def _organism_display_parts(organism: str) -> tuple[str, str]:
+    """Split 'Common Name (Latin details)' into (common, latin_with_parens)."""
+    idx = organism.find("(")
+    if idx > 0:
+        return organism[:idx].rstrip(), organism[idx:]
+    return organism, ""
+
+
+def _primary_category_color(animal: dict) -> str:
+    """Return the CATEGORY_COLORS hex for the animal's first trait/category."""
+    traits: list = animal.get("traits") or []
+    if traits:
+        return CATEGORY_COLORS.get(traits[0], "#9ca3af")
+    return "#9ca3af"
+
+
+# Build legend items at module load: only categories present in ANIMAL_LIBRARY.
+_JIGSAW_LEGEND_ITEMS: list[tuple[str, str]] = [
+    (cat, color)
+    for cat, color in CATEGORY_COLORS.items()
+    if any(cat in (a.get("traits") or []) for a in ANIMAL_LIBRARY)
+]
+
+
 def _organism_button(animal: dict) -> rx.Component:
     organism = str(animal["organism"])
     gene_count = len(animal["genes"])
@@ -2754,16 +2612,28 @@ def _organism_button(animal: dict) -> rx.Component:
     is_enabled = is_selected | is_affordable
     is_human = organism == HUMAN_ORGANISM
     icon_name = "user" if is_human else "paw"
+    cat_color = _primary_category_color(animal)
+
+    common_name, latin_detail = _organism_display_parts(organism)
 
     return rx.el.div(
         rx.el.div(
             fomantic_icon(
                 icon_name,
                 size=14,
-                color=rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, _JIGSAW_ACCENT, "#d1d5db")),
+                color=rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, cat_color, "#d1d5db")),
             ),
             rx.el.span(
-                organism,
+                common_name,
+                rx.el.span(
+                    f" {latin_detail}",
+                    style={
+                        "fontSize": "0.72rem",
+                        "opacity": "0.7",
+                        "fontStyle": "italic",
+                        "fontWeight": "400",
+                    },
+                ) if latin_detail else "",
                 style={"fontSize": "0.85rem", "flex": "1", "marginLeft": "8px", "lineHeight": "1.3"},
             ),
             rx.el.span(
@@ -2797,14 +2667,61 @@ def _organism_button(animal: dict) -> rx.Component:
             "marginBottom": "4px",
             "textAlign": "left",
             "cursor": rx.cond(is_enabled, "pointer", "not-allowed"),
-            "padding": "8px 12px",
+            "padding": "8px 10px 8px 10px",
             "borderRadius": "6px",
             "border": "1px solid",
+            "borderLeft": f"3px solid {cat_color}",
             "borderColor": rx.cond(is_selected, _JIGSAW_ACCENT, rx.cond(is_enabled, "#e5e7eb", "#f3f4f6")),
             "backgroundColor": rx.cond(is_selected, _JIGSAW_ACCENT, "#ffffff"),
             "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
             "opacity": rx.cond(is_enabled, "1", "0.5"),
             "transition": "all 0.15s ease",
+        },
+    )
+
+
+def _jigsaw_category_legend() -> rx.Component:
+    """Compact category → color legend for the right pane."""
+    items = [
+        rx.el.span(
+            rx.el.span(
+                style={
+                    "display": "inline-block",
+                    "width": "8px",
+                    "height": "8px",
+                    "borderRadius": "50%",
+                    "backgroundColor": color,
+                    "marginRight": "4px",
+                    "flexShrink": "0",
+                },
+            ),
+            rx.el.span(cat, style={"whiteSpace": "nowrap"}),
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "fontSize": "0.70rem",
+                "color": "#6b7280",
+                "marginRight": "10px",
+                "marginBottom": "4px",
+            },
+        )
+        for cat, color in _JIGSAW_LEGEND_ITEMS
+    ]
+    return rx.el.div(
+        rx.el.span(
+            "Category key",
+            style={"fontSize": "0.70rem", "fontWeight": "600", "color": "#9ca3af", "marginRight": "8px", "whiteSpace": "nowrap"},
+        ),
+        *items,
+        style={
+            "display": "flex",
+            "flexWrap": "wrap",
+            "alignItems": "center",
+            "padding": "8px 12px",
+            "borderRadius": "6px",
+            "backgroundColor": "#f9fafb",
+            "border": "1px solid #e5e7eb",
+            "marginBottom": "12px",
         },
     )
 
@@ -3122,10 +3039,43 @@ def _jigsaw_prod_view() -> rx.Component:
                             "border": "1px solid #99f6e4",
                         },
                     ),
+                    rx.cond(
+                        JigsawState.stl_ready,
+                        rx.el.div(
+                            rx.el.iframe(
+                                src=JigsawState.jigsaw_viewer_iframe_src,
+                                id="jigsaw-stl-viewer-iframe",
+                                style={
+                                    "width": "100%",
+                                    "height": "min(500px, 65vh)",
+                                    "minHeight": "300px",
+                                    "border": "1px solid #e5e7eb",
+                                    "borderRadius": "8px",
+                                    "backgroundColor": "#1a1a2e",
+                                },
+                            ),
+                            rx.el.p(
+                                "Drag to rotate \u00b7 Scroll to zoom \u00b7 Right-drag to pan",
+                                style={
+                                    "fontSize": "0.82rem",
+                                    "color": "#9ca3af",
+                                    "textAlign": "center",
+                                    "marginTop": "6px",
+                                    "marginBottom": "0",
+                                },
+                            ),
+                            style={"width": "100%"},
+                        ),
+                        rx.fragment(),
+                    ),
                     style={
                         "flex": "1 1 280px",
                         "minWidth": "min(100%, 280px)",
                         "maxWidth": "100%",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "alignItems": "stretch",
+                        "gap": "12px",
                     },
                 ),
                 style={
@@ -3139,21 +3089,79 @@ def _jigsaw_prod_view() -> rx.Component:
                 },
             ),
             rx.el.div(
-                rx.el.button(
-                    fomantic_icon("download", size=14),
-                    rx.el.span(" Download SVG + Params", style={"marginLeft": "6px"}),
-                    on_click=JigsawState.download_jigsaw_artifacts,
-                    class_name="ui teal button",
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                rx.el.label(
+                    "Max faces",
+                    html_for="stl-max-faces",
+                    style={"fontSize": "0.78rem", "color": "#6b7280", "whiteSpace": "nowrap"},
                 ),
-                rx.el.button(
-                    fomantic_icon("cube", size=14),
-                    rx.el.span(" Download 3D STL", style={"marginLeft": "6px"}),
-                    on_click=JigsawState.download_stl,
-                    class_name="ui teal basic button",
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                rx.el.input(
+                    id="stl-max-faces",
+                    type="number",
+                    min=10000,
+                    max=2000000,
+                    step=10000,
+                    value=JigsawState.stl_max_faces,
+                    on_change=JigsawState.set_stl_max_faces,
+                    style={
+                        "width": "100px",
+                        "padding": "4px 6px",
+                        "fontSize": "0.82rem",
+                        "border": "1px solid #d1d5db",
+                        "borderRadius": "4px",
+                        "textAlign": "right",
+                    },
                 ),
-                style={"display": "flex", "gap": "8px", "width": "100%"},
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "gap": "8px",
+                    "justifyContent": "flex-end",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.button(
+                fomantic_icon("download", size=14),
+                rx.el.span(
+                    rx.cond(JigsawState.stl_ready, " Download SVG + STL", " Download SVG (STL generating\u2026)"),
+                    style={"marginLeft": "6px"},
+                ),
+                on_click=JigsawState.download_jigsaw_artifacts,
+                class_name="ui teal button",
+                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
+            ),
+            rx.cond(
+                JigsawState.stl_generating,
+                rx.el.div(
+                    rx.el.div(
+                        style={
+                            "height": "3px",
+                            "background": "linear-gradient(90deg, #7c3aed 0%, #a78bfa 50%, #7c3aed 100%)",
+                            "backgroundSize": "200% 100%",
+                            "animation": "stl-progress 1.5s ease-in-out infinite",
+                            "borderRadius": "2px",
+                        },
+                    ),
+                    rx.el.p(
+                        JigsawState.stl_progress,
+                        style={"color": "#9ca3af", "fontSize": "0.78rem", "marginTop": "4px", "textAlign": "center"},
+                    ),
+                    rx.el.style("""
+                        @keyframes stl-progress {
+                            0% { background-position: 200% 0; }
+                            100% { background-position: -200% 0; }
+                        }
+                    """),
+                    style={"marginTop": "8px"},
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                JigsawState.artex_section_visible,
+                rx.el.div(
+                    artex_publish_button(JigsawState, JigsawState.publish_to_artex),
+                    style={"marginTop": "8px"},
+                ),
+                rx.fragment(),
             ),
         ),
         rx.cond(
@@ -3193,25 +3201,23 @@ def _jigsaw_dev_view() -> rx.Component:
                 ),
                 style={"display": "flex", "alignItems": "center", "marginBottom": "10px"},
             ),
-            rx.el.div(
-                rx.el.button(
-                    fomantic_icon("download", size=14),
-                    rx.el.span(" Download Pieces SVG", style={"marginLeft": "6px"}),
-                    on_click=rx.call_script(
-                        "window.__jigsawResult || ''",
-                        callback=JigsawState.receive_generated_svg,
-                    ),
-                    class_name="ui teal button",
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+            rx.el.button(
+                fomantic_icon("download", size=14),
+                rx.el.span(
+                    rx.cond(JigsawState.stl_ready, " Download SVG + STL", " Download SVG (STL generating\u2026)"),
+                    style={"marginLeft": "6px"},
                 ),
-                rx.el.button(
-                    fomantic_icon("cube", size=14),
-                    rx.el.span(" Download 3D STL", style={"marginLeft": "6px"}),
-                    on_click=JigsawState.download_stl,
-                    class_name="ui teal basic button",
-                    style={"flex": "1", "padding": "10px", "fontSize": "0.88rem"},
+                on_click=JigsawState.download_jigsaw_artifacts,
+                class_name="ui teal button",
+                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
+            ),
+            rx.cond(
+                JigsawState.artex_section_visible,
+                rx.el.div(
+                    artex_publish_button(JigsawState, JigsawState.publish_to_artex),
+                    style={"marginTop": "8px"},
                 ),
-                style={"display": "flex", "gap": "8px"},
+                rx.fragment(),
             ),
             id="jigsaw-result-ready",
             style={
@@ -3245,7 +3251,7 @@ def _jigsaw_generator_section() -> rx.Component:
         "      gridRLE: e.data.gridRLE || null,"
         "      gridRows: e.data.gridRows || 0,"
         "      gridCols: e.data.gridCols || 0,"
-        "      cellScale: e.data.cellScale || 0"
+        "      cellScale: (e.data.cellScale == null ? 0 : +e.data.cellScale)"
         "    };"
         "    var rr = document.getElementById('jigsaw-result-ready');"
         "    if (rr) rr.style.display = 'flex';"
@@ -3405,6 +3411,12 @@ def _jigsaw_right_pane() -> rx.Component:
             id="jigsaw-svg-data",
             style={"display": "none"},
         ),
+        rx.el.textarea(
+            value=JigsawState.stl_base64,
+            id="stl-b64-data",
+            style={"display": "none"},
+        ),
+        _jigsaw_category_legend(),
         _jigsaw_pipeline_banner(),
         _jigsaw_choice_section(),
         _jigsaw_generator_section(),

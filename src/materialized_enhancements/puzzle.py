@@ -63,6 +63,11 @@ ET.register_namespace("inkscape", _INKSCAPE_NS)
 ET.register_namespace("sodipodi", _SODIPODI_NS)
 ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
 
+def _norm_org_for_match(name: str) -> str:
+    """Lowercase and treat hyphens like spaces so e.g. 'mole-rat' matches 'mole rat'."""
+    return name.lower().replace("-", " ")
+
+
 _ORGANISM_LAYER_MAP: dict[str, str] = {
     "tardigrade": "1_tardigrade",
     "deinococcus": "2_Deinococcus",
@@ -101,7 +106,7 @@ _ORGANISM_LAYER_MAP: dict[str, str] = {
 
 def resolve_puzzle_svg(source_organism: str) -> str:
     """Return the puzzle SVG filename for a given source organism string, or empty string."""
-    lower = source_organism.lower()
+    lower = _norm_org_for_match(source_organism)
     for keyword, svg in _ORGANISM_PUZZLE_MAP.items():
         if keyword in lower:
             return svg
@@ -112,7 +117,7 @@ def _resolve_organism_layers(organisms: list[str]) -> set[str]:
     """Resolve a list of organism display names to their SVG layer labels."""
     labels: set[str] = set()
     for org in organisms:
-        lower = org.lower()
+        lower = _norm_org_for_match(org)
         for keyword, label in _ORGANISM_LAYER_MAP.items():
             if keyword in lower:
                 labels.add(label)

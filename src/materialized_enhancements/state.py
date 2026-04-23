@@ -33,7 +33,12 @@ from materialized_enhancements.sculpture import (
     generate_sculpture,
     resolve_gene_properties_row,
 )
-from materialized_enhancements.artex import create_artex_project_sync
+from materialized_enhancements.artex import (
+    build_jigsaw_config,
+    build_sculpture_config,
+    create_artex_project_sync,
+    publish_stl_sync,
+)
 from materialized_enhancements.env import (
     ARTEX_API_TOKEN,
     ARTEX_API_URL,
@@ -290,7 +295,6 @@ class ComposeState(rx.State):
     report_copy_feedback: str = ""
 
     # ARTEX integration — defaults from .env (ARTEX_API_URL / ARTEX_API_TOKEN)
-    artex_expanded: bool = False
     artex_api_url: str = ARTEX_API_URL
     artex_api_token: str = ARTEX_API_TOKEN
     artex_creating: bool = False
@@ -455,9 +459,6 @@ class ComposeState(rx.State):
 
     def toggle_viewer_expanded(self) -> None:
         self.viewer_expanded = not self.viewer_expanded
-
-    def toggle_artex_expanded(self) -> None:
-        self.artex_expanded = not self.artex_expanded
 
     def toggle_report_expanded(self) -> None:
         self.report_expanded = not self.report_expanded
@@ -934,6 +935,19 @@ class JigsawState(rx.State):
     jigsaw_grid_rows: int = 0
     jigsaw_grid_cols: int = 0
     jigsaw_cell_scale: float = 0.0
+    stl_max_faces: int = 240_000
+    stl_generating: bool = False
+    stl_progress: str = ""
+    stl_ready: bool = False
+    _stl_bytes: bytes = b""
+    stl_base64: str = ""
+    viewer_nonce: int = 0
+    # ARTEX integration
+    artex_api_url: str = ARTEX_API_URL
+    artex_api_token: str = ARTEX_API_TOKEN
+    artex_creating: bool = False
+    artex_project_id: str = ""
+    artex_error: str = ""
     choice_expanded: bool = True
     generator_expanded: bool = False
     dev_view: bool = True
@@ -960,6 +974,12 @@ class JigsawState(rx.State):
 
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
+
+    def set_stl_max_faces(self, value: float) -> None:
+        try:
+            self.stl_max_faces = max(10_000, int(value))
+        except (ValueError, TypeError):
+            pass
 
     def _compute_budget_spent(self) -> int:
         return sum(GENE_PRICES.get(g, 0) for g in self._unique_selected_genes())
@@ -993,18 +1013,81 @@ class JigsawState(rx.State):
             return rx.toast.error("No SVG to download — select some organisms first.")
         return rx.download(data=self.jigsaw_svg, filename="materialized_jigsaw.svg")
 
-    def download_stl(self):  # type: ignore[return]
-        if not self.jigsaw_grid_rle:
-            yield rx.toast.error("No grid data — generate a jigsaw first.")
+    @rx.event(background=True)
+    async def generate_stl_background(self) -> None:
+        async with self:
+            if self.stl_generating or not self.jigsaw_grid_rle:
+                return
+            self.stl_generating = True
+            self.stl_ready = False
+            self.stl_progress = "Preparing…"
+            self._stl_bytes = b""
+            self.stl_base64 = ""
+            rle = list(self.jigsaw_grid_rle)
+            rows = self.jigsaw_grid_rows
+            cols = self.jigsaw_grid_cols
+            scale = self.jigsaw_cell_scale
+            svg = self.generated_jigsaw_svg
+            max_faces = self.stl_max_faces
+
+        try:
+            from materialized_enhancements.jigsaw_stl import (
+                jigsaw_ui_cell_to_mm_per_cell,
+                stl_stage_decimate,
+                stl_stage_heightmap,
+                stl_stage_mesh,
+                stl_stage_rasterize,
+                stl_stage_serialize,
+            )
+            scale = jigsaw_ui_cell_to_mm_per_cell(scale)
+            loop = asyncio.get_event_loop()
+
+            async with self:
+                self.stl_progress = "Rasterizing cut paths…"
+            _upscale = 10
+            _, silhouette, piece_interior, hi_rows, hi_cols = await loop.run_in_executor(
+                None, stl_stage_rasterize, svg, rows, cols, _upscale, 4,
+            )
+
+            async with self:
+                self.stl_progress = "Building heightmap…"
+            heightmap_mm = await loop.run_in_executor(
+                None, stl_stage_heightmap, piece_interior, silhouette, 1, _upscale,
+            )
+
+            async with self:
+                self.stl_progress = "Constructing mesh…"
+            verts, faces = await loop.run_in_executor(
+                None, stl_stage_mesh,
+                heightmap_mm, silhouette, hi_rows, hi_cols, scale, _upscale,
+            )
+
+            if max_faces > 0 and len(faces) > max_faces:
+                async with self:
+                    self.stl_progress = f"Decimating {len(faces):,} → {max_faces:,} faces…"
+                verts, faces = await loop.run_in_executor(
+                    None, stl_stage_decimate, verts, faces, max_faces,
+                )
+
+            async with self:
+                self.stl_progress = "Writing STL…"
+            stl_bytes = await loop.run_in_executor(
+                None, stl_stage_serialize, verts, faces,
+            )
+        except Exception:
+            logger.exception("STL generation failed")
+            async with self:
+                self.stl_generating = False
+                self.stl_progress = ""
             return
-        from materialized_enhancements.jigsaw_stl import grid_to_stl
-        stl_bytes = grid_to_stl(
-            self.jigsaw_grid_rle,
-            self.jigsaw_grid_rows,
-            self.jigsaw_grid_cols,
-            self.jigsaw_cell_scale,
-        )
-        yield rx.download(data=stl_bytes, filename="materialized_jigsaw.stl")
+
+        async with self:
+            self._stl_bytes = stl_bytes
+            self.stl_generating = False
+            self.stl_progress = ""
+            self.stl_ready = True
+            self.stl_base64 = base64.b64encode(stl_bytes).decode("ascii")
+            self.viewer_nonce += 1
 
     def open_jigsaw_generator(self):  # type: ignore[return]
         if not self.jigsaw_svg:
@@ -1014,14 +1097,27 @@ class JigsawState(rx.State):
             return
         self.generating = True
         self.generated_jigsaw_svg = ""
+        self.stl_ready = False
+        self._stl_bytes = b""
+        self.stl_base64 = ""
         self.generator_expanded = True
+        self.show_generator = True
         seed = self.jigsaw_seed
         yield rx.call_script(
-            "localStorage.setItem('materialized_jigsaw_svg', "
-            "document.getElementById('jigsaw-svg-data').value);"
-            f"localStorage.setItem('materialized_jigsaw_seed', '{seed}');"
+            "(function(){"
+            "var ta=document.getElementById('jigsaw-svg-data');"
+            "var svg=ta?ta.value:'';"
+            f"var seed={seed};"
+            "try{"
+            "localStorage.setItem('materialized_jigsaw_svg',svg);"
+            "localStorage.setItem('materialized_jigsaw_seed',String(seed));"
+            "}catch(e){}"
+            "var fr=document.getElementById('jigsaw-generator-iframe');"
+            "if(fr&&fr.contentWindow){"
+            "fr.contentWindow.postMessage({type:'load_jigsaw_svg',svg:svg,seed:String(seed)},'*');"
+            "}"
+            "})();"
         )
-        self.show_generator = True
 
     def on_jigsaw_complete(self):  # type: ignore[return]
         self.generating = False
@@ -1040,7 +1136,7 @@ class JigsawState(rx.State):
             callback=JigsawState.set_jigsaw_result,
         )
 
-    def set_jigsaw_result(self, payload: str) -> None:
+    def set_jigsaw_result(self, payload: str):  # type: ignore[return]
         import json as _json
         try:
             data = _json.loads(payload)
@@ -1055,6 +1151,10 @@ class JigsawState(rx.State):
             self.jigsaw_grid_rows = int(data.get("gridRows", 0))
             self.jigsaw_grid_cols = int(data.get("gridCols", 0))
             self.jigsaw_cell_scale = float(data.get("cellScale", 0))
+            self.stl_ready = False
+            self._stl_bytes = b""
+            self.stl_base64 = ""
+            yield JigsawState.generate_stl_background
 
     def toggle_dev_view(self) -> None:
         self.dev_view = not self.dev_view
@@ -1077,6 +1177,78 @@ class JigsawState(rx.State):
             yield rx.toast.error("No jigsaw generated yet.")
             return
         yield rx.download(data=self.generated_jigsaw_svg, filename="materialized_jigsaw_pieces.svg")
+        if self._stl_bytes:
+            yield rx.download(data=self._stl_bytes, filename="materialized_jigsaw.stl")
+
+    def set_artex_api_url(self, value: str) -> None:
+        self.artex_api_url = value
+
+    def set_artex_api_token(self, value: str) -> None:
+        self.artex_api_token = value
+
+    @rx.event(background=True)
+    async def publish_to_artex(self) -> None:
+        async with self:
+            if self.artex_creating:
+                return
+            if not self._stl_bytes:
+                self.artex_error = "No STL generated yet."
+                return
+            if not self.artex_api_token.strip():
+                self.artex_error = "API token is required."
+                return
+            self.artex_creating = True
+            self.artex_error = ""
+            self.artex_project_id = ""
+            api_url = self.artex_api_url
+            api_token = self.artex_api_token
+            stl_bytes = bytes(self._stl_bytes)
+            tag = self.personal_tag
+            organisms = list(self.selected_organisms)
+            seed = self.jigsaw_seed
+            pieces = self.jigsaw_pieces
+            redirect_override = str(self.router.url.query_parameters.get("redirect", ""))
+
+        try:
+            config = build_jigsaw_config(tag, organisms, seed, pieces, "materialized_jigsaw.stl")
+            loop = asyncio.get_event_loop()
+            project_id = await loop.run_in_executor(
+                None,
+                publish_stl_sync,
+                api_url, api_token, config, stl_bytes, "materialized_jigsaw.stl", ARTEX_INSTANCE_ID,
+            )
+        except Exception as exc:
+            logger.exception("ARTEX jigsaw publish failed")
+            async with self:
+                self.artex_creating = False
+                self.artex_error = str(exc)
+            return
+
+        async with self:
+            self.artex_creating = False
+            self.artex_project_id = project_id
+
+        yield rx.redirect(project_redirect_url(project_id, redirect_override), is_external=True)
+
+    @rx.var
+    def has_artex_project(self) -> bool:
+        return len(self.artex_project_id) > 0
+
+    @rx.var
+    def can_create_artex(self) -> bool:
+        return self.stl_ready and len(self.artex_api_token.strip()) > 0
+
+    @rx.var
+    def artex_section_visible(self) -> bool:
+        if DEV_MODE:
+            return True
+        return len(self.artex_api_token.strip()) > 0
+
+    @rx.var
+    def jigsaw_viewer_iframe_src(self) -> str:
+        if not self.stl_ready or not self.stl_base64:
+            return "about:blank"
+        return f"/sculpture_viewer/index.html?nonce={self.viewer_nonce}&preset=jigsaw"
 
     @rx.var
     def jigsaw_name_crc(self) -> int:
