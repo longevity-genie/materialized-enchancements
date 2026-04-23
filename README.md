@@ -71,76 +71,86 @@ Copy `.env.template` to `.env` to override defaults (ARTEX endpoints, kiosk redi
 
 ---
 
-## ARTEX Integration
+## ARTEX Venue Integration
 
-The sculpture tab has a **Create ARTEX Project** button that ships the generated Totem to a running [ARTEX Platform API](https://github.com/CODAME/artex-open/tree/main/.services/artex-platform-api) in one click:
+Both the **Sculpture** and **Jigsaw** tabs have a **Send to Wall** button. One click
+publishes the generated STL to the [ARTEX Platform API](https://github.com/CODAME/artex-open/tree/main/.services/artex-platform-api)
+as a zipped artwork package and pushes it to a physical venue display over SSE in real
+time. Full details: [`docs/ARTEX_INTEGRATION.md`](docs/ARTEX_INTEGRATION.md).
 
-1. `POST /v1/projects` — creates the project with a ConfigJson tailored to the gene selection
-2. `PUT /v1/projects/:id/assets/models/<file>.stl` — uploads the Totem STL as the project's 3D media
-3. `POST /v1/projects/:id/run` — deploys it on the target instance
-4. Redirects the visitor to the ARTEX project URL
+### Pipeline
 
-### Local dev setup
-
-Clone ARTEX alongside this repo and run the Platform API:
-
-```bash
-git clone https://github.com/CODAME/artex-open
-cd artex-open && npm install
-npm run dev --workspace=@artex/platform-api   # → http://localhost:8080/v1
+```
+STL bytes  →  zip(config/artwork.json + state.json + models/<file>.stl)
+           →  PUT  /api/packages/:id            (upload zip)
+           →  POST /admin/dev-session           (exchange admin token → session token)
+           →  POST /publish/apply               (register slug)
+           →  POST /api/venue/displays/:id/load-slug  (push to display via SSE)
+           →  optional ?redirect= redirect
 ```
 
-Any Bearer token ≥8 chars works in dev (`dev-token-12345678`). In `--dev` mode our app's ARTEX section shows the API URL / token inputs for live tweaking; in regular mode they're hidden and the values come exclusively from `.env`.
+### Kiosk URL parameters
 
-### Kiosk mode
+A QR code in the room (or the wall display's own redirect) can seed the visitor's
+session with these query parameters on any page:
 
-For installations, activate kiosk behaviour per URL with `?interaction=artex`:
+| Parameter | Example | Effect |
+|-----------|---------|--------|
+| `from=ARTEX` | `?from=ARTEX` | Makes the Send to Wall button visible |
+| `token=<value>` | `?token=abcd` | Overrides the admin token for this session |
+| `display_id=<id>` | `?display_id=north-wall` | Target display (overrides env) |
+| `redirect=<url>` | `?redirect=https://artex.live/` | Enables idle timer + post-publish redirect. Supports `{slug}` substitution. `redirect=false` disables both. |
 
-- A 60-second inactivity band appears at the top of the page, resets on any user activity, turns red in the last 5 seconds, and redirects to `ARTEX_IDLE_URL` on expiry.
-- Works in both dev and prod; no query param → band stays hidden.
-- Optional `&redirect=<url>` overrides both the idle-expiry AND post-create destinations. Supports `{project_id}` substitution, e.g. `?interaction=artex&redirect=https://artex.live/wall/{project_id}`.
-
-### Testing the integration
-
-Unit tests (mocked HTTP, no server required) cover the config builder, the POST+PUT+POST sequence, URL trimming, and error paths:
-
-```bash
-uv run pytest tests/test_artex.py -v      # 7 tests, ~0.1s
+**Example kiosk URL:**
+```
+http://my-installation.example/materialize?from=ARTEX&display_id=north-wall&redirect=https://artex.live/
 ```
 
-End-to-end smoke test against a live ARTEX dev server:
+### Idle timer
+
+When `?redirect=<url>` is present, a fixed countdown band appears at the top of
+every page. It resets on any mouse, keyboard, or touch activity, turns red in the
+last 5 seconds, and navigates to the redirect URL at zero. Pure client-side JS —
+no server round-trip.
+
+### Local test stand
 
 ```bash
-# 1. In the artex-open clone, start the Platform API
-cd /path/to/artex-open && npm run dev --workspace=@artex/platform-api
+# 1. Start Platform API (in ARTEX repo)
+npm run platform-api          # → http://127.0.0.1:8787
 
-# 2. In this repo, start the Reflex app in dev mode
-uv run start --dev
+# 2. Start runtime display (in ARTEX repo)
+VITE_PLATFORM_API_URL=http://127.0.0.1:8787 VITE_DISPLAY_ID=test-wall bun run dev:runtime
+# Open: http://localhost:4173?mode=gallery&displayId=test-wall&apiBase=http://127.0.0.1:8787
 
-# 3. Point `ARTEX_DEV_REDIRECT_URL` at the API's GET endpoint so you land on
-#    the JSON of the project you just created:
-#    ARTEX_DEV_REDIRECT_URL=http://localhost:8080/v1/projects/{project_id}
-
-# 4. Browse to http://localhost:3000, generate a Totem, click "Create ARTEX
-#    Project". On success the tab redirects to the project JSON, confirming
-#    POST /projects + PUT assets/models/<file>.stl + POST /run all returned 2xx.
+# 3. Start this app and send to the wall
+uv run start
+# Navigate to: http://localhost:3000/materialize?from=ARTEX&display_id=test-wall&redirect=false
 ```
-
-Optional: confirm the running project responds to live updates with `npx tsx examples/update-running-experience.ts <projectId>` from inside the ARTEX repo's `.services/artex-platform-api`.
 
 ### Configuration
 
-See [`.env.template`](.env.template) for the full list. Highlights:
+See [`.env.template`](.env.template) for the full list.
 
-| Variable | Purpose |
-|---|---|
-| `ARTEX_API_URL` | Platform API base (default `http://localhost:8080/v1`) |
-| `ARTEX_API_TOKEN` | Bearer token |
-| `ARTEX_INSTANCE_ID` | Target instance for `/run` (default `default`) |
-| `ARTEX_PROJECT_URL_TEMPLATE` | Post-create redirect in prod; `{project_id}` substituted |
-| `ARTEX_IDLE_URL` | Kiosk idle-timeout target in prod |
-| `ARTEX_DEV_REDIRECT_URL` | Dev-mode override for both redirects above |
-| `IDLE_TIMEOUT_SECONDS` / `IDLE_WARNING_SECONDS` | Kiosk timer tuning (defaults 60 / 5) |
+| Variable | Default | Purpose |
+|---|---|---|
+| `ARTEX_API_URL` | `http://127.0.0.1:8787` | Platform API base (no trailing slash) |
+| `ARTEX_API_TOKEN` | `abcd` | Admin token (`ARTEX_PLATFORM_ADMIN_TOKEN` on API server) |
+| `ARTEX_DISPLAY_ID` | `test-wall` | Default venue display; overridden by `?display_id=` |
+| `ARTEX_IDLE_URL` | `https://artex.live/` | Idle-redirect target in prod |
+| `ARTEX_DEV_REDIRECT_URL` | `http://127.0.0.1:8787/public/projects/{slug}` | Dev-mode redirect (supports `{slug}`) |
+| `IDLE_TIMEOUT_SECONDS` / `IDLE_WARNING_SECONDS` | `60` / `5` | Kiosk timer tuning |
+
+### Testing
+
+```bash
+# Unit tests (mocked HTTP, no server needed)
+uv run pytest tests/test_artex.py -v          # 9 tests, ~0.1 s
+
+# Integration tests (auto-skipped if API is down)
+uv run pytest tests/test_artex_integration.py -v -s
+# Runs 4 tests: sculpture, jigsaw, display list, real-STL round-trip
+```
 
 ---
 

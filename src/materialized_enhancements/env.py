@@ -1,8 +1,9 @@
 """Environment configuration: .env loading + derived constants.
 
 ``MATERIALIZED_DEV_MODE`` is set by ``run.py`` when invoked with ``--dev``.
-``ARTEX_API_URL`` / ``ARTEX_API_TOKEN`` match the variables used by ARTEX's
-own ``run-new-project.ts`` sample.
+``ARTEX_API_URL`` / ``ARTEX_API_TOKEN`` are the platform API base URL and the
+admin token (``ARTEX_PLATFORM_ADMIN_TOKEN`` on the server side) used to exchange
+for a short-lived session token at publish time.
 """
 
 from __future__ import annotations
@@ -27,20 +28,16 @@ def _positive_int_from_env(name: str, default: int) -> int:
 
 DEV_MODE: bool = os.getenv("MATERIALIZED_DEV_MODE", "").lower() in ("1", "true", "yes", "on")
 
-# ARTEX Platform API — credentials & instance target
-ARTEX_API_URL: str = os.getenv("ARTEX_API_URL", "http://localhost:8080/v1")
+# ARTEX Platform API — credentials & venue display target
+ARTEX_API_URL: str = os.getenv("ARTEX_API_URL", "http://127.0.0.1:8787")
 ARTEX_API_TOKEN: str = os.getenv("ARTEX_API_TOKEN", "")
-ARTEX_INSTANCE_ID: str = os.getenv("ARTEX_INSTANCE_ID", "default")
+ARTEX_DISPLAY_ID: str = os.getenv("ARTEX_DISPLAY_ID", "test-wall")
 
-# Redirects after "Create ARTEX Project" success / kiosk idle timeout
-# ARTEX_PROJECT_URL_TEMPLATE gets {project_id} substituted; ARTEX_IDLE_URL is plain.
-# In dev mode both redirects go to ARTEX_DEV_REDIRECT_URL for visual verification.
-ARTEX_PROJECT_URL_TEMPLATE: str = os.getenv(
-    "ARTEX_PROJECT_URL_TEMPLATE", "https://artex.live/project/{project_id}"
-)
+# Kiosk inactivity redirect — where the idle timer sends the visitor.
+# The ?redirect= query param at runtime overrides this.
 ARTEX_IDLE_URL: str = os.getenv("ARTEX_IDLE_URL", "https://artex.live/")
 ARTEX_DEV_REDIRECT_URL: str = os.getenv(
-    "ARTEX_DEV_REDIRECT_URL", "https://example.com/artex-dev-redirect"
+    "ARTEX_DEV_REDIRECT_URL", "http://127.0.0.1:8787/public/projects/{slug}"
 )
 
 # Public frontend URL used for share/report links.
@@ -51,21 +48,12 @@ IDLE_TIMEOUT_SECONDS: int = int(os.getenv("IDLE_TIMEOUT_SECONDS", "60"))
 IDLE_WARNING_SECONDS: int = int(os.getenv("IDLE_WARNING_SECONDS", "5"))
 
 
-def project_redirect_url(project_id: str, override: str = "") -> str:
-    """URL to send the user to after a successful ARTEX project creation.
-
-    Resolution order: ``override`` (e.g. from a ``?redirect=`` query arg) →
-    prod template → dev fallback. All three support ``{project_id}``
-    substitution, so a kiosk operator can point at
-    ``?redirect=https://artex.live/wall/{project_id}`` and the project ID
-    gets spliced in.
-    """
-    template = override or (ARTEX_DEV_REDIRECT_URL if DEV_MODE else ARTEX_PROJECT_URL_TEMPLATE)
-    return template.format(project_id=project_id)
-
-
 def idle_redirect_url() -> str:
-    """URL the kiosk returns to when the inactivity timer expires."""
+    """URL the kiosk returns to when the inactivity timer expires.
+
+    The ?redirect= query param at runtime takes priority over this value
+    (handled entirely in client JS inside the idle band).
+    """
     if DEV_MODE:
         return ARTEX_DEV_REDIRECT_URL
     return ARTEX_IDLE_URL

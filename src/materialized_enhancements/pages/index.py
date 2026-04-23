@@ -3679,7 +3679,7 @@ def index_page() -> rx.Component:
 
 @rx.page(
     route="/materialize",
-    on_load=[ComposeState.apply_shared_report],
+    on_load=[ComposeState.apply_shared_report, ComposeState.apply_artex_params],
 )
 def materialize_page() -> rx.Component:
     """Materialize genetic enhancement — parametric sculpture composer."""
@@ -3688,7 +3688,7 @@ def materialize_page() -> rx.Component:
 
 @rx.page(
     route="/jigsaw",
-    on_load=[JigsawState.init_jigsaw],
+    on_load=[JigsawState.init_jigsaw, JigsawState.apply_artex_params],
 )
 def jigsaw_page() -> rx.Component:
     """Gene Jigsaw — organism-based composition with SVG puzzle."""

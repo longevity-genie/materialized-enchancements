@@ -1,70 +1,135 @@
-"""Tests for the ARTEX Platform API integration (src/materialized_enhancements/artex.py)."""
+"""Unit tests for the ARTEX Platform API integration (src/materialized_enhancements/artex.py)."""
 
 from __future__ import annotations
 
+import io
 import json
-import urllib.error
-from contextlib import contextmanager
-from pathlib import Path
+import zipfile
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from materialized_enhancements.artex import (
-    _build_config,
-    create_artex_project_sync,
+    _api_request,
+    _get_session_token,
+    _publish_artwork,
+    _push_to_display,
+    _upload_package,
+    build_artex_package_zip,
+    build_jigsaw_artwork,
+    build_sculpture_artwork,
+    publish_and_push_sync,
 )
 
 
-# ── _build_config ───────────────────────────────────────────────────────────
+# ── build_sculpture_artwork ──────────────────────────────────────────────────
 
 
-def test_build_config_has_required_fields() -> None:
-    config = _build_config(
+def test_sculpture_artwork_v2_format() -> None:
+    config = build_sculpture_artwork(
         personal_tag="Alice",
         selected_categories=["Radiation & Extremophile"],
         sculpture_params={"seed": 12345, "extrusion": -0.5},
         stl_filename="totem.stl",
+        project_id="me-sculpture-abc",
     )
-
-    # ConfigJson required fields per @artex/contract
-    for field in ("version", "title", "story", "layers", "animation", "evolution", "interaction", "constraints"):
-        assert field in config, f"missing required ConfigJson field: {field}"
-
-    assert config["version"] == 1
+    assert config["version"] == 2
+    assert config["id"] == "me-sculpture-abc"
     assert "Alice" in config["title"]
     assert "Radiation & Extremophile" in config["story"]
-    assert config["rendererMode"] == "three-experimental"
-    assert config["assets"]["baseImage"] == "models/totem.stl"
+    assert config["runtime"]["renderer"] == "three-experimental"
+    assert isinstance(config["assets"], list)
+    assert config["assets"][0]["kind"] == "model3d"
+    assert config["assets"][0]["path"] == "models/totem.stl"
+    assert isinstance(config["layers"], list)
+    assert config["layers"][0]["kind"] == "model3d"
+    assert config["layers"][0]["assetId"] == "model"
+    assert isinstance(config["states"], list)
+    assert config["states"][0]["initial"] is True
+    assert "fallbackState" in config
 
 
-def test_build_config_mood_in_range() -> None:
-    """extrusion typically in ~[-1, 1] → mood normalized to [0, 1]."""
+def test_sculpture_artwork_mood_in_range() -> None:
     for extrusion in (-1.0, -0.5, 0.0, 0.5, 1.0):
-        config = _build_config(
+        config = build_sculpture_artwork(
             personal_tag="X",
             selected_categories=["Energy"],
             sculpture_params={"seed": 1, "extrusion": extrusion},
             stl_filename="x.stl",
+            project_id="me-x",
         )
         assert 0.0 <= config["mood"] <= 1.0
 
 
-def test_build_config_serializes_to_json() -> None:
-    """The built config must be JSON-serializable (it goes straight into the HTTP body)."""
-    config = _build_config(
+def test_sculpture_artwork_serializes_to_json() -> None:
+    config = build_sculpture_artwork(
         personal_tag="Alice",
         selected_categories=["Sleep & Consciousness", "New Senses"],
         sculpture_params={"seed": 42, "extrusion": -0.2},
         stl_filename="t.stl",
+        project_id="me-test",
     )
-    payload = json.dumps({"config": config})
-    roundtrip = json.loads(payload)
-    assert roundtrip["config"]["title"] == config["title"]
+    roundtrip = json.loads(json.dumps(config))
+    assert roundtrip["title"] == config["title"]
 
 
-# ── create_artex_project_sync (mocked HTTP) ─────────────────────────────────
+# ── build_jigsaw_artwork ─────────────────────────────────────────────────────
+
+
+def test_jigsaw_artwork_v2_format() -> None:
+    config = build_jigsaw_artwork(
+        personal_tag="Bob",
+        selected_organisms=["tardigrade", "axolotl"],
+        jigsaw_seed=99,
+        jigsaw_pieces=64,
+        stl_filename="materialized_jigsaw.stl",
+        project_id="me-jigsaw-xyz",
+    )
+    assert config["version"] == 2
+    assert config["id"] == "me-jigsaw-xyz"
+    assert "Bob" in config["title"]
+    assert "tardigrade" in config["story"]
+    assert config["runtime"]["renderer"] == "three-experimental"
+    assert config["assets"][0]["path"] == "models/materialized_jigsaw.stl"
+    assert config["mood"] == 0.5
+
+
+# ── build_artex_package_zip ──────────────────────────────────────────────────
+
+
+def test_package_zip_has_required_entries() -> None:
+    config = build_sculpture_artwork(
+        "Alice", ["Energy"], {"seed": 1, "extrusion": 0.0}, "test.stl", "me-test"
+    )
+    stl_bytes = b"fake stl content"
+    zip_bytes = build_artex_package_zip(config, stl_bytes, "test.stl")
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        names = set(zf.namelist())
+        assert "config/artwork.json" in names
+        assert "state.json" in names
+        assert "models/test.stl" in names
+
+        artwork = json.loads(zf.read("config/artwork.json"))
+        assert artwork["version"] == 2
+        assert artwork["id"] == "me-test"
+
+        state = json.loads(zf.read("state.json"))
+        assert state["artworkId"] == "me-test"
+
+        assert zf.read("models/test.stl") == stl_bytes
+
+
+def test_package_zip_is_valid_zip() -> None:
+    config = build_jigsaw_artwork("X", [], 0, 0, "j.stl", "me-j")
+    zip_bytes = build_artex_package_zip(config, b"x", "j.stl")
+    assert zip_bytes[:2] == b"PK"
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        assert len(zf.namelist()) == 3
+
+
+# ── Mocked HTTP unit tests ────────────────────────────────────────────────────
 
 
 class _FakeResponse:
@@ -81,13 +146,14 @@ class _FakeResponse:
         return None
 
 
-def _make_fake_urlopen(
-    project_id: str = "proj-abc-123",
+def _make_publish_urlopen(
+    session_token: str = "artex_admin_test_session",
+    slug: str = "materialized-enhancement-test",
     captured: list[dict[str, Any]] | None = None,
 ) -> Any:
-    """Build a urlopen stub that captures requests and returns canned responses."""
-    captured = captured if captured is not None else []
-    post_count = [0]
+    """Stub urlopen that handles the 3-step publish pipeline."""
+    if captured is None:
+        captured = []
 
     def fake_urlopen(req: Any, timeout: int | None = None) -> _FakeResponse:
         captured.append({
@@ -96,127 +162,90 @@ def _make_fake_urlopen(
             "headers": dict(req.headers),
             "body": req.data,
         })
-        if req.get_method() == "POST":
-            post_count[0] += 1
-            # First POST = create project, subsequent POSTs (e.g. /run) return empty.
-            if post_count[0] == 1:
-                return _FakeResponse(
-                    json.dumps({"projectId": project_id, "status": "draft"}).encode()
-                )
-        return _FakeResponse(b"")
+        url: str = req.full_url
+        if "/admin/dev-session" in url:
+            return _FakeResponse(json.dumps({"sessionToken": session_token}).encode())
+        if "/api/packages/" in url and req.get_method() == "PUT":
+            return _FakeResponse(json.dumps({"ok": True, "size": len(req.data or b"")}).encode())
+        if "/publish/apply" in url:
+            return _FakeResponse(json.dumps({
+                "artwork": {"slug": slug, "id": "art-abc"},
+                "project": {"id": "proj-abc"},
+            }).encode())
+        if "/load-slug" in url:
+            return _FakeResponse(json.dumps({"ok": True, "delivery": "sse"}).encode())
+        return _FakeResponse(b"{}")
 
     return fake_urlopen, captured
 
 
-def test_create_artex_project_calls_post_put_run(tmp_path: Path) -> None:
-    stl_file = tmp_path / "totem.stl"
-    stl_file.write_bytes(b"FAKE STL CONTENT")
-
-    fake, captured = _make_fake_urlopen(project_id="proj-xyz")
-
-    with patch("urllib.request.urlopen", side_effect=fake):
-        pid = create_artex_project_sync(
-            api_url="http://localhost:8080/v1",
-            api_token="test-token-12345",
-            personal_tag="Alice",
-            selected_categories=["Radiation & Extremophile"],
-            sculpture_params={"seed": 42, "extrusion": -0.5},
-            stl_path=str(stl_file),
-            stl_filename="totem.stl",
-            instance_id="gallery-1",
-        )
-
-    assert pid == "proj-xyz"
-    assert len(captured) == 3
-
-    # 1. POST /projects — auth + JSON body with ConfigJson
-    post = captured[0]
-    assert post["method"] == "POST"
-    assert post["url"] == "http://localhost:8080/v1/projects"
-    assert post["headers"]["Authorization"] == "Bearer test-token-12345"
-    assert post["headers"]["Content-type"] == "application/json"
-    body = json.loads(post["body"])
-    assert "config" in body
-    assert body["config"]["title"].startswith("Materialized Enhancement")
-    assert body["config"]["assets"]["baseImage"] == "models/totem.stl"
-
-    # 2. PUT /projects/:id/assets/models/<filename> — STL bytes verbatim
-    put = captured[1]
-    assert put["method"] == "PUT"
-    assert put["url"] == "http://localhost:8080/v1/projects/proj-xyz/assets/models/totem.stl"
-    assert put["headers"]["Content-type"] == "application/octet-stream"
-    assert put["body"] == b"FAKE STL CONTENT"
-
-    # 3. POST /projects/:id/run — instanceId in body
-    run = captured[2]
-    assert run["method"] == "POST"
-    assert run["url"] == "http://localhost:8080/v1/projects/proj-xyz/run"
-    run_body = json.loads(run["body"])
-    assert run_body == {"instanceId": "gallery-1"}
-
-
-def test_create_artex_project_trims_trailing_slash(tmp_path: Path) -> None:
-    """API URL with trailing slash should not produce a double //projects."""
-    stl_file = tmp_path / "t.stl"
-    stl_file.write_bytes(b"x")
-    fake, captured = _make_fake_urlopen()
+def test_publish_and_push_sync_full_pipeline() -> None:
+    config = build_sculpture_artwork(
+        "Alice", ["Energy"], {"seed": 1, "extrusion": 0.0}, "t.stl", "me-test-proj"
+    )
+    stl_bytes = b"FAKE STL"
+    captured: list[dict[str, Any]] = []
+    fake, captured = _make_publish_urlopen(slug="materialized-enhancement-alice", captured=captured)
 
     with patch("urllib.request.urlopen", side_effect=fake):
-        create_artex_project_sync(
-            api_url="http://localhost:8080/v1/",
-            api_token="tok",
-            personal_tag="X",
-            selected_categories=["Energy"],
-            sculpture_params={"seed": 1, "extrusion": 0.0},
-            stl_path=str(stl_file),
+        slug, delivery = publish_and_push_sync(
+            api_url="http://127.0.0.1:8787",
+            admin_token="abcd",
+            display_id="test-wall",
+            artwork_config=config,
+            stl_bytes=stl_bytes,
             stl_filename="t.stl",
         )
 
-    assert captured[0]["url"] == "http://localhost:8080/v1/projects"
+    assert slug == "materialized-enhancement-alice"
+    assert delivery == "sse"
+    assert len(captured) == 4
+
+    # 1. PUT /api/packages/<id>
+    put = captured[0]
+    assert put["method"] == "PUT"
+    assert "/api/packages/" in put["url"]
+
+    # 2. POST /admin/dev-session
+    session_req = captured[1]
+    assert session_req["method"] == "POST"
+    assert "/admin/dev-session" in session_req["url"]
+    body = json.loads(session_req["body"])
+    assert body["adminToken"] == "abcd"
+
+    # 3. POST /publish/apply with session Bearer token
+    publish_req = captured[2]
+    assert publish_req["method"] == "POST"
+    assert "/publish/apply" in publish_req["url"]
+    assert "Authorization" in publish_req["headers"]
+    assert "artex_admin_test_session" in publish_req["headers"]["Authorization"]
+    pub_body = json.loads(publish_req["body"])
+    assert pub_body["projectId"] == "me-test-proj"
+
+    # 4. POST /api/venue/displays/test-wall/load-slug
+    push_req = captured[3]
+    assert push_req["method"] == "POST"
+    assert "test-wall" in push_req["url"]
+    assert "load-slug" in push_req["url"]
+    push_body = json.loads(push_req["body"])
+    assert push_body["slug"] == "materialized-enhancement-alice"
 
 
-def test_create_artex_project_raises_on_http_error(tmp_path: Path) -> None:
-    stl_file = tmp_path / "t.stl"
-    stl_file.write_bytes(b"x")
+def test_get_session_token_parses_response() -> None:
+    def fake_urlopen(req: Any, timeout: int | None = None) -> _FakeResponse:
+        return _FakeResponse(json.dumps({"sessionToken": "tok-abc"}).encode())
 
-    def fail_urlopen(req: Any, timeout: int | None = None) -> None:
-        from io import BytesIO
-        raise urllib.error.HTTPError(
-            url=req.full_url,
-            code=422,
-            msg="Unprocessable Entity",
-            hdrs=None,  # type: ignore[arg-type]
-            fp=BytesIO(b'{"code":"validation","message":"title required"}'),
-        )
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        token = _get_session_token("http://127.0.0.1:8787", "admin-secret")
 
-    with patch("urllib.request.urlopen", side_effect=fail_urlopen):
-        with pytest.raises(RuntimeError, match="422"):
-            create_artex_project_sync(
-                api_url="http://localhost:8080/v1",
-                api_token="tok",
-                personal_tag="X",
-                selected_categories=["Energy"],
-                sculpture_params={"seed": 1, "extrusion": 0.0},
-                stl_path=str(stl_file),
-                stl_filename="t.stl",
-            )
+    assert token == "tok-abc"
 
 
-def test_create_artex_project_raises_on_connection_error(tmp_path: Path) -> None:
-    stl_file = tmp_path / "t.stl"
-    stl_file.write_bytes(b"x")
+def test_push_to_display_returns_delivery() -> None:
+    def fake_urlopen(req: Any, timeout: int | None = None) -> _FakeResponse:
+        return _FakeResponse(json.dumps({"ok": True, "delivery": "queued"}).encode())
 
-    def refuse(req: Any, timeout: int | None = None) -> None:
-        raise urllib.error.URLError("connection refused")
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        delivery = _push_to_display("http://127.0.0.1:8787", "north-wall", "my-slug")
 
-    with patch("urllib.request.urlopen", side_effect=refuse):
-        with pytest.raises(RuntimeError, match="connection"):
-            create_artex_project_sync(
-                api_url="http://localhost:8080/v1",
-                api_token="tok",
-                personal_tag="X",
-                selected_categories=["Energy"],
-                sculpture_params={"seed": 1, "extrusion": 0.0},
-                stl_path=str(stl_file),
-                stl_filename="t.stl",
-            )
+    assert delivery == "queued"

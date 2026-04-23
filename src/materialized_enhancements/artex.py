@@ -1,18 +1,36 @@
 """ARTEX Platform API integration.
 
-Creates ARTEX projects from generated artifacts (sculpture STL, jigsaw STL),
-uploading them as 3D media assets.
+Publishes generated artifacts (sculpture STL, jigsaw STL) to the ARTEX Platform
+API as a zipped artwork package, then pushes the published slug to a venue display
+via the SSE-backed display command API.
 
-API reference: https://github.com/CODAME/artex-open
+Real platform API endpoint surface (at http://127.0.0.1:8787 locally):
+  POST /admin/dev-session         exchange admin token for short-lived session token
+  PUT  /api/packages/:id          upload raw zip package (loopback: no auth required)
+  POST /publish/apply             create/update published artwork record (Bearer session token)
+  POST /api/venue/displays/:id/load-slug  push slug to an SSE-connected display
+
+Platform API reference: ARTEX/.services/artex-platform-api/README.md
+VENUE_SETUP reference:  ARTEX/VENUE_SETUP.md
+
+Package layout (ARTEX v2 contract):
+  config/artwork.json    v2 artwork config (renderer: "webgl", image layer)
+  config/state.json      initial StateJsonV2 (path constant ARTEX_V2_STATE_PATH)
+  preview/preview.png    matplotlib render of the STL — used as the image base layer
+  models/<stl_filename>  original STL kept as model asset metadata
 """
 
 from __future__ import annotations
 
+import io
 import json
 import logging
+import uuid
+import zipfile
+from typing import Any, Tuple
+
 import urllib.error
 import urllib.request
-from typing import Any
 
 import reflex as rx
 
@@ -21,20 +39,20 @@ from materialized_enhancements.env import DEV_MODE
 logger = logging.getLogger(__name__)
 
 
-# ── API layer ────────────────────────────────────────────────────────────────
+# ── Low-level HTTP helpers ────────────────────────────────────────────────────
 
 
 def _api_request(
     method: str,
     url: str,
-    token: str,
     body: bytes | None = None,
     content_type: str = "application/json",
+    token: str = "",
 ) -> dict[str, Any]:
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": content_type,
-    }
+    """Make a single HTTP request to the platform API. Raises RuntimeError on HTTP/network errors."""
+    headers: dict[str, str] = {"Content-Type": content_type}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -54,37 +72,279 @@ def _api_request(
         raise RuntimeError(f"ARTEX API connection failed: {exc.reason}") from exc
 
 
-# ── Config builders ──────────────────────────────────────────────────────────
+def _get_session_token(api_url: str, admin_token: str) -> str:
+    """Exchange the admin token for a short-lived session token.
+
+    Calls POST /admin/dev-session. Only works from loopback (127.0.0.1).
+    Returns the session token string.
+    """
+    api_url = api_url.rstrip("/")
+    body = json.dumps({"adminToken": admin_token}).encode()
+    result = _api_request("POST", f"{api_url}/admin/dev-session", body=body)
+    token = result.get("sessionToken", "")
+    if not token:
+        raise RuntimeError(f"ARTEX /admin/dev-session did not return a sessionToken: {result}")
+    logger.debug("ARTEX session token acquired")
+    return token
 
 
-def build_sculpture_config(
+def _upload_package(api_url: str, package_id: str, zip_bytes: bytes) -> None:
+    """Upload a zip package to the platform API.
+
+    PUT /api/packages/:id — loopback requests need no auth token.
+    """
+    api_url = api_url.rstrip("/")
+    logger.info("Uploading ARTEX package %r (%d bytes) ...", package_id, len(zip_bytes))
+    _api_request(
+        "PUT",
+        f"{api_url}/api/packages/{package_id}",
+        body=zip_bytes,
+        content_type="application/zip",
+    )
+    logger.info("Package %r uploaded", package_id)
+
+
+def _publish_artwork(
+    api_url: str,
+    session_token: str,
+    project_id: str,
+    package_id: str,
+    title: str,
+    description: str,
+) -> str:
+    """Create or update a published artwork record. Returns the artwork slug.
+
+    POST /publish/apply — requires Bearer session token.
+    """
+    api_url = api_url.rstrip("/")
+    body = json.dumps({
+        "projectId": project_id,
+        "packageBlobId": package_id,
+        "title": title,
+        "description": description,
+        "ownerUserId": "local-dev-admin",
+    }).encode()
+    logger.info("Publishing artwork %r ...", project_id)
+    result = _api_request("POST", f"{api_url}/publish/apply", body=body, token=session_token)
+    slug = result.get("artwork", {}).get("slug", "")
+    if not slug:
+        raise RuntimeError(f"ARTEX /publish/apply did not return a slug: {result}")
+    logger.info("Artwork published as slug %r", slug)
+    return slug
+
+
+def _push_to_display(api_url: str, display_id: str, slug: str) -> str:
+    """Push a published slug to a venue display. Returns the delivery mode ('sse' or 'queued').
+
+    POST /api/venue/displays/:displayId/load-slug — no auth required.
+    """
+    api_url = api_url.rstrip("/")
+    body = json.dumps({"slug": slug}).encode()
+    logger.info("Pushing slug %r to display %r ...", slug, display_id)
+    result = _api_request(
+        "POST",
+        f"{api_url}/api/venue/displays/{display_id}/load-slug",
+        body=body,
+    )
+    delivery = result.get("delivery", "unknown")
+    logger.info("Display push delivery: %r", delivery)
+    return delivery
+
+
+# ── STL preview renderer ──────────────────────────────────────────────────────
+
+_MAX_PREVIEW_FACES = 15_000
+
+
+def render_stl_preview_png(stl_bytes: bytes, size: int = 800) -> bytes:
+    """Render a perspective-view PNG of an STL mesh using trimesh + matplotlib.
+
+    The result is a dark-background image suitable for use as an ARTEX ``image``
+    base layer.  Faces are randomly decimated to ``_MAX_PREVIEW_FACES`` before
+    rendering so that even large sculptures finish in < 2 s.
+    """
+    import numpy as np
+    import trimesh
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # type: ignore[import-untyped]
+
+    mesh = trimesh.load(io.BytesIO(stl_bytes), file_type="stl")
+
+    faces = mesh.faces
+    if len(faces) > _MAX_PREVIEW_FACES:
+        rng = np.random.default_rng(42)
+        faces = faces[rng.choice(len(faces), _MAX_PREVIEW_FACES, replace=False)]
+    verts = mesh.vertices[faces]  # (F, 3, 3)
+
+    dpi = 100
+    fig = plt.figure(figsize=(size / dpi, size / dpi), dpi=dpi)
+    fig.patch.set_facecolor("#080a10")
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_facecolor("#080a10")
+
+    # shade=True requires colors at construction; edgecolors must not be "none"
+    # at init or matplotlib's _shade_colors broadcasts normals against an empty
+    # array. Set edge color to "none" after construction instead.
+    poly = Poly3DCollection(
+        verts, linewidth=0, antialiased=True, shade=True,
+        facecolors="#7ba8f0", alpha=0.88,
+    )
+    poly.set_edgecolor("none")
+    ax.add_collection3d(poly)
+
+    cx, cy, cz = mesh.centroid
+    span = float(np.max(mesh.bounds[1] - mesh.bounds[0])) * 0.55
+    ax.set_xlim(cx - span, cx + span)
+    ax.set_ylim(cy - span, cy + span)
+    ax.set_zlim(cz - span, cz + span)
+    ax.set_axis_off()
+    ax.view_init(elev=25, azim=45)
+
+    plt.tight_layout(pad=0)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    return buf.getvalue()
+
+
+# ── Package format ────────────────────────────────────────────────────────────
+
+_PREVIEW_PATH = "preview/preview.png"
+_ARTWORK_PATH = "config/artwork.json"
+_STATE_PATH = "config/state.json"
+
+
+def build_artex_package_zip(
+    artwork_config: dict[str, Any],
+    stl_bytes: bytes,
+    stl_filename: str,
+    preview_png_bytes: bytes | None = None,
+) -> bytes:
+    """Build an in-memory ARTEX v2 package zip.
+
+    If ``preview_png_bytes`` is not supplied it is generated automatically via
+    ``render_stl_preview_png`` so that every caller gets a complete package with
+    a renderable ``preview/preview.png`` image layer.
+
+    Layout (paths match ARTEX v2 contract constants):
+      config/artwork.json    v2 artwork config
+      config/state.json      initial StateJsonV2
+      preview/preview.png    PNG preview rendered from the STL
+      models/<stl_filename>  original STL bytes kept as reference asset
+    """
+    if preview_png_bytes is None:
+        logger.info("No preview PNG supplied — rendering from STL (%d bytes) ...", len(stl_bytes))
+        preview_png_bytes = render_stl_preview_png(stl_bytes)
+        logger.info("Preview PNG rendered: %d bytes", len(preview_png_bytes))
+
+    artwork_id = artwork_config.get("id", "materialized")
+    initial_state_id = "default"
+    for s in artwork_config.get("states", []):
+        if s.get("initial"):
+            initial_state_id = s["id"]
+            break
+
+    layer_ids: list[str] = [lyr["id"] for lyr in artwork_config.get("layers", [])]
+    layer_state: dict[str, Any] = {
+        lid: {"playheadMs": 0, "playing": False, "opacity": 1, "visible": True, "behaviorId": None, "frozen": False}
+        for lid in layer_ids
+    }
+    state_json: dict[str, Any] = {
+        "artworkId": artwork_id,
+        "activeStateId": initial_state_id,
+        "previousStateId": None,
+        "enteredStateAt": 0,
+        "layerState": layer_state,
+        "capabilityStatus": [],
+        "timers": {},
+        "actionLog": [],
+    }
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(_ARTWORK_PATH, json.dumps(artwork_config, ensure_ascii=False))
+        zf.writestr(_STATE_PATH, json.dumps(state_json))
+        zf.writestr(_PREVIEW_PATH, preview_png_bytes)
+        zf.writestr(f"models/{stl_filename}", stl_bytes)
+    return buf.getvalue()
+
+
+# ── Artwork config builders (v2 format) ──────────────────────────────────────
+
+
+def build_sculpture_artwork(
     personal_tag: str,
     selected_categories: list[str],
     sculpture_params: dict[str, Any],
     stl_filename: str,
+    project_id: str,
 ) -> dict[str, Any]:
+    """Build a v2 ARTEX artwork config for a parametric sculpture.
+
+    The base layer is a PNG preview image (``preview/preview.png``) rendered by
+    ``render_stl_preview_png`` and stored alongside the STL in the zip.  The STL
+    is carried as a ``model`` asset for reference/download but is not a layer.
+
+    Layer kind ``"image"`` and renderer ``"webgl"`` are the only values accepted
+    by the v2 runtime:
+      packages/artex-contract/src/v2/types.ts:110  LayerKind
+      packages/artex-contract/src/v2/types.ts:333  runtime.renderer
+    """
     mood_raw = sculpture_params.get("extrusion", -0.2)
     mood = max(0.0, min(1.0, (mood_raw + 1.0) / 2.0))
-
+    title = f"Materialized Enhancement \u2014 {personal_tag}"
+    story = (
+        f"A unique parametric sculpture generated from genetic enhancement "
+        f"selections: {', '.join(selected_categories)}. "
+        f"Seed {sculpture_params.get('seed', 0)} \u2014 "
+        f"this totem is a declaration of biological self-authorship."
+    )
     return {
-        "version": 1,
-        "title": f"Materialized Enhancement \u2014 {personal_tag}",
+        "version": 2,
+        "id": project_id,
+        "title": title,
         "artistName": "Materialized Enhancements",
-        "story": (
-            f"A unique parametric sculpture generated from genetic enhancement "
-            f"selections: {', '.join(selected_categories)}. "
-            f"Seed {sculpture_params.get('seed', 0)} \u2014 "
-            f"this totem is a declaration of biological self-authorship."
-        ),
+        "story": story,
         "medium": "3D Sculpture \u2014 Parametric Generative Art (STL)",
-        "rendererMode": "three-experimental",
-        "layers": {
-            "base": {
-                "parallaxDepth": 0.0,
-                "breathingIntensity": 0.3,
-                "textureDrift": 0.0,
+        "assets": [
+            {
+                "id": "preview",
+                "kind": "image",
+                "path": _PREVIEW_PATH,
+                "mimeType": "image/png",
             },
+            {
+                "id": "model",
+                "kind": "model",
+                "path": f"models/{stl_filename}",
+                "mimeType": "model/stl",
+            },
+        ],
+        "layers": [
+            {
+                "id": "base",
+                "kind": "image",
+                "name": "Sculpture Preview",
+                "zIndex": 0,
+                "visible": True,
+                "opacity": 1,
+                "assetId": "preview",
+            }
+        ],
+        "inputs": {},
+        "states": [{"id": "default", "label": "Default", "initial": True}],
+        "triggers": [],
+        "transitions": [],
+        "fallbackState": "default",
+        "runtime": {
+            "renderer": "webgl",
+            "localFirst": True,
+            "allowRecording": False,
+            "allowCloudUpload": False,
         },
+        "mood": round(mood, 3),
         "animation": {
             "baseSpeed": 0.5,
             "breathingEnabled": True,
@@ -101,7 +361,7 @@ def build_sculpture_config(
                     "colorTemperatureShift": 0.0,
                     "noiseIntensity": 0.1,
                     "brightnessShift": 0.0,
-                },
+                }
             ],
         },
         "interaction": {
@@ -114,44 +374,73 @@ def build_sculpture_config(
             "simpleInteractionMode": "expressive",
             "proximitySensor": True,
         },
-        "artistTemplate": "breathing",
-        "mood": round(mood, 3),
         "simpleInteractions": ["presence"],
-        "constraints": {
-            "protectedRegions": [],
-        },
-        "assets": {
-            "baseImage": f"models/{stl_filename}",
-        },
     }
 
 
-def build_jigsaw_config(
+def build_jigsaw_artwork(
     personal_tag: str,
     selected_organisms: list[str],
     jigsaw_seed: int,
     jigsaw_pieces: int,
     stl_filename: str,
+    project_id: str,
 ) -> dict[str, Any]:
+    """Build a v2 ARTEX artwork config for a gene jigsaw sculpture.
+
+    Same image-layer / webgl-renderer pattern as ``build_sculpture_artwork``.
+    """
+    title = f"Gene Jigsaw \u2014 {personal_tag}"
+    story = (
+        f"A unique jigsaw puzzle cut from a genetic enhancement silhouette. "
+        f"Organisms: {', '.join(selected_organisms)}. "
+        f"Seed {jigsaw_seed}, {jigsaw_pieces} pieces \u2014 "
+        f"each piece carries the shape of biological self-authorship."
+    )
     return {
-        "version": 1,
-        "title": f"Gene Jigsaw \u2014 {personal_tag}",
+        "version": 2,
+        "id": project_id,
+        "title": title,
         "artistName": "Materialized Enhancements",
-        "story": (
-            f"A unique jigsaw puzzle cut from a genetic enhancement silhouette. "
-            f"Organisms: {', '.join(selected_organisms)}. "
-            f"Seed {jigsaw_seed}, {jigsaw_pieces} pieces \u2014 "
-            f"each piece carries the shape of biological self-authorship."
-        ),
+        "story": story,
         "medium": "3D Jigsaw Puzzle \u2014 Generative Art (STL)",
-        "rendererMode": "three-experimental",
-        "layers": {
-            "base": {
-                "parallaxDepth": 0.0,
-                "breathingIntensity": 0.2,
-                "textureDrift": 0.0,
+        "assets": [
+            {
+                "id": "preview",
+                "kind": "image",
+                "path": _PREVIEW_PATH,
+                "mimeType": "image/png",
             },
+            {
+                "id": "model",
+                "kind": "model",
+                "path": f"models/{stl_filename}",
+                "mimeType": "model/stl",
+            },
+        ],
+        "layers": [
+            {
+                "id": "base",
+                "kind": "image",
+                "name": "Jigsaw Preview",
+                "zIndex": 0,
+                "visible": True,
+                "opacity": 1,
+                "assetId": "preview",
+            }
+        ],
+        "inputs": {},
+        "states": [{"id": "default", "label": "Default", "initial": True}],
+        "triggers": [],
+        "transitions": [],
+        "fallbackState": "default",
+        "runtime": {
+            "renderer": "webgl",
+            "localFirst": True,
+            "allowRecording": False,
+            "allowCloudUpload": False,
         },
+        "mood": 0.5,
         "animation": {
             "baseSpeed": 0.3,
             "breathingEnabled": True,
@@ -168,7 +457,7 @@ def build_jigsaw_config(
                     "colorTemperatureShift": 0.0,
                     "noiseIntensity": 0.05,
                     "brightnessShift": 0.0,
-                },
+                }
             ],
         },
         "interaction": {
@@ -181,113 +470,88 @@ def build_jigsaw_config(
             "simpleInteractionMode": "expressive",
             "proximitySensor": True,
         },
-        "artistTemplate": "breathing",
-        "mood": 0.5,
         "simpleInteractions": ["presence"],
-        "constraints": {
-            "protectedRegions": [],
-        },
-        "assets": {
-            "baseImage": f"models/{stl_filename}",
-        },
     }
 
 
-# ── Publish flow ─────────────────────────────────────────────────────────────
+# ── Main publish-and-push flow ────────────────────────────────────────────────
 
 
-def publish_stl_sync(
+def publish_and_push_sync(
     api_url: str,
-    api_token: str,
-    config: dict[str, Any],
+    admin_token: str,
+    display_id: str,
+    artwork_config: dict[str, Any],
     stl_bytes: bytes,
     stl_filename: str,
-    instance_id: str = "default",
-) -> str:
-    """Create project, upload STL bytes, run. Returns project ID.
+) -> Tuple[str, str]:
+    """Full pipeline: build zip → upload → publish → push to display.
+
+    Delegates preview PNG rendering to ``build_artex_package_zip`` which renders
+    the STL via ``render_stl_preview_png`` if no preview is supplied.
+
+    Returns ``(slug, delivery)`` where ``slug`` is the published artwork slug
+    and ``delivery`` is ``'sse'`` (instant) or ``'queued'`` (display offline).
 
     Synchronous — call via ``loop.run_in_executor``.
     """
-    api_url = api_url.rstrip("/")
+    project_id = artwork_config["id"]
+    package_id = f"me-pkg-{uuid.uuid4().hex[:20]}"
 
-    logger.info("Creating ARTEX project ...")
-    body = json.dumps({"config": config}).encode("utf-8")
-    project = _api_request("POST", f"{api_url}/projects", api_token, body)
-    project_id = project["projectId"]
-    logger.info("ARTEX project created: %s", project_id)
+    zip_bytes = build_artex_package_zip(artwork_config, stl_bytes, stl_filename)
 
-    logger.info("Uploading STL (%d bytes) ...", len(stl_bytes))
-    _api_request(
-        "PUT",
-        f"{api_url}/projects/{project_id}/assets/models/{stl_filename}",
-        api_token,
-        stl_bytes,
-        content_type="application/octet-stream",
+    _upload_package(api_url, package_id, zip_bytes)
+
+    session_token = _get_session_token(api_url, admin_token)
+
+    slug = _publish_artwork(
+        api_url,
+        session_token,
+        project_id,
+        package_id,
+        title=artwork_config.get("title", "Materialized"),
+        description=artwork_config.get("story", ""),
     )
-    logger.info("STL uploaded to %s", project_id)
 
-    logger.info("Starting project %s on instance %r ...", project_id, instance_id)
-    run_body = json.dumps({"instanceId": instance_id}).encode("utf-8")
-    _api_request("POST", f"{api_url}/projects/{project_id}/run", api_token, run_body)
-    logger.info("ARTEX project %s is running", project_id)
-
-    return project_id
-
-
-# Back-compat wrapper used by ComposeState — reads STL from disk path
-def create_artex_project_sync(
-    api_url: str,
-    api_token: str,
-    personal_tag: str,
-    selected_categories: list[str],
-    sculpture_params: dict[str, Any],
-    stl_path: str,
-    stl_filename: str,
-    instance_id: str = "default",
-) -> str:
-    from pathlib import Path
-    config = build_sculpture_config(personal_tag, selected_categories, sculpture_params, stl_filename)
-    stl_bytes = Path(stl_path).read_bytes()
-    return publish_stl_sync(api_url, api_token, config, stl_bytes, stl_filename, instance_id)
+    delivery = _push_to_display(api_url, display_id, slug)
+    return slug, delivery
 
 
 # ── Reusable UI components ───────────────────────────────────────────────────
 
 
-def artex_dev_inputs(
-    state_cls: type,
-) -> rx.Component:
+def artex_dev_inputs(state_cls: type) -> rx.Component:
+    """Dev-mode override inputs for API URL, token, and display ID."""
     if not DEV_MODE:
         return rx.fragment()
+    input_style: dict[str, Any] = {
+        "width": "100%",
+        "padding": "6px 10px",
+        "borderRadius": "4px",
+        "border": "1px solid #d1d5db",
+        "fontSize": "0.78rem",
+        "marginBottom": "4px",
+        "fontFamily": "monospace",
+    }
     return rx.el.div(
         rx.el.input(
             placeholder="ARTEX API URL",
             value=getattr(state_cls, "artex_api_url"),
             on_change=getattr(state_cls, "set_artex_api_url"),
-            style={
-                "width": "100%",
-                "padding": "6px 10px",
-                "borderRadius": "4px",
-                "border": "1px solid #d1d5db",
-                "fontSize": "0.78rem",
-                "marginBottom": "4px",
-                "fontFamily": "monospace",
-            },
+            style=input_style,
         ),
         rx.el.input(
             type="password",
-            placeholder="ARTEX API Token",
+            placeholder="ARTEX Admin Token",
             value=getattr(state_cls, "artex_api_token"),
             on_change=getattr(state_cls, "set_artex_api_token"),
-            style={
-                "width": "100%",
-                "padding": "6px 10px",
-                "borderRadius": "4px",
-                "border": "1px solid #d1d5db",
-                "fontSize": "0.78rem",
-                "marginBottom": "6px",
-                "fontFamily": "monospace",
-            },
+            style=input_style,
+        ),
+        rx.el.input(
+            placeholder="Display ID (e.g. test-wall)",
+            value=getattr(state_cls, "artex_display_id"),
+            on_change=getattr(state_cls, "set_artex_display_id"),
+            style={**input_style, "marginBottom": "6px"},
         ),
         style={"marginBottom": "4px"},
     )
@@ -303,6 +567,8 @@ def artex_publish_button(
     can_create = getattr(state_cls, "can_create_artex")
     has_project = getattr(state_cls, "has_artex_project")
     error = getattr(state_cls, "artex_error")
+    display_id = getattr(state_cls, "artex_display_id")
+    slug = getattr(state_cls, "artex_project_id")
 
     return rx.el.div(
         artex_dev_inputs(state_cls),
@@ -318,7 +584,16 @@ def artex_publish_button(
             has_project,
             rx.el.div(
                 fomantic_icon("check circle", size=12, color="#16a085"),
-                rx.el.span(" Published", style={"fontSize": "0.75rem", "color": "#16a085", "fontWeight": "600", "marginLeft": "4px"}),
+                rx.el.span(
+                    rx.el.span(" Sent to wall"),
+                    rx.el.span(
+                        " (",
+                        rx.el.span(display_id, style={"fontFamily": "monospace"}),
+                        ")",
+                        style={"color": "#6b7280"},
+                    ),
+                    style={"fontSize": "0.75rem", "color": "#16a085", "fontWeight": "600", "marginLeft": "4px"},
+                ),
                 style={"display": "flex", "alignItems": "center", "marginBottom": "4px"},
             ),
             rx.fragment(),
@@ -327,10 +602,10 @@ def artex_publish_button(
             rx.cond(
                 creating,
                 fomantic_icon("sync", size=14, style={"animation": "me-spin 1s linear infinite"}),
-                fomantic_icon("cloud upload", size=14),
+                fomantic_icon("tv", size=14),
             ),
             rx.el.span(
-                rx.cond(creating, " Publishing\u2026", " Publish to ARTEX"),
+                rx.cond(creating, " Sending to wall\u2026", " Send to Wall"),
                 style={"marginLeft": "6px"},
             ),
             on_click=on_click,

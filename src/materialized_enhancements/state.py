@@ -34,18 +34,16 @@ from materialized_enhancements.sculpture import (
     resolve_gene_properties_row,
 )
 from materialized_enhancements.artex import (
-    build_jigsaw_config,
-    build_sculpture_config,
-    create_artex_project_sync,
-    publish_stl_sync,
+    build_jigsaw_artwork,
+    build_sculpture_artwork,
+    publish_and_push_sync,
 )
 from materialized_enhancements.env import (
     ARTEX_API_TOKEN,
     ARTEX_API_URL,
-    ARTEX_INSTANCE_ID,
+    ARTEX_DISPLAY_ID,
     DEV_MODE,
     PUBLIC_APP_URL,
-    project_redirect_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -294,12 +292,15 @@ class ComposeState(rx.State):
     report_views_ready: bool = False
     report_copy_feedback: str = ""
 
-    # ARTEX integration — defaults from .env (ARTEX_API_URL / ARTEX_API_TOKEN)
+    # ARTEX integration — defaults from .env
     artex_api_url: str = ARTEX_API_URL
     artex_api_token: str = ARTEX_API_TOKEN
+    artex_display_id: str = ARTEX_DISPLAY_ID
     artex_creating: bool = False
     artex_project_id: str = ""
     artex_error: str = ""
+    artex_redirect_url: str = ""
+    artex_from_kiosk: bool = False
 
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
@@ -475,9 +476,27 @@ class ComposeState(rx.State):
     def set_artex_api_token(self, value: str) -> None:
         self.artex_api_token = value
 
+    def set_artex_display_id(self, value: str) -> None:
+        self.artex_display_id = value
+
+    def apply_artex_params(self) -> None:
+        """Read ?from=ARTEX, ?token=, ?display_id=, ?redirect= from the URL on page load."""
+        params = self.router.url.query_parameters
+        if str(params.get("from", "")).strip() == "ARTEX":
+            self.artex_from_kiosk = True
+        token = str(params.get("token", "")).strip()
+        if token:
+            self.artex_api_token = token
+        display_id = str(params.get("display_id", "")).strip()
+        if display_id:
+            self.artex_display_id = display_id
+        redirect = str(params.get("redirect", "")).strip()
+        if redirect:
+            self.artex_redirect_url = redirect
+
     @rx.event(background=True)
     async def create_artex_project(self) -> AsyncIterator[rx.event.EventSpec]:
-        """One-click flow: upload media, create project, run, redirect to ARTEX."""
+        """Build zip → upload → publish → push to wall. Redirects if artex_redirect_url is set."""
         async with self:
             if self.artex_creating:
                 return
@@ -491,30 +510,27 @@ class ComposeState(rx.State):
             self.artex_error = ""
             self.artex_project_id = ""
             api_url = self.artex_api_url
-            api_token = self.artex_api_token
+            admin_token = self.artex_api_token
+            display_id = self.artex_display_id
             tag = self.personal_tag
             cats = list(self.selected_categories)
             params = dict(self.sculpture_params)
-            stl_path = self.stl_download_path
             stl_name = self.stl_filename
-            redirect_override = str(self.router.url.query_parameters.get("redirect", ""))
+            stl_bytes = Path(self.stl_download_path).read_bytes()
+            redirect_url = self.artex_redirect_url
 
         try:
+            import uuid as _uuid
+            project_id = f"me-sculpture-{_uuid.uuid4().hex[:16]}"
+            artwork_config = build_sculpture_artwork(tag, cats, params, stl_name, project_id)
             loop = asyncio.get_event_loop()
-            project_id = await loop.run_in_executor(
+            slug, _delivery = await loop.run_in_executor(
                 None,
-                create_artex_project_sync,
-                api_url,
-                api_token,
-                tag,
-                cats,
-                params,
-                stl_path,
-                stl_name,
-                ARTEX_INSTANCE_ID,
+                publish_and_push_sync,
+                api_url, admin_token, display_id, artwork_config, stl_bytes, stl_name,
             )
         except Exception as exc:
-            logger.exception("ARTEX project creation failed")
+            logger.exception("ARTEX sculpture publish failed")
             async with self:
                 self.artex_creating = False
                 self.artex_error = str(exc)
@@ -522,9 +538,10 @@ class ComposeState(rx.State):
 
         async with self:
             self.artex_creating = False
-            self.artex_project_id = project_id
+            self.artex_project_id = slug
 
-        yield rx.redirect(project_redirect_url(project_id, redirect_override), is_external=True)
+        if redirect_url and redirect_url.lower() != "false":
+            yield rx.redirect(redirect_url.format(slug=slug), is_external=True)
 
     @rx.var
     def has_artex_project(self) -> bool:
@@ -532,12 +549,18 @@ class ComposeState(rx.State):
 
     @rx.var
     def can_create_artex(self) -> bool:
-        return len(self.stl_download_path) > 0 and len(self.artex_api_token.strip()) > 0
+        return (
+            len(self.stl_download_path) > 0
+            and len(self.artex_api_token.strip()) > 0
+            and len(self.artex_display_id.strip()) > 0
+        )
 
     @rx.var
     def artex_section_visible(self) -> bool:
-        """Hide ARTEX in production when no API token; dev mode stays visible for URL/token inputs."""
+        """Show ARTEX UI in dev mode, when ?from=ARTEX is present, or when a token is configured."""
         if DEV_MODE:
+            return True
+        if self.artex_from_kiosk:
             return True
         return len(self.artex_api_token.strip()) > 0
 
@@ -945,9 +968,12 @@ class JigsawState(rx.State):
     # ARTEX integration
     artex_api_url: str = ARTEX_API_URL
     artex_api_token: str = ARTEX_API_TOKEN
+    artex_display_id: str = ARTEX_DISPLAY_ID
     artex_creating: bool = False
     artex_project_id: str = ""
     artex_error: str = ""
+    artex_redirect_url: str = ""
+    artex_from_kiosk: bool = False
     choice_expanded: bool = True
     generator_expanded: bool = False
     dev_view: bool = True
@@ -1186,8 +1212,27 @@ class JigsawState(rx.State):
     def set_artex_api_token(self, value: str) -> None:
         self.artex_api_token = value
 
+    def set_artex_display_id(self, value: str) -> None:
+        self.artex_display_id = value
+
+    def apply_artex_params(self) -> None:
+        """Read ?from=ARTEX, ?token=, ?display_id=, ?redirect= from the URL on page load."""
+        params = self.router.url.query_parameters
+        if str(params.get("from", "")).strip() == "ARTEX":
+            self.artex_from_kiosk = True
+        token = str(params.get("token", "")).strip()
+        if token:
+            self.artex_api_token = token
+        display_id = str(params.get("display_id", "")).strip()
+        if display_id:
+            self.artex_display_id = display_id
+        redirect = str(params.get("redirect", "")).strip()
+        if redirect:
+            self.artex_redirect_url = redirect
+
     @rx.event(background=True)
     async def publish_to_artex(self) -> None:
+        """Build zip → upload → publish → push to wall. Redirects if artex_redirect_url is set."""
         async with self:
             if self.artex_creating:
                 return
@@ -1201,21 +1246,26 @@ class JigsawState(rx.State):
             self.artex_error = ""
             self.artex_project_id = ""
             api_url = self.artex_api_url
-            api_token = self.artex_api_token
+            admin_token = self.artex_api_token
+            display_id = self.artex_display_id
             stl_bytes = bytes(self._stl_bytes)
             tag = self.personal_tag
             organisms = list(self.selected_organisms)
             seed = self.jigsaw_seed
             pieces = self.jigsaw_pieces
-            redirect_override = str(self.router.url.query_parameters.get("redirect", ""))
+            redirect_url = self.artex_redirect_url
 
         try:
-            config = build_jigsaw_config(tag, organisms, seed, pieces, "materialized_jigsaw.stl")
+            import uuid as _uuid
+            project_id = f"me-jigsaw-{_uuid.uuid4().hex[:16]}"
+            artwork_config = build_jigsaw_artwork(
+                tag, organisms, seed, pieces, "materialized_jigsaw.stl", project_id
+            )
             loop = asyncio.get_event_loop()
-            project_id = await loop.run_in_executor(
+            slug, _delivery = await loop.run_in_executor(
                 None,
-                publish_stl_sync,
-                api_url, api_token, config, stl_bytes, "materialized_jigsaw.stl", ARTEX_INSTANCE_ID,
+                publish_and_push_sync,
+                api_url, admin_token, display_id, artwork_config, stl_bytes, "materialized_jigsaw.stl",
             )
         except Exception as exc:
             logger.exception("ARTEX jigsaw publish failed")
@@ -1226,9 +1276,10 @@ class JigsawState(rx.State):
 
         async with self:
             self.artex_creating = False
-            self.artex_project_id = project_id
+            self.artex_project_id = slug
 
-        yield rx.redirect(project_redirect_url(project_id, redirect_override), is_external=True)
+        if redirect_url and redirect_url.lower() != "false":
+            yield rx.redirect(redirect_url.format(slug=slug), is_external=True)
 
     @rx.var
     def has_artex_project(self) -> bool:
@@ -1236,11 +1287,18 @@ class JigsawState(rx.State):
 
     @rx.var
     def can_create_artex(self) -> bool:
-        return self.stl_ready and len(self.artex_api_token.strip()) > 0
+        return (
+            self.stl_ready
+            and len(self.artex_api_token.strip()) > 0
+            and len(self.artex_display_id.strip()) > 0
+        )
 
     @rx.var
     def artex_section_visible(self) -> bool:
+        """Show ARTEX UI in dev mode, when ?from=ARTEX is present, or when a token is configured."""
         if DEV_MODE:
+            return True
+        if self.artex_from_kiosk:
             return True
         return len(self.artex_api_token.strip()) > 0
 

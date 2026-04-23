@@ -231,15 +231,12 @@ _IDLE_BAND_JS_TEMPLATE = """
   var WARNING = %(warning)d;
   var BAND_H  = %(band_height)d;
   var IDLE_URL = %(url)s;
-  var ACTIVATE_VALUE = 'artex';
 
-  // Activate only when URL has ?interaction=artex (kiosk mode).
+  // Activate only when ?redirect=<url> is present in the URL (not empty, not 'false').
   var params = new URLSearchParams(window.location.search);
-  if (params.get('interaction') !== ACTIVATE_VALUE) return;
-
-  // Optional ?redirect=<url> overrides the default idle-redirect destination.
-  var override = params.get('redirect');
-  if (override) IDLE_URL = override;
+  var redirectParam = params.get('redirect');
+  if (!redirectParam || redirectParam === 'false') return;
+  IDLE_URL = redirectParam;
 
   var band = document.getElementById('idle-band');
   var text = document.getElementById('idle-band-text');
