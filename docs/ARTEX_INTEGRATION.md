@@ -88,14 +88,13 @@ A **v2 ARTEX artwork config** (`config/artwork.json`) is constructed in memory:
   "artistName": "Materialized Enhancements",
   "story": "...",
   "assets": [
-    { "id": "preview", "kind": "image", "path": "preview/preview.png", "mimeType": "image/png" },
     { "id": "model",   "kind": "model", "path": "models/voronoi_shell_xxx.stl", "mimeType": "model/stl" }
   ],
   "layers": [
-    { "id": "base", "kind": "image", "name": "Sculpture Preview", "zIndex": 0, "visible": true, "opacity": 1, "assetId": "preview" }
+    { "id": "model", "kind": "model3d", "name": "3D Sculpture", "zIndex": 0, "visible": true, "opacity": 1, "assetId": "model", "autoRotate": true, "background": "#080a10" }
   ],
   "states": [{ "id": "default", "label": "Default", "initial": true }],
-  "runtime": { "renderer": "webgl", "localFirst": true, ... },
+  "runtime": { "renderer": "three-experimental", "localFirst": true, ... },
   "mood": 0.6,
   "animation": { "baseSpeed": 0.5, "breathingEnabled": true, ... },
   ...
@@ -111,9 +110,12 @@ An in-memory zip (no temp files) containing:
 ```
 config/artwork.json      ← v2 artwork config (JSON)
 config/state.json        ← initial StateJsonV2 (ARTEX_V2_STATE_PATH constant)
-preview/preview.png      ← matplotlib render of the STL — the image base layer
-models/<stl_filename>    ← binary STL bytes (model asset, not a layer)
+models/<stl_filename>    ← binary STL bytes (model asset, rendered as model3d layer)
 ```
+
+An optional `preview/preview.png` poster can be included if `preview_png_bytes`
+is passed, but it is not generated automatically — the Three.js runtime renders
+the STL mesh directly.
 
 ### 4. Upload package (`_upload_package`)
 
@@ -190,7 +192,8 @@ GET http://127.0.0.1:8787/public/projects/materialized-enhancement-alice/package
 → Returns the zip blob
 ```
 
-It unpacks the zip and renders the artwork with the `webgl` renderer, displaying the `preview/preview.png` base layer.
+It unpacks the zip and renders the artwork with the `three-experimental` renderer,
+displaying the 3D model via Three.js with orbit controls and auto-rotation.
 
 ### 9. Redirect (optional)
 
@@ -334,51 +337,41 @@ uv run pytest tests/test_artex_integration.py -v -s
 
 ---
 
-## Open Issue — `model3d` layer kind not implemented in v2 runtime
+## `model3d` Layer Support — Resolved
 
-**Expected behaviour**: a package with `kind: "model3d"` layers should render the
-3D mesh live on the display (as it does in ARTEX Studio v1).
+**Status**: The v2 runtime (PR #149 + #150) now supports `model3d` layers with the
+`"three-experimental"` renderer.
 
-**Current status**: the v2 runtime (`packages/artex-runtime-web`) is a 2D WebGL
-compositor and silently drops `model3d` layers, causing the warning
-*"No visible image or video layer is available for the runtime stage."*
+### What was fixed ARTEX-side (PRs #149 / #150)
 
-### Root cause (for ARTEX dev — all line refs are in `ARTEX/`)
+| # | File | Change |
+|---|------|--------|
+| 1 | `packages/artex-contract/src/v2/types.ts` | `LayerKind` union now includes `"model3d"` |
+| 2 | `packages/artex-contract/src/v2/types.ts` | `RuntimeRenderer` now includes `"three-experimental"` |
+| 3 | `packages/artex-runtime-web/src/runtimePlan.ts` | `buildRuntimeStagePlan` collects `model3d` layers into `modelLayers` when three-experimental is active |
+| 4 | `packages/artex-runtime-web/src/model3dLayer.tsx` | `Model3DLayerRenderer` fetches model URL, loads via `load3DModelFile`, wires orbit controls |
+| 5 | `packages/artex-runtime-web/src/runtimeStage.tsx` | Renders first planned model layer |
+| 6 | `apps/creator/src/utils/modelLoader.ts` | `ModelController.autoRotate` flag + autoRotateSpeed |
 
-| # | File | Line(s) | Issue |
-|---|------|---------|-------|
-| 1 | `packages/artex-contract/src/v2/types.ts` | 110 | `LayerKind` union is `"image"\|"video"\|"shader"\|"audio"\|"mask"\|"text"` — `"model3d"` is absent |
-| 2 | `packages/artex-contract/src/v2/types.ts` | 332–337 | `runtime.renderer` is typed as the literal `"webgl"` only — no `"three-experimental"` or `"three"` variant |
-| 3 | `packages/artex-runtime-web/src/runtimePlan.ts` | 62–63 | `mediaLayers` filter accepts only `kind==="image"\|\|kind==="video"` — a `model3d` layer is silently discarded |
-| 4 | `packages/artex-runtime-web/src/runtimePlan.ts` | 71–73 | `unsupportedLayers` only catches `"shader"` and `"audio"` — `model3d` is not even surfaced as a warning |
-| 5 | `packages/artex-runtime-web/src/runtimePlan.ts` | 81–83 | With 0 media layers, fires: *"No visible image or video layer…"* |
-| 6 | `packages/artex-contract/src/v2/packageContract.ts` | 241–247 | `readArtexV2PackageArchive` loads every `asset.path` into `files` regardless of kind — STL blob reaches `files` but the stage ignores it |
-| 7 | `packages/artex-contract/src/v2/packageContract.ts` | 99–127 | `validateArtworkConfigV2` never validates asset/layer kind values — invalid configs pass silently |
+### What was changed in this repo
 
-**Suggested fix for ARTEX dev**: add `"model3d"` to `LayerKind` (point 1), add a
-`"three"` / `"three-experimental"` renderer variant (point 2), and handle the new
-layer kind in `buildRuntimeStagePlan` (points 3–5) and `ArtexRuntimeStage`
-(analogous to the `image`/`video` branches in
-`packages/artex-runtime-web/src/runtimeStage.tsx:203-230`), porting the Three.js
-mesh loader that already exists in ARTEX Studio v1.
+- `build_sculpture_artwork` / `build_jigsaw_artwork` now emit:
+  - `runtime.renderer: "three-experimental"` (was `"webgl"`)
+  - `layers[0].kind: "model3d"` with `autoRotate: true` (was `"image"`)
+  - Single asset `kind: "model"` pointing to the STL (was two assets: preview image + model)
+- `build_artex_package_zip` no longer auto-generates a preview PNG; the Three.js
+  runtime renders the mesh live.  A poster PNG can still be supplied optionally.
+- `render_stl_preview_png` is retained but no longer called in the publish pipeline.
 
-### Current workaround (this repo)
+### Known runtime constraints
 
-While `model3d` is not supported in the v2 runtime, `publish_and_push_sync` in
-`artex.py` renders a perspective PNG of the STL via `render_stl_preview_png`
-(trimesh + matplotlib, headless Agg backend) and uses it as the `image` base layer.
-The STL is still included in the package under `models/` as a `model` asset so it
-survives the round-trip and can be loaded once the runtime gains 3D support.
-
-The package also fixed a secondary path bug: `state.json` was written to the zip
-root but `readArtexV2PackageArchive` reads `config/state.json`
-(`ARTEX_V2_STATE_PATH`, `packages/artex-contract/src/v2/packageContract.ts:15`).
-
-When the ARTEX v2 runtime gains `model3d` support the workaround can be removed by:
-1. Restoring `kind: "model3d"` layers and `renderer: "three-experimental"` in the
-   artwork builders.
-2. Dropping the `render_stl_preview_png` call from `publish_and_push_sync`.
-3. Keeping the `preview/preview.png` asset as an optional poster fallback.
+- **Singleton model**: only one `model3d` layer renders at a time — the `modelLoader`
+  singleton WebGL context auto-disposes on each new load. Multi-model support is
+  deferred until the loader is decoupled from the singleton.
+- **Layer config fields**: `Model3DLayerConfig` defines `scale`, `rotation`,
+  `position`, `cameraFov`, `environmentAssetId`, and `background`, but only
+  `autoRotate` and `background` are wired in the current `Model3DLayerRenderer`.
+  The remaining fields are accepted by the contract but silently ignored at render time.
 
 ### Dev-session is loopback-only
 

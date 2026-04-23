@@ -222,7 +222,6 @@ def test_real_sculpture_stl_publish_and_push() -> None:
     with zipfile.ZipFile(io.BytesIO(returned_zip)) as zf:
         names = zf.namelist()
 
-        # STL must survive the round-trip (stored as model asset, not a layer)
         assert f"models/{stl_filename}" in names, (
             f"STL missing from returned package. Entries: {names}"
         )
@@ -233,58 +232,16 @@ def test_real_sculpture_stl_publish_and_push() -> None:
         rt_faces = struct.unpack_from("<I", returned_stl, 80)[0]
         assert rt_faces == face_count
 
-        # PNG preview must be present — it is the image base layer the ARTEX
-        # v2 runtime actually renders.
-        # Root-cause of the original "No visible image or video layer" warning:
-        #
-        #   packages/artex-contract/src/v2/types.ts:110
-        #     LayerKind = "image"|"video"|"shader"|"audio"|"mask"|"text"
-        #     → "model3d" is not in the union; the runtime has no 3D render path.
-        #
-        #   packages/artex-contract/src/v2/types.ts:332-337
-        #     runtime.renderer is typed as "webgl" only;
-        #     "three-experimental" is not a recognised value.
-        #
-        #   packages/artex-runtime-web/src/runtimePlan.ts:62-63
-        #     mediaLayers filter: layer.kind==="image"||layer.kind==="video"
-        #     → "model3d" layers are silently dropped (not caught by the
-        #       unsupportedLayers check at lines 71-73 which covers only
-        #       "shader" and "audio").
-        #
-        #   packages/artex-runtime-web/src/runtimePlan.ts:81-83
-        #     mediaLayers.length===0 → warning fires.
-        #
-        #   packages/artex-contract/src/v2/packageContract.ts:241-247
-        #     readArtexV2PackageArchive loads every asset path without checking
-        #     kind, so the STL blob reaches files but the stage renders nothing.
-        #
-        #   packages/artex-contract/src/v2/packageContract.ts:99-127
-        #     validateArtworkConfigV2 never checks asset/layer kinds → our
-        #     invalid config passed validation silently.
-        #
-        # Fix (artex.py): build_sculpture_artwork / build_jigsaw_artwork now
-        # emit kind="image" layers backed by preview/preview.png, renderer="webgl".
-        # render_stl_preview_png (trimesh + matplotlib) generates the PNG inside
-        # publish_and_push_sync before the zip is assembled.
-        assert "preview/preview.png" in names, (
-            f"Preview PNG missing from returned package. Entries: {names}"
-        )
-        preview_bytes = zf.read("preview/preview.png")
-        assert len(preview_bytes) > 1024, (
-            f"Preview PNG suspiciously small: {len(preview_bytes)} bytes"
-        )
-
-        # Artwork config must use image layer, not model3d
         import json as _json
         artwork = _json.loads(zf.read("config/artwork.json"))
         layer_kinds = [lyr["kind"] for lyr in artwork.get("layers", [])]
-        assert "image" in layer_kinds, f"Expected 'image' layer, got: {layer_kinds}"
-        assert "model3d" not in layer_kinds, f"model3d layer still present: {layer_kinds}"
-        assert artwork.get("runtime", {}).get("renderer") == "webgl", (
-            f"Expected renderer 'webgl', got: {artwork.get('runtime', {}).get('renderer')!r}"
+        assert "model3d" in layer_kinds, f"Expected 'model3d' layer, got: {layer_kinds}"
+        assert artwork.get("runtime", {}).get("renderer") == "three-experimental", (
+            f"Expected renderer 'three-experimental', got: {artwork.get('runtime', {}).get('renderer')!r}"
         )
+        model_layer = next(lyr for lyr in artwork["layers"] if lyr["kind"] == "model3d")
+        assert model_layer.get("autoRotate") is True, "Expected autoRotate=True on model3d layer"
 
     print(f"  Slug: {slug!r}  delivery: {delivery!r}")
     print(f"  Package URL: {_API_URL}/public/projects/{slug}/package")
     print(f"  STL round-trip verified: {face_count:,} faces intact")
-    print(f"  Preview PNG: {len(preview_bytes):,} bytes")

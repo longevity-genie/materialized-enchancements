@@ -40,11 +40,13 @@ def test_sculpture_artwork_v2_format() -> None:
     assert "Radiation & Extremophile" in config["story"]
     assert config["runtime"]["renderer"] == "three-experimental"
     assert isinstance(config["assets"], list)
-    assert config["assets"][0]["kind"] == "model3d"
+    assert len(config["assets"]) == 1
+    assert config["assets"][0]["kind"] == "model"
     assert config["assets"][0]["path"] == "models/totem.stl"
     assert isinstance(config["layers"], list)
     assert config["layers"][0]["kind"] == "model3d"
     assert config["layers"][0]["assetId"] == "model"
+    assert config["layers"][0]["autoRotate"] is True
     assert isinstance(config["states"], list)
     assert config["states"][0]["initial"] is True
     assert "fallbackState" in config
@@ -91,7 +93,10 @@ def test_jigsaw_artwork_v2_format() -> None:
     assert "Bob" in config["title"]
     assert "tardigrade" in config["story"]
     assert config["runtime"]["renderer"] == "three-experimental"
+    assert config["assets"][0]["kind"] == "model"
     assert config["assets"][0]["path"] == "models/materialized_jigsaw.stl"
+    assert config["layers"][0]["kind"] == "model3d"
+    assert config["layers"][0]["autoRotate"] is True
     assert config["mood"] == 0.5
 
 
@@ -108,14 +113,17 @@ def test_package_zip_has_required_entries() -> None:
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         names = set(zf.namelist())
         assert "config/artwork.json" in names
-        assert "state.json" in names
+        assert "config/state.json" in names
         assert "models/test.stl" in names
 
         artwork = json.loads(zf.read("config/artwork.json"))
         assert artwork["version"] == 2
         assert artwork["id"] == "me-test"
+        assert artwork["runtime"]["renderer"] == "three-experimental"
+        assert artwork["layers"][0]["kind"] == "model3d"
+        assert artwork["layers"][0]["autoRotate"] is True
 
-        state = json.loads(zf.read("state.json"))
+        state = json.loads(zf.read("config/state.json"))
         assert state["artworkId"] == "me-test"
 
         assert zf.read("models/test.stl") == stl_bytes

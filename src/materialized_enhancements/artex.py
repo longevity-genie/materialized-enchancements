@@ -14,10 +14,9 @@ Platform API reference: ARTEX/.services/artex-platform-api/README.md
 VENUE_SETUP reference:  ARTEX/VENUE_SETUP.md
 
 Package layout (ARTEX v2 contract):
-  config/artwork.json    v2 artwork config (renderer: "webgl", image layer)
+  config/artwork.json    v2 artwork config (renderer: "three-experimental", model3d layer)
   config/state.json      initial StateJsonV2 (path constant ARTEX_V2_STATE_PATH)
-  preview/preview.png    matplotlib render of the STL — used as the image base layer
-  models/<stl_filename>  original STL kept as model asset metadata
+  models/<stl_filename>  STL model asset — rendered live by the Three.js runtime
 """
 
 from __future__ import annotations
@@ -224,21 +223,16 @@ def build_artex_package_zip(
 ) -> bytes:
     """Build an in-memory ARTEX v2 package zip.
 
-    If ``preview_png_bytes`` is not supplied it is generated automatically via
-    ``render_stl_preview_png`` so that every caller gets a complete package with
-    a renderable ``preview/preview.png`` image layer.
+    With the ``"three-experimental"`` renderer the STL is the primary renderable
+    asset (via a ``model3d`` layer).  A preview PNG can optionally be supplied as
+    a poster fallback — it will be included in the zip only when provided.
 
     Layout (paths match ARTEX v2 contract constants):
       config/artwork.json    v2 artwork config
       config/state.json      initial StateJsonV2
-      preview/preview.png    PNG preview rendered from the STL
-      models/<stl_filename>  original STL bytes kept as reference asset
+      models/<stl_filename>  STL model bytes
+      preview/preview.png    (optional) poster fallback
     """
-    if preview_png_bytes is None:
-        logger.info("No preview PNG supplied — rendering from STL (%d bytes) ...", len(stl_bytes))
-        preview_png_bytes = render_stl_preview_png(stl_bytes)
-        logger.info("Preview PNG rendered: %d bytes", len(preview_png_bytes))
-
     artwork_id = artwork_config.get("id", "materialized")
     initial_state_id = "default"
     for s in artwork_config.get("states", []):
@@ -266,8 +260,9 @@ def build_artex_package_zip(
     with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(_ARTWORK_PATH, json.dumps(artwork_config, ensure_ascii=False))
         zf.writestr(_STATE_PATH, json.dumps(state_json))
-        zf.writestr(_PREVIEW_PATH, preview_png_bytes)
         zf.writestr(f"models/{stl_filename}", stl_bytes)
+        if preview_png_bytes is not None:
+            zf.writestr(_PREVIEW_PATH, preview_png_bytes)
     return buf.getvalue()
 
 
@@ -283,14 +278,13 @@ def build_sculpture_artwork(
 ) -> dict[str, Any]:
     """Build a v2 ARTEX artwork config for a parametric sculpture.
 
-    The base layer is a PNG preview image (``preview/preview.png``) rendered by
-    ``render_stl_preview_png`` and stored alongside the STL in the zip.  The STL
-    is carried as a ``model`` asset for reference/download but is not a layer.
+    Uses the ``"three-experimental"`` renderer with a ``model3d`` layer so the
+    ARTEX runtime renders the STL mesh live via Three.js with orbit controls
+    and auto-rotation.
 
-    Layer kind ``"image"`` and renderer ``"webgl"`` are the only values accepted
-    by the v2 runtime:
-      packages/artex-contract/src/v2/types.ts:110  LayerKind
-      packages/artex-contract/src/v2/types.ts:333  runtime.renderer
+    ARTEX contract refs:
+      packages/artex-contract/src/v2/types.ts  LayerKind, RuntimeRenderer
+      packages/artex-runtime-web/src/model3dLayer.tsx  Model3DLayerRenderer
     """
     mood_raw = sculpture_params.get("extrusion", -0.2)
     mood = max(0.0, min(1.0, (mood_raw + 1.0) / 2.0))
@@ -310,12 +304,6 @@ def build_sculpture_artwork(
         "medium": "3D Sculpture \u2014 Parametric Generative Art (STL)",
         "assets": [
             {
-                "id": "preview",
-                "kind": "image",
-                "path": _PREVIEW_PATH,
-                "mimeType": "image/png",
-            },
-            {
                 "id": "model",
                 "kind": "model",
                 "path": f"models/{stl_filename}",
@@ -324,13 +312,15 @@ def build_sculpture_artwork(
         ],
         "layers": [
             {
-                "id": "base",
-                "kind": "image",
-                "name": "Sculpture Preview",
+                "id": "model",
+                "kind": "model3d",
+                "name": "3D Sculpture",
                 "zIndex": 0,
                 "visible": True,
                 "opacity": 1,
-                "assetId": "preview",
+                "assetId": "model",
+                "autoRotate": True,
+                "background": "#080a10",
             }
         ],
         "inputs": {},
@@ -339,7 +329,7 @@ def build_sculpture_artwork(
         "transitions": [],
         "fallbackState": "default",
         "runtime": {
-            "renderer": "webgl",
+            "renderer": "three-experimental",
             "localFirst": True,
             "allowRecording": False,
             "allowCloudUpload": False,
@@ -388,7 +378,7 @@ def build_jigsaw_artwork(
 ) -> dict[str, Any]:
     """Build a v2 ARTEX artwork config for a gene jigsaw sculpture.
 
-    Same image-layer / webgl-renderer pattern as ``build_sculpture_artwork``.
+    Same model3d-layer / three-experimental pattern as ``build_sculpture_artwork``.
     """
     title = f"Gene Jigsaw \u2014 {personal_tag}"
     story = (
@@ -406,12 +396,6 @@ def build_jigsaw_artwork(
         "medium": "3D Jigsaw Puzzle \u2014 Generative Art (STL)",
         "assets": [
             {
-                "id": "preview",
-                "kind": "image",
-                "path": _PREVIEW_PATH,
-                "mimeType": "image/png",
-            },
-            {
                 "id": "model",
                 "kind": "model",
                 "path": f"models/{stl_filename}",
@@ -420,13 +404,15 @@ def build_jigsaw_artwork(
         ],
         "layers": [
             {
-                "id": "base",
-                "kind": "image",
-                "name": "Jigsaw Preview",
+                "id": "model",
+                "kind": "model3d",
+                "name": "3D Jigsaw",
                 "zIndex": 0,
                 "visible": True,
                 "opacity": 1,
-                "assetId": "preview",
+                "assetId": "model",
+                "autoRotate": True,
+                "background": "#080a10",
             }
         ],
         "inputs": {},
@@ -435,7 +421,7 @@ def build_jigsaw_artwork(
         "transitions": [],
         "fallbackState": "default",
         "runtime": {
-            "renderer": "webgl",
+            "renderer": "three-experimental",
             "localFirst": True,
             "allowRecording": False,
             "allowCloudUpload": False,
@@ -487,8 +473,9 @@ def publish_and_push_sync(
 ) -> Tuple[str, str]:
     """Full pipeline: build zip → upload → publish → push to display.
 
-    Delegates preview PNG rendering to ``build_artex_package_zip`` which renders
-    the STL via ``render_stl_preview_png`` if no preview is supplied.
+    The package contains the STL as the primary ``model3d`` layer (rendered
+    live by the Three.js runtime).  No preview PNG is generated — the runtime
+    renders the mesh directly with orbit controls and auto-rotation.
 
     Returns ``(slug, delivery)`` where ``slug`` is the published artwork slug
     and ``delivery`` is ``'sse'`` (instant) or ``'queued'`` (display offline).
