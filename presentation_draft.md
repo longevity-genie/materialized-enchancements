@@ -22,9 +22,10 @@
 
 **Members**
 
-- Newton Winter — Concept / Biology — isouthere@gmail.com
-- Anton Kulaga — Engineering / Data — antonkulaga@gmail.com
-- Livia Zaharia — Design / Storytelling — liviazaharia2020@gmail.com
+- Newton Winter — web app, jigsaw generation, geometry optimization, devops, biology, UI — isouthere@gmail.com
+- Anton Kulaga — concept, biology, UI design, generative video, 3D printing — antonkulaga@gmail.com
+- Livia Zaharia — parametric geometry, personalized enhancement report, 3D printing — liviazaharia2020@gmail.com
+- Marko Prakhov-Donets — video editing
 
 ---
 
