@@ -1,6 +1,8 @@
 """Environment configuration: .env loading + derived constants.
 
 ``MATERIALIZED_DEV_MODE`` is set by ``run.py`` when invoked with ``--dev``.
+``DEPLOY_URL`` (when set) is the canonical public base for share links, report
+exports, and sculpture email permalinks; see ``PUBLIC_APP_URL`` below.
 ``ARTEX_API_URL`` / ``ARTEX_API_TOKEN`` are the platform API base URL and the
 admin token (``ARTEX_PLATFORM_ADMIN_TOKEN`` on the server side) used to exchange
 for a short-lived session token at publish time.
@@ -40,8 +42,24 @@ ARTEX_DEV_REDIRECT_URL: str = os.getenv(
     "ARTEX_DEV_REDIRECT_URL", "http://127.0.0.1:8787/public/projects/{slug}"
 )
 
-# Public frontend URL used for share/report links.
-PUBLIC_APP_URL: str = os.getenv("PUBLIC_APP_URL", "http://localhost:3000").rstrip("/")
+def _canonical_public_app_url() -> str:
+    """Base URL for share links, report QR/PDF, and sculpture email permalinks.
+
+    ``DEPLOY_URL`` (the Reflex app URL in production) is preferred so deploy and
+    public links stay aligned. ``PUBLIC_APP_URL`` applies when ``DEPLOY_URL`` is
+    unset, for example when the marketing or share hostname differs from the app.
+    """
+    deploy = os.getenv("DEPLOY_URL", "").strip().rstrip("/")
+    if deploy:
+        return deploy
+    public = os.getenv("PUBLIC_APP_URL", "").strip().rstrip("/")
+    if public:
+        return public
+    return "http://localhost:3000"
+
+
+# Canonical public site root (from DEPLOY_URL, else PUBLIC_APP_URL, else localhost).
+PUBLIC_APP_URL: str = _canonical_public_app_url()
 
 # Resend transactional email — used by the "Send to email" buttons on the
 # sculpture and jigsaw pages. RESEND_FROM_EMAIL must be a verified sender

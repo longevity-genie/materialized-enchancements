@@ -5,7 +5,7 @@ from reflex_mui_datagrid import lazyframe_grid
 
 from materialized_enhancements.components.layout import fomantic_icon, template, two_column_layout
 from materialized_enhancements.artex import artex_publish_button
-from materialized_enhancements.env import DEV_MODE
+from materialized_enhancements.env import DEV_MODE, PUBLIC_APP_URL
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     ANIMAL_PRICES,
@@ -2585,6 +2585,12 @@ def _report_section() -> rx.Component:
             rx.cond(
                 ComposeState.has_stl,
                 rx.el.div(
+                    rx.el.input(
+                        id="report-canonical-base",
+                        value=PUBLIC_APP_URL,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
                     rx.el.input(
                         id="report-share-path",
                         value=ComposeState.share_url,

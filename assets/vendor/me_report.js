@@ -13,11 +13,19 @@
     var el = document.getElementById('report-share-path');
     return el ? el.value : '';
   }
+  /** Server-provided canonical origin (DEPLOY_URL / PUBLIC_APP_URL); falls back to browser. */
+  function canonicalOrigin() {
+    var el = document.getElementById('report-canonical-base');
+    var v = el && el.value ? String(el.value).trim().replace(/\/+$/, '') : '';
+    if (v) return v;
+    return window.location.origin;
+  }
   function absoluteShareUrl() {
     var p = sharePath();
-    if (!p) return window.location.origin + '/';
+    var origin = canonicalOrigin();
+    if (!p) return origin + '/';
     if (/^https?:\/\//i.test(p)) return p;
-    return window.location.origin + '/' + (p.charAt(0) === '?' ? '' : '') + p;
+    return origin + '/' + (p.charAt(0) === '?' ? '' : '') + p;
   }
   function safeName() {
     var raw = (document.getElementById('report-share-name') || {}).value || 'anon';
@@ -446,7 +454,7 @@
   function loadPuzzleRasterForPdf(puzzleSrc) {
     if (!puzzleSrc) return Promise.resolve(null);
     var url =
-      puzzleSrc.indexOf('http') === 0 ? puzzleSrc : window.location.origin + puzzleSrc;
+      puzzleSrc.indexOf('http') === 0 ? puzzleSrc : canonicalOrigin() + puzzleSrc;
     return new Promise(function (resolve) {
       var img = new Image();
       img.crossOrigin = 'anonymous';
