@@ -43,6 +43,17 @@ ARTEX_DEV_REDIRECT_URL: str = os.getenv(
 # Public frontend URL used for share/report links.
 PUBLIC_APP_URL: str = os.getenv("PUBLIC_APP_URL", "http://localhost:3000").rstrip("/")
 
+# Resend transactional email — used by the "Send to email" buttons on the
+# sculpture and jigsaw pages. RESEND_FROM_EMAIL must be a verified sender
+# (use Resend's "onboarding@resend.dev" while iterating; switch to a domain
+# you own once SPF/DKIM are set up). RESEND_REPLY_TO is optional.
+RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL: str = os.getenv(
+    "RESEND_FROM_EMAIL",
+    "Materialized Enhancements <no-reply@longevity-genie.info>",
+)
+RESEND_REPLY_TO: str = os.getenv("RESEND_REPLY_TO", "")
+
 # Kiosk idle timer (only rendered in prod). Seconds.
 IDLE_TIMEOUT_SECONDS: int = int(os.getenv("IDLE_TIMEOUT_SECONDS", "60"))
 IDLE_WARNING_SECONDS: int = int(os.getenv("IDLE_WARNING_SECONDS", "5"))

@@ -241,6 +241,12 @@ def test_real_sculpture_stl_publish_and_push() -> None:
         )
         model_layer = next(lyr for lyr in artwork["layers"] if lyr["kind"] == "model3d")
         assert model_layer.get("autoRotate") is True, "Expected autoRotate=True on model3d layer"
+        assert model_layer.get("preset") == "chrome", (
+            f"Expected preset='chrome', got: {model_layer.get('preset')!r}"
+        )
+        assert model_layer.get("soundReactive") is True, (
+            f"Expected soundReactive=True, got: {model_layer.get('soundReactive')!r}"
+        )
 
     print(f"  Slug: {slug!r}  delivery: {delivery!r}")
     print(f"  Package URL: {_API_URL}/public/projects/{slug}/package")

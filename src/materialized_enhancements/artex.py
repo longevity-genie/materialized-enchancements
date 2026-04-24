@@ -321,9 +321,27 @@ def build_sculpture_artwork(
                 "assetId": "model",
                 "autoRotate": True,
                 "background": "#080a10",
+                # Visual look + reactivity are orthogonal layer-level settings
+                # in the ARTEX v2 contract (see Model3DPreset). "chrome" gives
+                # the sculpture a metallic / clearcoat finish under the studio
+                # IBL; soundReactive layers a hue cycle on top driven by the
+                # live sound_level / sound_peak signals.
+                "preset": "chrome",
+                "soundReactive": True,
             }
         ],
-        "inputs": {},
+        # The model3d layer requested soundReactive lighting, so the artwork
+        # must enable the microphone input or the runtime never opens it and
+        # sound_level / sound_peak stay at zero. The contract validator also
+        # auto-promotes microphone+audio capabilities when soundReactive is
+        # set, but enabling the input here is what actually wires up the mic.
+        "inputs": {
+            "microphone": {
+                "enabled": True,
+                "analyzeLevel": True,
+                "analyzePeak": True,
+            },
+        },
         "states": [{"id": "default", "label": "Default", "initial": True}],
         "triggers": [],
         "transitions": [],
@@ -413,9 +431,25 @@ def build_jigsaw_artwork(
                 "assetId": "model",
                 "autoRotate": True,
                 "background": "#080a10",
+                # See build_sculpture_artwork for the rationale on these two
+                # fields; the jigsaw uses the same chrome / sound-reactive look
+                # so both pieces feel like part of the same installation.
+                "preset": "chrome",
+                "soundReactive": True,
             }
         ],
-        "inputs": {},
+        # The model3d layer requested soundReactive lighting, so the artwork
+        # must enable the microphone input or the runtime never opens it and
+        # sound_level / sound_peak stay at zero. The contract validator also
+        # auto-promotes microphone+audio capabilities when soundReactive is
+        # set, but enabling the input here is what actually wires up the mic.
+        "inputs": {
+            "microphone": {
+                "enabled": True,
+                "analyzeLevel": True,
+                "analyzePeak": True,
+            },
+        },
         "states": [{"id": "default", "label": "Default", "initial": True}],
         "triggers": [],
         "transitions": [],

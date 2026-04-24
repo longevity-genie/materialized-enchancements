@@ -67,7 +67,86 @@ uv run start --dev     # development mode + developer-only UI (ARTEX API config 
 uv run serve           # production mode (single-port, Reflex 0.9+ unified server)
 ```
 
-Copy `.env.template` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout). For production, set `REFLEX_API_URL` to your public domain in `.env`.
+Copy `.env.template` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout, Resend API key). For production, set `REFLEX_API_URL` to your public domain in `.env`.
+
+---
+
+## Send to Email
+
+Both the **Sculpture** and **Jigsaw** tabs have a **Send to email** field next to
+the Download button. The visitor types an address, hits Send, and receives the
+same artifact bundle they would have downloaded — useful in kiosk-style
+installations where the device is shared and the visitor has nowhere to save a
+file. Emails are delivered via [Resend](https://resend.com) over plain HTTPS;
+no SMTP server, no extra services to operate.
+
+### What gets sent
+
+| Tab | Email body | Attachments | Bundling |
+|---|---|---|---|
+| **Sculpture** | HTML report: name, selected categories, traits, included genes, donor organisms with superpower blurb, the seven sculpture parameters, and a share-back URL | `<name>.stl` · `<name>_params.json` · `<name>.pdf` (the same A4 report the Download PDF button produces, built client-side with jsPDF) | If the combined payload exceeds **1.5 MB**, files are bundled into a single `<name>.zip` to keep the inbox tidy and avoid Gmail's "lots of attachments" anti-spam heuristics |
+| **Jigsaw** | HTML body: name, selected organisms, traits the totem grants, organism→superpower table, grid metadata | `materialized_jigsaw_pieces.svg` · `materialized_jigsaw.stl` | Same 1.5 MB threshold; bundled as `materialized_jigsaw.zip` when needed |
+
+The Send button on the Jigsaw tab is disabled until the STL has finished
+generating (the SVG alone wouldn't be useful without the printable companion).
+On the Sculpture tab it is disabled until a sculpture has been materialised and
+a syntactically-valid email has been entered.
+
+### Pipeline
+
+```
+Sculpture click  →  start_email_send (validate + force-expand Share & Report)
+                 →  rx.call_script("__meBuildReportPdfBase64()")  ── browser
+                 →  receive_pdf_and_send (stash PDF base64 on state)
+                 →  send_sculpture_email (background)
+                       └→ POST https://api.resend.com/emails (multipart JSON)
+
+Jigsaw click     →  send_jigsaw_email (background)
+                       └→ POST https://api.resend.com/emails
+```
+
+Implementation: `src/materialized_enhancements/email_send.py` (Resend HTTP
+client + zip helper + email validation); `ComposeState.start_email_send` /
+`receive_pdf_and_send` / `send_sculpture_email` and
+`JigsawState.send_jigsaw_email` in `state.py`; the `__meBuildReportPdfBase64`
+JS helper in `assets/vendor/me_report.js`; the shared `_email_send_form`
+component in `pages/index.py`.
+
+### Resend setup
+
+1. Create a Resend account and add your sending domain in the dashboard.
+2. Add the DKIM CNAME and the `send.<domain>` MX + TXT records Resend gives you
+   to your DNS. Wait until every row shows green "Verified".
+3. Set `RESEND_API_KEY` in `.env` (key starts with `re_`). Optionally set
+   `RESEND_FROM_EMAIL` to your own verified mailbox; the default is
+   `Materialized Enhancements <no-reply@longevity-genie.info>`.
+
+To verify deliverability end-to-end, send a test message and check the
+`SPF` / `DKIM` / `DMARC` lines in Gmail's *Show original* view, or paste a
+unique address from <https://www.mail-tester.com> and aim for a 9+ score.
+
+### Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `RESEND_API_KEY` | *(unset)* | Resend API key (`re_...`). Send button is disabled when missing. |
+| `RESEND_FROM_EMAIL` | `Materialized Enhancements <no-reply@longevity-genie.info>` | `From:` header. Must be a verified Resend sender. |
+| `RESEND_REPLY_TO` | *(unset)* | Optional `Reply-To:` header. Useful if `From:` is a `no-reply@` address. |
+
+### Operational notes
+
+- **Cloudflare 1010 fix**: `api.resend.com` sits behind Cloudflare and 403s the
+  default `Python-urllib/*` User-Agent. The client in `email_send.py` sends a
+  neutral UA (`materialized-enhancements/0.2 ...`) to bypass the bot block.
+- **Per-message limits**: Resend accepts up to 40 MB per message; the client
+  caps at 30 MB total (raw, pre-base64) to leave headroom for transport
+  overhead. STL + PDF + JSON for a typical sculpture come in well under 5 MB.
+- **No abuse controls** are wired in — the kiosk is staffed during the
+  installation. If you expose this on the open internet, add an IP cooldown
+  inside `start_email_send` / `send_jigsaw_email` before going live.
+- **Failure handling**: if the client-side PDF build fails (e.g. jsPDF didn't
+  load), the sculpture email still ships with the STL + params JSON; the body
+  copy adapts accordingly. Resend errors surface inline under the Send button.
 
 ---
 

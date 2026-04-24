@@ -38,12 +38,20 @@ from materialized_enhancements.artex import (
     build_sculpture_artwork,
     publish_and_push_sync,
 )
+from materialized_enhancements.email_send import (
+    EmailAttachment,
+    EmailSendError,
+    is_valid_email,
+    maybe_zip_attachments,
+    send_email_via_resend,
+)
 from materialized_enhancements.env import (
     ARTEX_API_TOKEN,
     ARTEX_API_URL,
     ARTEX_DISPLAY_ID,
     DEV_MODE,
     PUBLIC_APP_URL,
+    RESEND_API_KEY,
 )
 
 logger = logging.getLogger(__name__)
@@ -246,6 +254,203 @@ _TAB_ROUTE_MAP: dict[str, str] = {
 }
 
 
+def _html_escape(value: object) -> str:
+    """Minimal HTML escape for email bodies (avoids importing html for one func)."""
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
+
+def _build_sculpture_email_html(
+    *,
+    personal_tag: str,
+    categories: list[str],
+    traits: list[str],
+    included_genes: list[str],
+    organisms: list[dict[str, Any]],
+    params: dict[str, Any],
+    share_url: str,
+    has_pdf: bool = False,
+) -> str:
+    """Render the sculpture report as a self-contained HTML email body.
+
+    Mirrors the on-page Share & Report content: name, selected categories,
+    traits, included genes, donor organisms (with superpower blurb), the
+    seven sculpture parameters, and a share-back link. The actual STL is
+    sent as an attachment by ``ComposeState.send_sculpture_email``.
+    """
+    cat_chips = "".join(
+        f'<span style="display:inline-block;padding:2px 8px;margin:2px 4px 2px 0;'
+        f'background:#f3f0ff;border:1px solid #d4c5f9;border-radius:10px;'
+        f'color:#6d28d9;font-size:12px;">{_html_escape(c)}</span>'
+        for c in categories
+    ) or '<em style="color:#9ca3af;">none</em>'
+
+    trait_items = "".join(f"<li>{_html_escape(t)}</li>" for t in traits) or "<li><em>none</em></li>"
+    gene_items = (
+        ", ".join(f"<code>{_html_escape(g)}</code>" for g in included_genes) or "<em>none</em>"
+    )
+
+    org_rows = "".join(
+        f'<tr>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#1a1a2e;">{_html_escape(o.get("organism", ""))}</td>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#374151;">{_html_escape(o.get("superpower", ""))}</td>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:12px;">{_html_escape(o.get("traits_csv", ""))}</td>'
+        f'</tr>'
+        for o in organisms
+    )
+    org_table = (
+        f'<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:6px;">'
+        f'<thead><tr>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Organism</th>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Superpower</th>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Traits</th>'
+        f'</tr></thead><tbody>{org_rows}</tbody></table>'
+        if organisms else '<p style="color:#9ca3af;margin:6px 0 0 0;"><em>No donor organisms.</em></p>'
+    )
+
+    def _row(label: str, value: object) -> str:
+        return (
+            f'<tr>'
+            f'<td style="padding:4px 10px;color:#6b7280;font-size:12px;">{_html_escape(label)}</td>'
+            f'<td style="padding:4px 10px;color:#1a1a2e;font-family:monospace;font-size:13px;text-align:right;">{_html_escape(value)}</td>'
+            f'</tr>'
+        )
+
+    param_table = (
+        f'<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:6px;background:#f9fafb;border-radius:6px;">'
+        f'{_row("Seed", params.get("seed", "—"))}'
+        f'{_row("Base radius", params.get("radius", "—"))}'
+        f'{_row("Z spacing", params.get("spacing", "—"))}'
+        f'{_row("Voronoi points", params.get("points", "—"))}'
+        f'{_row("Extrusion", params.get("extrusion", "—"))}'
+        f'{_row("Scale X", params.get("scale_x", "—"))}'
+        f'{_row("Scale Y", params.get("scale_y", "—"))}'
+        f'{_row("Gene pool size", params.get("pool_size", "—"))}'
+        f'</table>'
+    )
+
+    share_block = (
+        f'<p style="margin:16px 0 0 0;font-size:13px;color:#6b7280;">'
+        f'Open or share this exact sculpture: '
+        f'<a href="{_html_escape(share_url)}" style="color:#7c3aed;">{_html_escape(share_url)}</a>'
+        f'</p>'
+        if share_url else ""
+    )
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f8f9fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a2e;">
+  <div style="max-width:640px;margin:0 auto;padding:24px;background:#ffffff;">
+    <h1 style="margin:0 0 4px 0;font-size:22px;color:#1a1a2e;">Your Materialized Enhancement</h1>
+    <p style="margin:0 0 18px 0;color:#6b7280;font-size:14px;">
+      For <strong style="color:#1a1a2e;">{_html_escape(personal_tag)}</strong> —
+      {'the STL and your A4 report PDF are attached.' if has_pdf else 'the STL is attached.'}
+    </p>
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">Selected categories</h2>
+    <div>{cat_chips}</div>
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">Traits granted</h2>
+    <ul style="margin:6px 0 0 0;padding-left:20px;color:#374151;line-height:1.5;">{trait_items}</ul>
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">Included genes</h2>
+    <p style="margin:6px 0 0 0;color:#374151;line-height:1.6;">{gene_items}</p>
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">Donor organisms</h2>
+    {org_table}
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">Sculpture parameters</h2>
+    {param_table}
+
+    {share_block}
+
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb;">
+    <p style="font-size:12px;color:#9ca3af;margin:0;">
+      Open the attached <code>.stl</code> in any 3D viewer (PrusaSlicer, Bambu Studio, Blender, MeshLab) or send it to a 3D printer.
+    </p>
+  </div>
+</body></html>"""
+
+
+def _build_jigsaw_email_html(
+    *,
+    personal_tag: str,
+    organisms: list[str],
+    organism_entries: list[dict[str, Any]],
+    traits: list[str],
+    pieces: int,
+    dimensions: str,
+    seed: int,
+) -> str:
+    """Render the jigsaw helper text as a self-contained HTML email body.
+
+    Lists the organisms the user picked and the traits the resulting totem
+    "grants". The SVG (and STL when available) ride along as attachments.
+    """
+    org_chips = "".join(
+        f'<span style="display:inline-block;padding:2px 8px;margin:2px 4px 2px 0;'
+        f'background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;'
+        f'color:#0d9488;font-size:12px;">{_html_escape(o)}</span>'
+        for o in organisms
+    ) or '<em style="color:#9ca3af;">none</em>'
+
+    trait_items = "".join(f"<li>{_html_escape(t)}</li>" for t in traits) or "<li><em>none</em></li>"
+
+    org_rows = "".join(
+        f'<tr>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#1a1a2e;">{_html_escape(o.get("organism", ""))}</td>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#374151;">{_html_escape(o.get("superpower", ""))}</td>'
+        f'</tr>'
+        for o in organism_entries
+    )
+    org_table = (
+        f'<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:6px;">'
+        f'<thead><tr>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Organism</th>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Superpower granted</th>'
+        f'</tr></thead><tbody>{org_rows}</tbody></table>'
+        if organism_entries else ""
+    )
+
+    meta_bits: list[str] = []
+    if pieces:
+        meta_bits.append(f"<strong>{pieces}</strong> pieces")
+    if dimensions:
+        meta_bits.append(f"<strong>{_html_escape(dimensions)}</strong> grid")
+    if seed:
+        meta_bits.append(f"seed <code>{seed}</code>")
+    meta_line = " · ".join(meta_bits)
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f8f9fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a2e;">
+  <div style="max-width:640px;margin:0 auto;padding:24px;background:#ffffff;">
+    <h1 style="margin:0 0 4px 0;font-size:22px;color:#1a1a2e;">Your Gene Jigsaw Totem</h1>
+    <p style="margin:0 0 4px 0;color:#6b7280;font-size:14px;">
+      For <strong style="color:#1a1a2e;">{_html_escape(personal_tag)}</strong> — your jigsaw is attached.
+    </p>
+    <p style="margin:0 0 18px 0;color:#9ca3af;font-size:12px;">{meta_line}</p>
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">Source organisms</h2>
+    <div>{org_chips}</div>
+
+    <h2 style="margin:18px 0 4px 0;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:0.06em;">What this totem grants you</h2>
+    <ul style="margin:6px 0 0 0;padding-left:20px;color:#374151;line-height:1.5;">{trait_items}</ul>
+
+    {org_table}
+
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb;">
+    <p style="font-size:12px;color:#9ca3af;margin:0;">
+      The attached SVG is laser-cut ready. The STL is for 3D printing the relief totem.
+    </p>
+  </div>
+</body></html>"""
+
+
 class AppState(rx.State):
     """Root application state."""
 
@@ -301,6 +506,17 @@ class ComposeState(rx.State):
     artex_error: str = ""
     artex_redirect_url: str = ""
     artex_from_kiosk: bool = False
+
+    # "Send to email" — Resend transport (see email_send.py).
+    recipient_email: str = ""
+    email_sending: bool = False
+    email_sent: bool = False
+    email_error: str = ""
+
+    # Set by the JS PDF builder (__meBuildReportPdfBase64) before send fires.
+    # Cleared at the end of every send so the next click rebuilds fresh PDF.
+    pending_pdf_base64: str = ""
+    pending_pdf_filename: str = ""
 
     def set_personal_tag(self, value: str) -> None:
         self.personal_tag = value
@@ -585,6 +801,187 @@ class ComposeState(rx.State):
             data=json.dumps(artifact, indent=2).encode("utf-8"),
             filename=json_name,
         )
+
+    def set_recipient_email(self, value: str) -> None:
+        self.recipient_email = value
+        if self.email_sent:
+            self.email_sent = False
+        if self.email_error:
+            self.email_error = ""
+
+    @rx.var
+    def can_send_email(self) -> bool:
+        return (
+            len(self.stl_download_path) > 0
+            and is_valid_email(self.recipient_email)
+            and len(RESEND_API_KEY) > 0
+            and not self.email_sending
+        )
+
+    def start_email_send(self):  # type: ignore[return]
+        """Click handler: ensure the report DOM is mounted, then ask the browser
+        to build the report PDF and call back into ``receive_pdf_and_send``.
+        """
+        if not is_valid_email(self.recipient_email):
+            self.email_error = "Please enter a valid email address."
+            return
+        if not self.stl_download_path:
+            self.email_error = "No sculpture generated yet."
+            return
+        self.email_error = ""
+        self.email_sent = False
+        self.email_sending = True
+        self.pending_pdf_base64 = ""
+        self.pending_pdf_filename = ""
+        # Force the report section open so its hidden inputs + cards mount,
+        # otherwise __meBuildReportPdfBase64 has nothing to read.
+        self.report_expanded = True
+        yield rx.call_script(
+            "window.__meBuildReportPdfBase64 ? window.__meBuildReportPdfBase64() : "
+            "JSON.stringify({error: 'PDF builder not loaded.'})",
+            callback=ComposeState.receive_pdf_and_send,
+        )
+
+    def receive_pdf_and_send(self, payload: str):  # type: ignore[return]
+        """Callback invoked with the JS-stringified ``{filename, base64}`` (or
+        ``{error}``). Stashes the PDF on state, then triggers the actual send.
+        """
+        try:
+            data = json.loads(payload) if payload else {}
+        except (ValueError, TypeError):
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+        err = str(data.get("error", "")).strip()
+        if err:
+            logger.warning("Report PDF builder failed: %s — sending without PDF", err)
+            self.pending_pdf_base64 = ""
+            self.pending_pdf_filename = ""
+        else:
+            self.pending_pdf_base64 = str(data.get("base64", ""))
+            self.pending_pdf_filename = str(data.get("filename", "")) or "materialized_report.pdf"
+        yield ComposeState.send_sculpture_email
+
+    @rx.event(background=True)
+    async def send_sculpture_email(self) -> None:
+        """Email the user the same payload the Download button would write to disk:
+        STL + params JSON + the report PDF (built client-side and stashed on
+        ``pending_pdf_*``). Zips when the combined attachment payload is large.
+
+        Triggered exclusively via ``start_email_send`` → JS PDF builder → callback,
+        so by the time this runs ``email_sending`` is already True and the
+        recipient/STL preconditions have been validated.
+        """
+        async with self:
+            if not self.stl_download_path:
+                self.email_sending = False
+                self.email_error = "No sculpture generated yet."
+                return
+            recipient = self.recipient_email.strip()
+            if not is_valid_email(recipient):
+                self.email_sending = False
+                self.email_error = "Please enter a valid email address."
+                return
+            if not RESEND_API_KEY:
+                self.email_sending = False
+                self.email_error = "Email is not configured (missing RESEND_API_KEY)."
+                return
+            tag = self.personal_tag.strip() or "anonymous"
+            cats = list(self.selected_categories)
+            traits = list(self.selected_traits)
+            included_genes = [g["gene"] for g in self.included_composition_genes]
+            organisms = [
+                {"organism": a["organism"], "superpower": a["superpower"], "traits_csv": a["traits_csv"]}
+                for a in self.selected_animals
+            ]
+            params = dict(self.sculpture_params)
+            stats = dict(self.pipeline_stats)
+            stl_path = Path(self.stl_download_path)
+            stl_filename = self.stl_filename or stl_path.name
+            share_url = self.share_url
+            pdf_base64 = self.pending_pdf_base64
+            pdf_filename = self.pending_pdf_filename or f"materialized_{stl_path.stem}.pdf"
+
+        try:
+            stl_bytes = stl_path.read_bytes()
+        except OSError as exc:
+            async with self:
+                self.email_sending = False
+                self.email_error = f"Could not read STL file: {exc}"
+            return
+
+        params_json = json.dumps(
+            {
+                "name": tag,
+                "selected_categories": cats,
+                "sculpture_params": params,
+                "pipeline_stats": stats,
+            },
+            indent=2,
+        ).encode("utf-8")
+
+        items: list[EmailAttachment] = [
+            EmailAttachment(filename=stl_filename, content=stl_bytes, content_type="model/stl"),
+            EmailAttachment(
+                filename=stl_path.stem + "_params.json",
+                content=params_json,
+                content_type="application/json",
+            ),
+        ]
+        if pdf_base64:
+            try:
+                pdf_bytes = base64.b64decode(pdf_base64, validate=True)
+            except (ValueError, binascii.Error) as exc:
+                logger.warning("Could not decode report PDF base64: %s — sending without PDF", exc)
+            else:
+                items.append(
+                    EmailAttachment(
+                        filename=pdf_filename,
+                        content=pdf_bytes,
+                        content_type="application/pdf",
+                    )
+                )
+
+        attachments = maybe_zip_attachments(items, zip_name=f"{stl_path.stem}.zip")
+
+        subject = f"Your Materialized Enhancement — {tag}"
+        html = _build_sculpture_email_html(
+            personal_tag=tag,
+            categories=cats,
+            traits=traits,
+            included_genes=included_genes,
+            organisms=organisms,
+            params=params,
+            share_url=share_url,
+            has_pdf=bool(pdf_base64),
+        )
+
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(
+                None,
+                lambda: send_email_via_resend(
+                    to=recipient,
+                    subject=subject,
+                    html=html,
+                    attachments=attachments,
+                ),
+            )
+        except EmailSendError as exc:
+            logger.exception("Sculpture email send failed")
+            async with self:
+                self.email_sending = False
+                self.email_error = str(exc)
+                self.pending_pdf_base64 = ""
+                self.pending_pdf_filename = ""
+            return
+
+        async with self:
+            self.email_sending = False
+            self.email_sent = True
+            self.email_error = ""
+            self.pending_pdf_base64 = ""
+            self.pending_pdf_filename = ""
 
     @rx.var
     def viewer_iframe_src(self) -> str:
@@ -978,6 +1375,12 @@ class JigsawState(rx.State):
     generator_expanded: bool = False
     dev_view: bool = True
 
+    # "Send to email" — Resend transport (see email_send.py).
+    recipient_email: str = ""
+    email_sending: bool = False
+    email_sent: bool = False
+    email_error: str = ""
+
     def _active_raw_organisms(self) -> set[str]:
         """Expand selected merged organism names to the raw CSV organism names."""
         raw: set[str] = set()
@@ -1205,6 +1608,111 @@ class JigsawState(rx.State):
         yield rx.download(data=self.generated_jigsaw_svg, filename="materialized_jigsaw_pieces.svg")
         if self._stl_bytes:
             yield rx.download(data=self._stl_bytes, filename="materialized_jigsaw.stl")
+
+    def set_recipient_email(self, value: str) -> None:
+        self.recipient_email = value
+        if self.email_sent:
+            self.email_sent = False
+        if self.email_error:
+            self.email_error = ""
+
+    @rx.var
+    def can_send_email(self) -> bool:
+        return (
+            self.stl_ready
+            and len(self.generated_jigsaw_svg) > 0
+            and is_valid_email(self.recipient_email)
+            and len(RESEND_API_KEY) > 0
+            and not self.email_sending
+        )
+
+    @rx.event(background=True)
+    async def send_jigsaw_email(self) -> None:
+        """Email the user the jigsaw SVG + STL plus a short helper report of
+        selected organisms and the traits the totem grants. Zips when the
+        combined attachment payload gets large. Requires the STL to be ready.
+        """
+        async with self:
+            if self.email_sending:
+                return
+            if not self.generated_jigsaw_svg:
+                self.email_error = "No jigsaw generated yet."
+                return
+            if not self.stl_ready or not self._stl_bytes:
+                self.email_error = "STL is still being generated — please wait."
+                return
+            recipient = self.recipient_email.strip()
+            if not is_valid_email(recipient):
+                self.email_error = "Please enter a valid email address."
+                return
+            if not RESEND_API_KEY:
+                self.email_error = "Email is not configured (missing RESEND_API_KEY)."
+                return
+            self.email_sending = True
+            self.email_sent = False
+            self.email_error = ""
+            tag = self.personal_tag.strip() or "anonymous"
+            organisms = list(self.selected_organisms)
+            traits = list(self.selected_traits)
+            organism_entries = [
+                {"organism": a["organism"], "superpower": a["superpower"]}
+                for a in self.selected_animal_entries
+            ]
+            svg_text = self.generated_jigsaw_svg
+            stl_bytes = bytes(self._stl_bytes)
+            pieces = self.jigsaw_pieces
+            dimensions = self.jigsaw_dimensions
+            seed = self.jigsaw_seed
+
+        attachments = maybe_zip_attachments(
+            [
+                EmailAttachment(
+                    filename="materialized_jigsaw_pieces.svg",
+                    content=svg_text.encode("utf-8"),
+                    content_type="image/svg+xml",
+                ),
+                EmailAttachment(
+                    filename="materialized_jigsaw.stl",
+                    content=stl_bytes,
+                    content_type="model/stl",
+                ),
+            ],
+            zip_name="materialized_jigsaw.zip",
+        )
+
+        subject = f"Your Gene Jigsaw Totem — {tag}"
+        html = _build_jigsaw_email_html(
+            personal_tag=tag,
+            organisms=organisms,
+            organism_entries=organism_entries,
+            traits=traits,
+            pieces=pieces,
+            dimensions=dimensions,
+            seed=seed,
+        )
+
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(
+                None,
+                lambda: send_email_via_resend(
+                    to=recipient,
+                    subject=subject,
+                    html=html,
+                    attachments=attachments,
+                ),
+            )
+        except EmailSendError as exc:
+            logger.exception("Jigsaw email send failed")
+            async with self:
+                self.email_sending = False
+                self.email_error = str(exc)
+            return
+
+        async with self:
+            self.email_sending = False
+            self.email_sent = True
+            self.email_error = ""
 
     def set_artex_api_url(self, value: str) -> None:
         self.artex_api_url = value

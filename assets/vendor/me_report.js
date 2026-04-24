@@ -809,24 +809,69 @@
     pdf.text(urlLines, m + 26, fy + 19);
   }
 
+  async function buildReportPdf() {
+    var pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+    var layout = { pageW: 210, pageH: 297, margin: 15 };
+    await renderCoverPageA4(pdf, layout);
+    var rows = readGeneRows();
+    if (rows.length) {
+      pdf.addPage();
+      renderGenePages(pdf, rows, layout);
+    }
+    return pdf;
+  }
+
   window.__meDownloadPdf = function () {
     console.info('[materialized] __meDownloadPdf clicked');
     if (typeof jspdf === 'undefined') { missingLib('jsPDF'); return; }
     withExportMode(async function () {
-      var pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-      var layout = { pageW: 210, pageH: 297, margin: 15 };
-
-      await renderCoverPageA4(pdf, layout);
-
-      var rows = readGeneRows();
-      if (rows.length) {
-        pdf.addPage();
-        renderGenePages(pdf, rows, layout);
-      }
-
+      var pdf = await buildReportPdf();
       pdf.save('materialized_' + safeName() + '_s' + safeSeed() + '.pdf');
       feedback('PDF saved!');
     });
+  };
+
+  /**
+   * Build the same A4 PDF as __meDownloadPdf but resolve with
+   * {filename, base64} instead of triggering a download. Used by the
+   * "Send STL + report" button to attach the PDF to the outgoing email.
+   *
+   * Waits up to `timeoutMs` for the report DOM to mount, since the user may
+   * not have expanded the Share & Report section before clicking Send.
+   * Always resolves (never rejects); on error returns {error: "..."}.
+   */
+  window.__meBuildReportPdfBase64 = async function (timeoutMs) {
+    timeoutMs = timeoutMs || 6000;
+    if (typeof jspdf === 'undefined') {
+      return JSON.stringify({ error: 'jsPDF library not loaded.' });
+    }
+    var deadline = Date.now() + timeoutMs;
+    while (!document.getElementById('me-report-card') && Date.now() < deadline) {
+      await new Promise(function (r) { setTimeout(r, 100); });
+    }
+    if (!document.getElementById('me-report-card')) {
+      return JSON.stringify({ error: 'Report card not mounted.' });
+    }
+    stopObserver();
+    try {
+      window.__mePaintReport();
+      await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+      var pdf = await buildReportPdf();
+      // jsPDF's `datauristring` returns "data:application/pdf;filename=...;base64,<b64>"
+      var dataUri = pdf.output('datauristring');
+      var commaIdx = dataUri.indexOf('base64,');
+      if (commaIdx < 0) {
+        return JSON.stringify({ error: 'PDF output did not contain base64 payload.' });
+      }
+      var b64 = dataUri.slice(commaIdx + 7);
+      var filename = 'materialized_' + safeName() + '_s' + safeSeed() + '.pdf';
+      return JSON.stringify({ filename: filename, base64: b64 });
+    } catch (err) {
+      console.error('[materialized] __meBuildReportPdfBase64 failed', err);
+      return JSON.stringify({ error: (err && err.message) ? err.message : String(err) });
+    } finally {
+      startObserver();
+    }
   };
 
   window.__meCopyShareLink = async function () {

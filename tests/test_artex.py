@@ -47,6 +47,11 @@ def test_sculpture_artwork_v2_format() -> None:
     assert config["layers"][0]["kind"] == "model3d"
     assert config["layers"][0]["assetId"] == "model"
     assert config["layers"][0]["autoRotate"] is True
+    assert config["layers"][0]["preset"] == "chrome"
+    assert config["layers"][0]["soundReactive"] is True
+    assert config["inputs"]["microphone"]["enabled"] is True
+    assert config["inputs"]["microphone"]["analyzeLevel"] is True
+    assert config["inputs"]["microphone"]["analyzePeak"] is True
     assert isinstance(config["states"], list)
     assert config["states"][0]["initial"] is True
     assert "fallbackState" in config
@@ -97,6 +102,9 @@ def test_jigsaw_artwork_v2_format() -> None:
     assert config["assets"][0]["path"] == "models/materialized_jigsaw.stl"
     assert config["layers"][0]["kind"] == "model3d"
     assert config["layers"][0]["autoRotate"] is True
+    assert config["layers"][0]["preset"] == "chrome"
+    assert config["layers"][0]["soundReactive"] is True
+    assert config["inputs"]["microphone"]["enabled"] is True
     assert config["mood"] == 0.5
 
 
@@ -122,6 +130,8 @@ def test_package_zip_has_required_entries() -> None:
         assert artwork["runtime"]["renderer"] == "three-experimental"
         assert artwork["layers"][0]["kind"] == "model3d"
         assert artwork["layers"][0]["autoRotate"] is True
+        assert artwork["layers"][0]["preset"] == "chrome"
+        assert artwork["layers"][0]["soundReactive"] is True
 
         state = json.loads(zf.read("config/state.json"))
         assert state["artworkId"] == "me-test"

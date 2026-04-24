@@ -33,6 +33,99 @@ _CONTENT_STYLE: dict = {
 }
 
 
+def _email_send_form(
+    state_cls: type,
+    *,
+    accent_class: str = "ui primary button",
+    placeholder: str = "you@example.com",
+    button_label: str = "Send to email",
+) -> rx.Component:
+    """Email recipient input + Send button. Mirrors the Download button.
+
+    Wires into ``state_cls`` attributes:
+      ``recipient_email``, ``email_sending``, ``email_sent``, ``email_error``,
+      ``can_send_email``, setter ``set_recipient_email``, and one of
+      ``send_sculpture_email`` / ``send_jigsaw_email`` (auto-selected by name).
+    """
+    # Sculpture goes through start_email_send (which builds the PDF in the
+    # browser, then chains into send_sculpture_email). Jigsaw sends directly.
+    send_handler = getattr(state_cls, "start_email_send", None) or getattr(
+        state_cls, "send_jigsaw_email"
+    )
+    return rx.el.div(
+        rx.el.div(
+            rx.el.input(
+                type="email",
+                placeholder=placeholder,
+                value=state_cls.recipient_email,
+                on_change=state_cls.set_recipient_email,
+                style={
+                    "flex": "1",
+                    "minWidth": "0",
+                    "padding": "9px 12px",
+                    "borderRadius": "6px",
+                    "border": "1px solid #d1d5db",
+                    "fontSize": "0.88rem",
+                    "outline": "none",
+                    "backgroundColor": "#ffffff",
+                    "color": "#1a1a2e",
+                },
+            ),
+            rx.el.button(
+                rx.cond(
+                    state_cls.email_sending,
+                    fomantic_icon("sync", size=14, style={"animation": "me-spin 1s linear infinite"}),
+                    fomantic_icon("paper plane", size=14),
+                ),
+                rx.el.span(
+                    rx.cond(state_cls.email_sending, " Sending\u2026", f" {button_label}"),
+                    style={"marginLeft": "6px"},
+                ),
+                on_click=send_handler,
+                class_name=rx.cond(
+                    state_cls.can_send_email,
+                    accent_class,
+                    f"ui disabled {accent_class.removeprefix('ui ')}",
+                ),
+                style={"padding": "9px 14px", "fontSize": "0.88rem", "whiteSpace": "nowrap"},
+            ),
+            style={"display": "flex", "gap": "8px", "alignItems": "stretch"},
+        ),
+        rx.cond(
+            state_cls.email_sent,
+            rx.el.div(
+                fomantic_icon("check circle", size=12, color="#16a085"),
+                rx.el.span(
+                    " Sent — check your inbox.",
+                    style={"marginLeft": "4px"},
+                ),
+                style={
+                    "marginTop": "6px",
+                    "fontSize": "0.78rem",
+                    "color": "#16a085",
+                    "fontWeight": "600",
+                },
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            state_cls.email_error != "",
+            rx.el.div(
+                fomantic_icon("warning sign", size=12, color="#dc2626"),
+                rx.el.span(state_cls.email_error, style={"marginLeft": "4px"}),
+                style={
+                    "marginTop": "6px",
+                    "fontSize": "0.78rem",
+                    "color": "#dc2626",
+                    "fontWeight": "600",
+                },
+            ),
+            rx.fragment(),
+        ),
+        style={"marginTop": "8px"},
+    )
+
+
 # ── Tab 0: Landing (nav label: About) ───────────────────────────────────────
 
 
@@ -1308,6 +1401,7 @@ def _sculpture_section() -> rx.Component:
                                 class_name="ui primary button",
                                 style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
                             ),
+                            _email_send_form(ComposeState, button_label="Send STL + report"),
                             rx.cond(
                                 ComposeState.artex_section_visible,
                                 rx.el.div(
@@ -3129,6 +3223,11 @@ def _jigsaw_prod_view() -> rx.Component:
                 class_name="ui teal button",
                 style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
             ),
+            _email_send_form(
+                JigsawState,
+                accent_class="ui teal button",
+                button_label="Send SVG + STL",
+            ),
             rx.cond(
                 JigsawState.stl_generating,
                 rx.el.div(
@@ -3210,6 +3309,11 @@ def _jigsaw_dev_view() -> rx.Component:
                 on_click=JigsawState.download_jigsaw_artifacts,
                 class_name="ui teal button",
                 style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
+            ),
+            _email_send_form(
+                JigsawState,
+                accent_class="ui teal button",
+                button_label="Send SVG + STL",
             ),
             rx.cond(
                 JigsawState.artex_section_visible,
