@@ -42,12 +42,14 @@ ARTEX_DEV_REDIRECT_URL: str = os.getenv(
     "ARTEX_DEV_REDIRECT_URL", "http://127.0.0.1:8787/public/projects/{slug}"
 )
 
-def _canonical_public_app_url() -> str:
-    """Base URL for share links, report QR/PDF, and sculpture email permalinks.
+def public_app_url() -> str:
+    """Return the canonical public base URL, read fresh from env vars on every call.
 
-    ``DEPLOY_URL`` (the Reflex app URL in production) is preferred so deploy and
-    public links stay aligned. ``PUBLIC_APP_URL`` applies when ``DEPLOY_URL`` is
-    unset, for example when the marketing or share hostname differs from the app.
+    Priority: DEPLOY_URL → PUBLIC_APP_URL → http://localhost:3000
+
+    Called as a function (not a module-level constant) so the value is always
+    current — avoids the module-import-time freeze that caused localhost:3000
+    to appear in emails when env vars weren't visible at import time.
     """
     deploy = os.getenv("DEPLOY_URL", "").strip().rstrip("/")
     if deploy:
@@ -58,8 +60,9 @@ def _canonical_public_app_url() -> str:
     return "http://localhost:3000"
 
 
-# Canonical public site root (from DEPLOY_URL, else PUBLIC_APP_URL, else localhost).
-PUBLIC_APP_URL: str = _canonical_public_app_url()
+# Module-level constant kept for the report-canonical-base hidden input rendered
+# by pages/index.py (Reflex renders it at compile time, not per-request).
+PUBLIC_APP_URL: str = public_app_url()
 
 # Resend transactional email — used by the "Send to email" buttons on the
 # sculpture and jigsaw pages. RESEND_FROM_EMAIL must be a verified sender

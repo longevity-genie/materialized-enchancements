@@ -50,8 +50,8 @@ from materialized_enhancements.env import (
     ARTEX_API_URL,
     ARTEX_DISPLAY_ID,
     DEV_MODE,
-    PUBLIC_APP_URL,
     RESEND_API_KEY,
+    public_app_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -1150,7 +1150,7 @@ class ComposeState(rx.State):
             if cat in UNIQUE_CATEGORIES:
                 idx = UNIQUE_CATEGORIES.index(cat) + 1
                 bitmask |= 1 << (idx - 1)
-        return f"{PUBLIC_APP_URL}/materialize?report=1&name={quote(name_b64)}&cats={bitmask}"
+        return f"{public_app_url()}/materialize?report=1&name={quote(name_b64)}&cats={bitmask}"
 
     def apply_shared_report(self):  # type: ignore[return]
         """Decode ?report=1&name=<b64>&cats=<bitmask> and regenerate the same sculpture.
