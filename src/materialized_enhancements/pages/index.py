@@ -315,6 +315,93 @@ def _landing_tab() -> rx.Component:
                 ),
                 style={"marginBottom": "8px"},
             ),
+            rx.el.div(
+                rx.el.p(
+                    "Support the project",
+                    style={
+                        "fontSize": "1.35rem",
+                        "fontWeight": "700",
+                        "color": "#374151",
+                        "margin": "16px 0 12px 0",
+                        "letterSpacing": "-0.02em",
+                    },
+                ),
+                rx.el.div(
+                    rx.el.div(
+                        rx.el.img(
+                            src="/images/kofi.jpg",
+                            alt="Ko-fi QR code — support Materialized Enhancements",
+                            loading="lazy",
+                            decoding="async",
+                            style={
+                                "width": "237px",
+                                "height": "237px",
+                                "display": "block",
+                                "borderRadius": "8px",
+                                "margin": "0 auto 10px auto",
+                                "boxShadow": "0 2px 10px rgba(0,0,0,0.10)",
+                            },
+                        ),
+                        rx.el.p(
+                            "Buy us a coffee",
+                            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem", "margin": "0 0 4px 0", "textAlign": "center"},
+                        ),
+                        rx.el.p(
+                            "Support the artists on Ko-fi",
+                            style={"color": "#6b7280", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                        ),
+                        style={
+                            "flex": "1",
+                            "minWidth": "270px",
+                            "maxWidth": "372px",
+                            "padding": "18px 16px",
+                            "background": "#fafafa",
+                            "borderRadius": "12px",
+                            "border": "1px solid #e5e7eb",
+                        },
+                    ),
+                    rx.el.div(
+                        rx.el.img(
+                            src="/images/product.jpg",
+                            alt="Product QR code — order your 3D-printed sculpture with delivery",
+                            loading="lazy",
+                            decoding="async",
+                            style={
+                                "width": "237px",
+                                "height": "237px",
+                                "display": "block",
+                                "borderRadius": "8px",
+                                "margin": "0 auto 10px auto",
+                                "boxShadow": "0 2px 10px rgba(0,0,0,0.10)",
+                            },
+                        ),
+                        rx.el.p(
+                            "Order your sculpture",
+                            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem", "margin": "0 0 4px 0", "textAlign": "center"},
+                        ),
+                        rx.el.p(
+                            "3D-printed sculpture + delivery",
+                            style={"color": "#6b7280", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                        ),
+                        style={
+                            "flex": "1",
+                            "minWidth": "270px",
+                            "maxWidth": "372px",
+                            "padding": "18px 16px",
+                            "background": "#fafafa",
+                            "borderRadius": "12px",
+                            "border": "1px solid #e5e7eb",
+                        },
+                    ),
+                    style={
+                        "display": "flex",
+                        "flexWrap": "wrap",
+                        "gap": "16px",
+                        "justifyContent": "center",
+                        "marginBottom": "20px",
+                    },
+                ),
+            ),
             rx.el.p(
                 "The stack is open source and meant to be extended: we invite other artists to plug their "
                 "own generative models into the same biological input engine, and we welcome scientists to "
