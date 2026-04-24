@@ -180,7 +180,7 @@ def _landing_tab() -> rx.Component:
             ),
             rx.el.div(
                 rx.el.iframe(
-                    src="https://www.youtube.com/embed/F8cbuNNTiRQ",
+                    src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
                     title="Materialized Enhancements",
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
                     allow_full_screen=True,
