@@ -151,17 +151,19 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 
 - `AppState(rx.State)` — root state, handles legacy `?tab=` redirects
 - `ComposeState(rx.State)` — parametric sculpture tab: category selection, personal tag, totem composition
-- `JigsawState(rx.State)` — jigsaw tab: organism selection, SVG puzzle generation
+- `JigsawState(rx.State)` — preserved jigsaw component state: organism selection, SVG puzzle generation
 - `GeneGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for gene listing
 - `AnimalGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for animal listing
 - All states are independent `rx.State` subclasses (not substates)
 
 ### Routing
 
-Three separate routes (no more state-based tab switching):
+Two active routes (no more state-based tab switching):
 - `/` — About / landing page (fully static, SSR-friendly)
 - `/materialize` — Materialize genetic enhancement (parametric composer)
-- `/jigsaw` — Gene Jigsaw (organism-based composition)
+
+The Gene Jigsaw UI is preserved in `src/materialized_enhancements/components/jigsaw.py`
+for future reuse, but it is not currently registered as a public route or tab.
 
 Tab menu uses `<a href>` links. Active tab is determined at build time from the route parameter, not from state.
 Old `?tab=<key>` URLs are redirected by `AppState.redirect_legacy_tab` on the `/` on_load handler.

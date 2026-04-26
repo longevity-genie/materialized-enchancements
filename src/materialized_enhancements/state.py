@@ -242,7 +242,6 @@ CATEGORY_ICONS: dict[str, str] = {
 _TAB_ROUTE_MAP: dict[str, str] = {
     "landing": "/",
     "sculpture": "/materialize",
-    "jigsaw": "/jigsaw",
     "library": "/",
     "animals": "/",
 }
@@ -1335,7 +1334,7 @@ class ComposeState(rx.State):
 
 
 class JigsawState(rx.State):
-    """State for the Gene Jigsaw tab — animal/organism selection with budget."""
+    """State for the preserved Gene Jigsaw component."""
 
     personal_tag: str = "A new human, to be"
     selected_organisms: list[str] = []
@@ -1446,7 +1445,6 @@ class JigsawState(rx.State):
             self.stl_progress = "Preparing…"
             self._stl_bytes = b""
             self.stl_base64 = ""
-            rle = list(self.jigsaw_grid_rle)
             rows = self.jigsaw_grid_rows
             cols = self.jigsaw_grid_cols
             scale = self.jigsaw_cell_scale
