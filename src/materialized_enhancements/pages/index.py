@@ -841,15 +841,12 @@ def _gene_category_border_left(category: rx.Var) -> rx.Var:
     """Thin left accent matching sidebar category color (parent `category` key)."""
     return rx.match(
         category,
-        ("Radiation & Extremophile", "2px solid #e67e22"),
-        ("Longevity & Cancer Resistance", "2px solid #27ae60"),
-        ("Immunity & Physiology", "2px solid #2980b9"),
-        ("Biological Immortality & Regeneration", "2px solid #16a085"),
-        ("Sleep & Consciousness", "2px solid #8e44ad"),
-        ("New Senses", "2px solid #e84393"),
-        ("Display & Expression", "2px solid #d63031"),
-        ("Energy", "2px solid #f39c12"),
-        ("Materials", "2px solid #00b894"),
+        ("Stress Resistance", "2px solid #e67e22"),
+        ("Longevity & Genome", "2px solid #27ae60"),
+        ("Regeneration", "2px solid #16a085"),
+        ("Environmental Adaptation", "2px solid #2980b9"),
+        ("Perception", "2px solid #e84393"),
+        ("Expression", "2px solid #8e44ad"),
         "2px solid #cbd5e1",
     )
 
@@ -858,15 +855,12 @@ def _gene_category_accent_color(category: rx.Var) -> rx.Var:
     """Same hue as CATEGORY_COLORS / left border — for trait line in reports."""
     return rx.match(
         category,
-        ("Radiation & Extremophile", "#e67e22"),
-        ("Longevity & Cancer Resistance", "#27ae60"),
-        ("Immunity & Physiology", "#2980b9"),
-        ("Biological Immortality & Regeneration", "#16a085"),
-        ("Sleep & Consciousness", "#8e44ad"),
-        ("New Senses", "#e84393"),
-        ("Display & Expression", "#d63031"),
-        ("Energy", "#f39c12"),
-        ("Materials", "#00b894"),
+        ("Stress Resistance", "#e67e22"),
+        ("Longevity & Genome", "#27ae60"),
+        ("Regeneration", "#16a085"),
+        ("Environmental Adaptation", "#2980b9"),
+        ("Perception", "#e84393"),
+        ("Expression", "#8e44ad"),
         "#7c3aed",
     )
 

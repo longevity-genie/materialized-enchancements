@@ -221,27 +221,21 @@ def _confidence_bucket(raw: str) -> str:
 
 
 CATEGORY_COLORS: dict[str, str] = {
-    "Radiation & Extremophile": "#e67e22",
-    "Longevity & Cancer Resistance": "#27ae60",
-    "Biological Immortality & Regeneration": "#16a085",
-    "Immunity & Physiology": "#2980b9",
-    "Sleep & Consciousness": "#8e44ad",
-    "New Senses": "#e84393",
-    "Display & Expression": "#d63031",
-    "Energy": "#f39c12",
-    "Materials": "#00b894",
+    "Stress Resistance": "#e67e22",
+    "Longevity & Genome": "#27ae60",
+    "Regeneration": "#16a085",
+    "Environmental Adaptation": "#2980b9",
+    "Perception": "#e84393",
+    "Expression": "#8e44ad",
 }
 
 CATEGORY_ICONS: dict[str, str] = {
-    "Radiation & Extremophile": "sun",
-    "Longevity & Cancer Resistance": "heartbeat",
-    "Biological Immortality & Regeneration": "sync",
-    "Immunity & Physiology": "shield",
-    "Sleep & Consciousness": "moon",
-    "New Senses": "eye",
-    "Display & Expression": "paint brush",
-    "Energy": "bolt",
-    "Materials": "cube",
+    "Stress Resistance": "shield",
+    "Longevity & Genome": "heartbeat",
+    "Regeneration": "sync",
+    "Environmental Adaptation": "globe",
+    "Perception": "eye",
+    "Expression": "paint brush",
 }
 
 
