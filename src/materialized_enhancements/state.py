@@ -546,6 +546,29 @@ class ComposeState(rx.State):
             self.included_genes = [*self.included_genes, gene]
         self._recompute_params()
 
+    def toggle_gene_from_library(self, gene: str, category: str) -> None:
+        """Toggle a gene from the RPG library, auto-enabling its category."""
+        if gene in self.included_genes:
+            self.included_genes = [g for g in self.included_genes if g != gene]
+            remaining_in_category = [
+                g for g in GENE_LIBRARY
+                if g["category"] == category and g["gene"] in self.included_genes
+            ]
+            if not remaining_in_category:
+                self.selected_categories = [c for c in self.selected_categories if c != category]
+            self._recompute_params()
+            return
+
+        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
+        add_price = int(GENE_PRICES.get(gene, 0))
+        if spent + add_price > DEFAULT_BUDGET:
+            return
+
+        if category not in self.selected_categories:
+            self.selected_categories = [*self.selected_categories, category]
+        self.included_genes = [*self.included_genes, gene]
+        self._recompute_params()
+
     def toggle_gene_details(self, gene: str) -> None:
         if gene in self.expanded_genes:
             self.expanded_genes = [g for g in self.expanded_genes if g != gene]
@@ -998,11 +1021,10 @@ class ComposeState(rx.State):
         return traits
 
     @rx.var
-    def selected_genes(self) -> list[SculptureSelectedGene]:
+    def all_composition_genes(self) -> list[SculptureSelectedGene]:
+        """All gene cards with current inclusion state, used by the RPG selector."""
         rows: list[SculptureSelectedGene] = []
         for g in GENE_LIBRARY:
-            if g["category"] not in self.selected_categories:
-                continue
             prop_row = resolve_gene_properties_row(g["gene"], g["gene_id"])
             price = int(prop_row.get("gene_price", 0))
             row: SculptureSelectedGene = {
@@ -1032,6 +1054,13 @@ class ComposeState(rx.State):
             }
             rows.append(row)
         return rows
+
+    @rx.var
+    def selected_genes(self) -> list[SculptureSelectedGene]:
+        return [
+            g for g in self.all_composition_genes
+            if g["category"] in self.selected_categories
+        ]
 
     @rx.var
     def included_composition_genes(self) -> list[SculptureSelectedGene]:
