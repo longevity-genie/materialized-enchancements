@@ -87,6 +87,8 @@ class SculptureSelectedGene(TypedDict):
     description: str
     enhancement: str
     paper_url: str
+    puzzle_svg: str
+    puzzle_src: str
     included: bool
     price: int
     protein_length_aa: str
@@ -160,7 +162,20 @@ def _compact_gene_symbol(gene: str) -> str:
     compact = re.sub(r"\s+", " ", without_brackets).strip()
     compact = re.sub(r"\s*/\s*", "/", compact)
     compact = re.sub(r"\s*\+\s*", "+", compact)
-    compact = compact.replace("Greenland shark DNA-repair network+p53 C-term insertion", "Greenland shark")
+    compact = compact.replace("Greenland shark DNA-repair network+p53 C-term insertion", "GLS-p53")
+    compact = compact.replace("POT1/SIRT3/RTEL1", "POT1+")
+    compact = compact.replace("PprI/PprA", "PprI")
+    compact = compact.replace("CLOCK+BMAL1", "CLOCK")
+    compact = compact.replace("MB+GSH", "MB/GSH")
+    compact = compact.replace("AFPs/AFGPs", "AFP")
+    compact = compact.replace("Prestin/SLC26A5", "Prestin")
+    compact = compact.replace("Reflectin+chromatophore", "Reflectin")
+    compact = compact.replace("Firefly luciferase+luciferin", "FLuc")
+    compact = compact.replace("Tapetum lucidum", "Tapetum")
+    compact = compact.replace("CBP family", "CBP")
+    compact = compact.replace("piwi/smedwi", "smedwi")
+    compact = compact.replace("STING S358", "STING")
+    compact = compact.replace("scn4aa", "SCN4A")
     compact = compact.replace("Melanin", "MEL")
     compact = compact.replace("system", "")
     return compact.strip()
@@ -498,12 +513,12 @@ class ComposeState(rx.State):
     pipeline_stats: Dict[str, Any] = {}
     choice_expanded: bool = True
     sculpture_expanded: bool = False
-    viewer_expanded: bool = False
+    viewer_expanded: bool = True
     stl_base64: str = ""
     viewer_nonce: int = 0
 
     # Share & Report section
-    report_expanded: bool = False
+    report_expanded: bool = True
     report_views_ready: bool = False
     report_copy_feedback: str = ""
 
@@ -544,6 +559,21 @@ class ComposeState(rx.State):
             if min_one > remaining:
                 return
             self.selected_categories = [*self.selected_categories, category]
+        self._prune_included_genes()
+        self._recompute_params()
+
+    def select_category(self, category: str) -> None:
+        """Select a category from the body map without treating a repeat click as removal."""
+        if category in self.selected_categories:
+            return
+        remaining = DEFAULT_BUDGET - _sum_credits_for_included_genes(
+            self.selected_categories,
+            self.included_genes,
+        )
+        min_one = CATEGORY_MIN_GENE_PRICES[category]
+        if min_one > remaining:
+            return
+        self.selected_categories = [*self.selected_categories, category]
         self._prune_included_genes()
         self._recompute_params()
 
@@ -681,6 +711,7 @@ class ComposeState(rx.State):
             self.stl_download_path = ""
             self.pipeline_stats = {}
             self.stl_base64 = ""
+            self.viewer_expanded = True
 
         yield rx.redirect("/materialization")
 
@@ -714,8 +745,9 @@ class ComposeState(rx.State):
             self.stl_base64 = base64.b64encode(stl_bytes).decode("ascii")
             self.viewer_nonce += 1
             self.choice_expanded = False
-            self.sculpture_expanded = True
+            self.sculpture_expanded = False
             self.viewer_expanded = True
+            self.report_expanded = True
 
     def toggle_choice_expanded(self) -> None:
         self.choice_expanded = not self.choice_expanded
@@ -1089,6 +1121,8 @@ class ComposeState(rx.State):
                 "description": g["description"],
                 "enhancement": g["enhancement"],
                 "paper_url": g["paper_url"],
+                "puzzle_svg": g["puzzle_svg"],
+                "puzzle_src": f"/puzzle/{quote(g['puzzle_svg'])}" if g["puzzle_svg"] else "",
                 "included": g["gene"] in self.included_genes,
                 "price": price,
                 **_gene_props_flat(g["gene"], g["gene_id"]),
