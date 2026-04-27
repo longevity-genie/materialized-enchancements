@@ -1334,7 +1334,6 @@ def _rpg_schema_hint_panel() -> rx.Component:
             "border": "1px solid rgba(34, 211, 238, 0.24)",
             "background": "rgba(8, 47, 73, 0.28)",
         },
-        open=True,
     )
 
 
@@ -1545,14 +1544,14 @@ def _rpg_silhouette_marker(
         rx.el.div(
             fomantic_icon(
                 icon_name,
-                size=76,
+                size=88,
                 color=color,
             ),
             style={
                 "position": "relative",
-                "width": "56px",
-                "height": "56px",
-                "borderRadius": "16px",
+                "width": "66px",
+                "height": "66px",
+                "borderRadius": "18px",
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "center",
@@ -1587,20 +1586,20 @@ def _rpg_silhouette_marker(
                 category,
                 style={
                     "display": "block",
-                    "fontSize": "0.94rem",
+                    "fontSize": "1.12rem",
                     "fontWeight": "950",
                     "letterSpacing": "0.02em",
                     "textTransform": "none",
                 },
             ),
             style={
-                "marginTop": "6px",
-                "fontSize": "0.94rem",
+                "marginTop": "8px",
+                "fontSize": "1.12rem",
                 "fontWeight": "900",
                 "color": rx.cond(visual_active, "#e0f2fe", "#94a3b8"),
                 "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
                 "lineHeight": "1.15",
-                "maxWidth": "170px",
+                "maxWidth": "210px",
                 "textAlign": "center",
             },
         ),
@@ -2674,16 +2673,16 @@ def _rpg_flow_css() -> rx.Component:
                 transform: translate(-50%, -50%) scale(0.78) !important;
             }
             .me-rpg-body-marker > div:first-child {
-                width: 34px !important;
-                height: 34px !important;
-                border-radius: 11px !important;
+                width: 42px !important;
+                height: 42px !important;
+                border-radius: 13px !important;
             }
             .me-rpg-body-marker > div:last-child {
-                max-width: 120px !important;
-                font-size: 0.62rem !important;
+                max-width: 150px !important;
+                font-size: 0.78rem !important;
             }
             .me-rpg-body-marker > div:last-child span:first-child {
-                font-size: 0.66rem !important;
+                font-size: 0.82rem !important;
             }
             .me-rpg-body-marker > div:last-child span:nth-child(2) {
                 font-size: 0.52rem !important;
