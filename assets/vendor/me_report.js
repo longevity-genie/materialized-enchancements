@@ -560,29 +560,29 @@
 
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
-    pdf.setTextColor(107, 114, 128);
+    pdf.setTextColor(124, 58, 237);
     pdf.text(pdfSafeWinAnsi('MATERIALIZED ENHANCEMENTS'), m, y + 4);
     pdf.setFontSize(18);
     pdf.setTextColor(26, 26, 46);
-    pdf.text(pdfSafeWinAnsi('Personal enhancement report'), m, y + 12);
+    pdf.text(pdfSafeWinAnsi('Character enhancement report'), m, y + 12);
     y += 16;
 
-    pdf.setDrawColor(26, 26, 46);
+    pdf.setDrawColor(167, 139, 250);
     pdf.setLineWidth(0.35);
     pdf.line(m, y, pageW - m, y);
     y += 5;
 
     pdf.setFont('courier', 'bold');
     pdf.setFontSize(10);
-    pdf.setTextColor(185, 28, 28);
-    var stamp = pdfSafeWinAnsi('SPECIMEN #' + seed);
+    pdf.setTextColor(124, 58, 237);
+    var stamp = pdfSafeWinAnsi('LOADOUT #' + seed);
     pdf.text(stamp, pageW - m - pdf.getTextWidth(stamp), y);
     y += 6;
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(156, 163, 175);
-    pdf.text(pdfSafeWinAnsi('NAME'), m, y);
+    pdf.text(pdfSafeWinAnsi('CHARACTER'), m, y);
     pdf.text(pdfSafeWinAnsi('SEED'), m + 58, y);
     pdf.text(pdfSafeWinAnsi('POINTS'), m + 108, y);
     y += 4;

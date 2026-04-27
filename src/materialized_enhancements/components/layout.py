@@ -327,8 +327,18 @@ def template(*children: rx.Component) -> rx.Component:
     global_css = rx.el.style(
         """
         /* Slightly larger type for projection / kiosk; between default (100%) and the prior 125% pass */
-        html { font-size: 112.5%; }
-        body { background-color: #f8f9fa !important; color: #1a1a2e !important; line-height: 1.5; }
+        html {
+            font-size: 112.5%;
+            background-color: #f8f9fa !important;
+            color-scheme: light;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-color: #f8f9fa !important;
+            color: #1a1a2e !important;
+            line-height: 1.5;
+        }
         .ui.button { font-size: 1rem !important; padding: 0.6em 1em !important; }
         .ui.primary.button { font-size: 1.02rem !important; }
         .ui.top.attached.tabular.menu .item { font-size: 1.03rem !important; padding: 0.72em 1em !important; }
@@ -379,7 +389,11 @@ def template(*children: rx.Component) -> rx.Component:
                 "backgroundColor": "#f8f9fa",
             },
         ),
-        style={"fontFamily": "'Lato', 'Helvetica Neue', Arial, Helvetica, sans-serif"},
+        style={
+            "minHeight": "100vh",
+            "backgroundColor": "#f8f9fa",
+            "fontFamily": "'Lato', 'Helvetica Neue', Arial, Helvetica, sans-serif",
+        },
     )
 
 

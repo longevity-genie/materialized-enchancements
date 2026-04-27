@@ -74,6 +74,7 @@ def build_robots_txt() -> str:
     return (
         "User-agent: *\n"
         "Allow: /\n"
+        "Allow: /llms.txt\n"
         f"{disallow_lines}\n\n"
         f"Sitemap: {_canonical_base_url()}/sitemap.xml\n"
         f"# LLM-readable overview: {_canonical_base_url()}/llms.txt\n"
@@ -129,8 +130,10 @@ def build_llms_txt() -> str:
 ## Crawl Guidance
 
 - Crawl the public pages listed above for the same default content visible to visitors.
-- Shared reports use `/materialization?report=1&name=<base64-url-name>&cats=<category-bitmask>` and regenerate the visitor's sculpture state client-side.
-- Internal Reflex websocket paths such as `/_event/` are not document pages.
+- The app is a Reflex site with SSR/prerendering enabled; route HTML contains the default visitor-facing text before websocket hydration.
+- The Character Profile page is the primary entry point: it exposes the RPG-style gene loadout builder and the current gene library.
+- The Materialization page explains the generated 3D sculpture/report flow; visitor-specific report links use `/materialization?report=1&name=<base64-url-name>&cats=<category-bitmask>` and regenerate sculpture state client-side.
+- Internal Reflex websocket paths such as `/_event/` are not document pages and should not be indexed.
 
 ## Biological Dataset
 
@@ -146,6 +149,12 @@ def build_llms_txt() -> str:
 ## Project Summary
 
 Visitors assemble a character-like profile from real genes found in humans, animals, microbes, and extremophiles. The app maps those biological choices and a personal tag into deterministic sculpture parameters, then provides a generated 3D model, shareable report, PNG/PDF exports, and optional ARTEX publishing.
+
+## Technology Notes
+
+- Frontend framework: Reflex with prerendering enabled via `REFLEX_SSR=true`.
+- Styling: Fomantic UI with a dark RPG-style public flow.
+- Runtime data: the gene library is loaded from local CSV inputs, then summarized into categories, organisms, and gene cards at import time.
 """
 
 
