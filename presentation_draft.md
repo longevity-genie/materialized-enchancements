@@ -88,7 +88,7 @@ Rather than fearing genetic enhancement, this project imagines a world where it 
 - **Generative Form Prototype**: Rhino / Grasshopper
 - **Future Generative Engine**: Open-source generative models directly integrated with the UI
 - **Generative Video**: Google Flux / Veo
-- **Data**: Polars, reflex-mui-datagrid
+- **Data**: Polars, custom Reflex/Fomantic gene library UI
 - **Gene library**: 35 genes · 9 categories · ~25 source organisms (each with a real research paper)
 - **Organism silhouettes**: PhyloPic (CC0 / CC BY)
 - **Jigsaw tessellation**: [CustomShapeJigsawJs](https://github.com/proceduraljigsaw/CustomShapeJigsawJs) by ProceduralJigsaw (MIT)

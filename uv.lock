@@ -1345,7 +1345,6 @@ dependencies = [
     { name = "polars" },
     { name = "pydantic" },
     { name = "reflex" },
-    { name = "reflex-mui-datagrid" },
 ]
 
 [package.dev-dependencies]
@@ -1365,7 +1364,6 @@ requires-dist = [
     { name = "polars", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "reflex", specifier = ">=0.9.0" },
-    { name = "reflex-mui-datagrid", specifier = ">=0.2.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -2558,20 +2556,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/2f/6d9acd7afd3971da8f0cdef4824551b836ec66c598088fc1af3c16d6f7a4/reflex_hosting_cli-0.1.62.tar.gz", hash = "sha256:7a3ab872218a7ebdfa2ea186b83440322e658fa90cf7ea270aec1bafe1eb0d98", size = 35506, upload-time = "2026-03-10T01:12:14.131Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/67/415e1f7fe09e77027e9e0063f39053d74f1299e671e837c9a7745453676d/reflex_hosting_cli-0.1.62-py3-none-any.whl", hash = "sha256:73d517fa827b1d52dcb81ba9024671acfd4889015a436ed223d2eda3c07eab89", size = 45049, upload-time = "2026-03-10T01:12:15.033Z" },
-]
-
-[[package]]
-name = "reflex-mui-datagrid"
-version = "0.2.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "polars" },
-    { name = "reflex" },
-    { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/7d/5bf94abac53ac9c698b674a15cbb49272953ce16fcfc415663816cbac532/reflex_mui_datagrid-0.2.3.tar.gz", hash = "sha256:eb33e7c3f7bfc666e3cc75f2daef7d2b2015dbf3f1353c16fb3e3422d2c1c380", size = 49658, upload-time = "2026-04-19T17:40:38.946Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/ca/79c143e8e1ed628e2b1611d23f9bad1f3407b869f47327672ddbd7ab36ee/reflex_mui_datagrid-0.2.3-py3-none-any.whl", hash = "sha256:b7962b29fb2b05b3007a57249891188ff1fa212821ad2dc9eeb06345bb5ef9b2", size = 55117, upload-time = "2026-04-19T17:40:40.438Z" },
 ]
 
 [[package]]

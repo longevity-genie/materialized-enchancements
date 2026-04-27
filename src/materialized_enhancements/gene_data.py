@@ -86,48 +86,6 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
     return rows
 
 
-def load_gene_library_lf(path: Path = DATA_PATH) -> pl.LazyFrame:
-    """Load gene library as a polars LazyFrame for DataGrid display."""
-    return (
-        pl.read_csv(path)
-        .rename(_LIBRARY_COLUMN_MAP)
-        .with_columns(
-            pl.col("gene_id").str.strip_chars(),
-            pl.col("gene").str.strip_chars(),
-            pl.col("source_organism").str.strip_chars(),
-            pl.col("category_detail").str.strip_chars(),
-            pl.col("short_description").str.strip_chars(),
-            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
-            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("trait"),
-            pl.col("narrative").alias("description"),
-            pl.col("mechanism").alias("enhancement"),
-            pl.col("key_references")
-            .str.extract(r"(https?://[^\s|]+)", 1)
-            .fill_null("")
-            .alias("paper_url"),
-        )
-        .select(
-            "gene_id",
-            "gene",
-            "source_organism",
-            "category",
-            "category_detail",
-            "trait",
-            "short_description",
-            "narrative",
-            "mechanism",
-            "achievements",
-            "evidence_tier",
-            "confidence",
-            "best_host_tested",
-            "translational_gaps",
-            "key_references",
-            "notes",
-        )
-        .lazy()
-    )
-
-
 def build_category_counts(library: list[GeneEntry]) -> dict[str, int]:
     """Count genes per parent category."""
     counts: dict[str, int] = {}
@@ -269,35 +227,13 @@ def build_animal_library(library: list[GeneEntry]) -> list[AnimalEntry]:
     return list(org_data.values())
 
 
-def build_animal_library_lf(library: list[GeneEntry]) -> pl.LazyFrame:
-    """Build a flat animal LazyFrame for DataGrid display."""
-    seen: dict[str, dict[str, str]] = {}
-    for entry in library:
-        org = entry["source_organism"]
-        if org not in seen:
-            seen[org] = {
-                "organism": org,
-                "category": entry["category"],
-                "genes": entry["gene"],
-                "traits": entry["trait"],
-                "enhancement": entry["narrative"],
-            }
-        else:
-            seen[org]["genes"] += f", {entry['gene']}"
-            if entry["trait"] not in seen[org]["traits"]:
-                seen[org]["traits"] += f", {entry['trait']}"
-    return pl.DataFrame(list(seen.values())).lazy()
-
-
 GENE_LIBRARY: list[GeneEntry] = load_gene_library()
-GENE_LIBRARY_LF: pl.LazyFrame = load_gene_library_lf()
 CATEGORY_COUNTS: dict[str, int] = build_category_counts(GENE_LIBRARY)
 TRAIT_COUNTS: dict[str, int] = build_trait_counts(GENE_LIBRARY)
 UNIQUE_CATEGORIES: list[str] = get_unique_categories(GENE_LIBRARY)
 UNIQUE_TRAITS: list[str] = get_unique_traits(GENE_LIBRARY)
 CATEGORY_TRAITS: dict[str, list[str]] = build_category_traits(GENE_LIBRARY)
 ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
-ANIMAL_LIBRARY_LF: pl.LazyFrame = build_animal_library_lf(GENE_LIBRARY)
 
 
 def _build_organism_members(library: list[GeneEntry]) -> dict[str, set[str]]:

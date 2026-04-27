@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import reflex as rx
-from reflex_mui_datagrid import lazyframe_grid
 
 from materialized_enhancements.components.layout import fomantic_icon, template
 from materialized_enhancements.artex import artex_publish_button
 from materialized_enhancements.env import PUBLIC_APP_URL
 from materialized_enhancements.gene_data import (
-    ANIMAL_LIBRARY,
     CATEGORY_COUNTS,
     CATEGORY_PRICES,
     DEFAULT_BUDGET,
@@ -17,10 +15,8 @@ from materialized_enhancements.gene_data import (
 from materialized_enhancements.state import (
     CATEGORY_COLORS,
     CATEGORY_ICONS,
-    AnimalGridState,
     AppState,
     ComposeState,
-    GeneGridState,
 )
 
 _CONTENT_STYLE: dict = {
@@ -1163,6 +1159,22 @@ def _rpg_stat_bar(label: str, value: rx.Var | int, color: str, total: int = DEFA
     )
 
 
+def _rpg_gene_count_text(count: rx.Var, total_count: int) -> rx.Component:
+    return rx.el.span(
+        count,
+        f" / {total_count} genes",
+        style={
+            "display": "block",
+            "fontSize": "0.78rem",
+            "fontWeight": "900",
+            "letterSpacing": "0.04em",
+            "opacity": "0.86",
+            "marginTop": "4px",
+            "textTransform": "uppercase",
+        },
+    )
+
+
 def _category_anchor_id(category: str) -> str:
     slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in category)
     compact_slug = "-".join(part for part in slug.split("-") if part)
@@ -1258,6 +1270,7 @@ def _rpg_selected_gene_chip(gene_item: rx.Var) -> rx.Component:
         title="Remove gene",
         style={
             "position": "relative",
+            "boxSizing": "border-box",
             "textAlign": "left",
             "padding": "8px 22px 8px 10px",
             "borderRadius": "10px",
@@ -1277,13 +1290,13 @@ def _rpg_schema_hint_panel() -> rx.Component:
     return rx.el.details(
         rx.el.summary(
             fomantic_icon("map outline", size=12, color="#22d3ee"),
-            rx.el.span(" Instructions", style={"marginLeft": "7px"}),
+            rx.el.span(" How it works", style={"marginLeft": "7px"}),
             style={
                 "cursor": "pointer",
                 "listStyle": "none",
                 "display": "flex",
                 "alignItems": "center",
-                "fontSize": "0.76rem",
+                "fontSize": "0.8rem",
                 "fontWeight": "900",
                 "letterSpacing": "0.08em",
                 "textTransform": "uppercase",
@@ -1291,11 +1304,11 @@ def _rpg_schema_hint_panel() -> rx.Component:
             },
         ),
         rx.el.div(
-            "Pick a system on the body, open its gene group, then check individual genes.",
+            "Trait choices become parametric geometry, then a unique STL and physical artifact.",
             style={
                 "marginTop": "8px",
                 "color": "#cbd5e1",
-                "fontSize": "0.78rem",
+                "fontSize": "0.82rem",
                 "lineHeight": "1.45",
             },
         ),
@@ -1314,32 +1327,9 @@ def _rpg_schema_hint_panel() -> rx.Component:
                 "boxShadow": "0 8px 24px rgba(2, 6, 23, 0.32)",
             },
         ),
-        rx.el.a(
-            fomantic_icon("book open", size=13, color="#ffffff"),
-            rx.el.span("Open Gene Library", style={"marginLeft": "8px"}),
-            href="#gene-library",
-            style={
-                "display": "inline-flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "width": "100%",
-                "marginTop": "10px",
-                "padding": "9px 11px",
-                "borderRadius": "10px",
-                "background": "rgba(124, 58, 237, 0.92)",
-                "border": "1px solid rgba(196, 181, 253, 0.5)",
-                "boxShadow": "0 0 18px rgba(124, 58, 237, 0.34)",
-                "color": "#ffffff",
-                "fontSize": "0.78rem",
-                "fontWeight": "900",
-                "letterSpacing": "0.06em",
-                "textTransform": "uppercase",
-                "textDecoration": "none",
-            },
-        ),
         style={
-            "marginTop": "10px",
-            "padding": "9px 10px",
+            "marginTop": "14px",
+            "padding": "11px 12px",
             "borderRadius": "10px",
             "border": "1px solid rgba(34, 211, 238, 0.24)",
             "background": "rgba(8, 47, 73, 0.28)",
@@ -1351,44 +1341,54 @@ def _rpg_schema_hint_panel() -> rx.Component:
 def _rpg_intro_video_panel() -> rx.Component:
     return rx.el.details(
         rx.el.summary(
-            fomantic_icon("video", size=12, color="#a78bfa"),
-            rx.el.span(" Trailer", style={"marginLeft": "7px"}),
+            fomantic_icon("video", size=12, color="#c4b5fd"),
+            rx.el.span(" Project video", style={"marginLeft": "7px"}),
             style={
                 "cursor": "pointer",
                 "listStyle": "none",
                 "display": "flex",
                 "alignItems": "center",
-                "fontSize": "0.76rem",
+                "fontSize": "0.8rem",
                 "fontWeight": "900",
                 "letterSpacing": "0.08em",
                 "textTransform": "uppercase",
-                "color": "#e9d5ff",
+                "color": "#ddd6fe",
             },
         ),
         rx.el.div(
             rx.el.iframe(
                 src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
-                title="Materialized Enhancements",
+                title="Materialized Enhancements project video",
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
                 allow_full_screen=True,
+                loading="lazy",
                 style={
+                    "position": "absolute",
+                    "top": "0",
+                    "left": "0",
                     "width": "100%",
-                    "aspectRatio": "16 / 9",
-                    "height": "auto",
-                    "minHeight": "168px",
+                    "height": "100%",
                     "border": "none",
                     "borderRadius": "8px",
-                    "display": "block",
                 },
             ),
-            style={"marginTop": "8px"},
+            style={
+                "width": "100%",
+                "aspectRatio": "16 / 9",
+                "position": "relative",
+                "backgroundColor": "#000",
+                "borderRadius": "8px",
+                "marginTop": "10px",
+                "overflow": "hidden",
+                "boxShadow": "0 8px 24px rgba(2, 6, 23, 0.32)",
+            },
         ),
         style={
-            "marginTop": "10px",
-            "padding": "9px 10px",
+            "marginTop": "12px",
+            "padding": "11px 12px",
             "borderRadius": "10px",
             "border": "1px solid rgba(167, 139, 250, 0.24)",
-            "background": "rgba(15, 23, 42, 0.42)",
+            "background": "rgba(46, 16, 101, 0.2)",
         },
         open=True,
     )
@@ -1398,8 +1398,14 @@ def _rpg_selected_gene_loadout() -> rx.Component:
     return rx.el.div(
         rx.el.div(
             _rpg_panel_title("dna", "Active genes", "Selected genes are the actual input to materialization."),
-            rx.cond(
-                ComposeState.budget_spent > 0,
+            style={
+                "marginBottom": "2px",
+            },
+        ),
+        rx.cond(
+            ComposeState.budget_spent > 0,
+            rx.el.div(
+                rx.foreach(ComposeState.included_composition_genes, _rpg_selected_gene_chip),
                 rx.el.button(
                     fomantic_icon("times", size=12),
                     rx.el.span(" Deselect all", style={"marginLeft": "5px"}),
@@ -1412,20 +1418,6 @@ def _rpg_selected_gene_loadout() -> rx.Component:
                         "whiteSpace": "nowrap",
                     },
                 ),
-                rx.fragment(),
-            ),
-            style={
-                "display": "flex",
-                "alignItems": "flex-start",
-                "justifyContent": "space-between",
-                "gap": "12px",
-                "marginBottom": "2px",
-            },
-        ),
-        rx.cond(
-            ComposeState.budget_spent > 0,
-            rx.el.div(
-                rx.foreach(ComposeState.included_composition_genes, _rpg_selected_gene_chip),
                 style={
                     "display": "flex",
                     "flexWrap": "wrap",
@@ -1448,99 +1440,88 @@ def _rpg_selected_gene_loadout() -> rx.Component:
                 style={"display": "flex", "flexDirection": "column", "gap": "10px"},
             ),
         ),
-        _rpg_schema_hint_panel(),
         style={**_RPG_PANEL_STYLE, "padding": "14px", "marginBottom": "12px"},
     )
 
 
-def _rpg_materialization_panel() -> rx.Component:
+def _rpg_materialization_leg_cta() -> rx.Component:
     return rx.el.div(
-        _rpg_panel_title(
-            "atom",
-            "Materialization",
-            "Generate a 3D-printable parametric art shape and a personal enhancement report.",
-        ),
         rx.cond(
             ComposeState.generation_error != "",
             rx.el.div(
-                fomantic_icon("circle-alert", size=13, color="#fca5a5"),
-                rx.el.span(
-                    ComposeState.generation_error,
-                    style={"marginLeft": "7px", "fontSize": "0.8rem", "color": "#fecaca"},
-                ),
-                style={
-                    "display": "flex",
-                    "alignItems": "flex-start",
-                    "padding": "9px 10px",
-                    "borderRadius": "9px",
-                    "border": "1px solid rgba(248, 113, 113, 0.42)",
-                    "backgroundColor": "rgba(127, 29, 29, 0.35)",
-                    "marginBottom": "10px",
-                },
+                fomantic_icon("circle-alert", size=12, color="#fca5a5"),
+                rx.el.span(ComposeState.generation_error, style={"marginLeft": "6px"}),
+                class_name="me-rpg-materialize-alert me-rpg-materialize-error",
             ),
             rx.fragment(),
         ),
         rx.cond(
             ComposeState.materialize_totem_diversity_notice != "",
             rx.el.div(
-                fomantic_icon("circle-alert", size=13, color="#fbbf24"),
-                rx.el.span(
-                    ComposeState.materialize_totem_diversity_notice,
-                    style={"marginLeft": "7px", "fontSize": "0.78rem", "color": "#fde68a"},
-                ),
-                style={
-                    "display": "flex",
-                    "alignItems": "flex-start",
-                    "padding": "9px 10px",
-                    "borderRadius": "9px",
-                    "border": "1px solid rgba(251, 191, 36, 0.42)",
-                    "backgroundColor": "rgba(120, 53, 15, 0.28)",
-                    "marginBottom": "10px",
-                },
+                fomantic_icon("circle-alert", size=12, color="#fbbf24"),
+                rx.el.span(ComposeState.materialize_totem_diversity_notice, style={"marginLeft": "6px"}),
+                class_name="me-rpg-materialize-alert me-rpg-materialize-warning",
             ),
             rx.fragment(),
         ),
         rx.el.button(
             rx.cond(
                 ComposeState.generating,
-                fomantic_icon("sync", size=32, style={"animation": "me-spin 1s linear infinite"}),
-                fomantic_icon("atom", size=32),
+                fomantic_icon("sync", size=20, style={"animation": "me-spin 1s linear infinite"}),
+                fomantic_icon("atom", size=20),
             ),
             rx.el.span(
-                rx.cond(ComposeState.generating, " Generating 3D model...", " Materialize selected genes"),
-                style={"marginLeft": "14px"},
+                rx.cond(ComposeState.generating, " Generating...", " Materialize"),
+                style={"marginLeft": "8px"},
             ),
             on_click=ComposeState.materialize,
+            disabled=rx.cond(
+                ComposeState.generating,
+                True,
+                rx.cond(ComposeState.can_materialize, False, True),
+            ),
             class_name=rx.cond(
                 ComposeState.generating,
-                "ui disabled primary button",
-                rx.cond(ComposeState.can_materialize, "ui primary button", "ui disabled primary button"),
+                "me-rpg-materialize-leg-button is-disabled",
+                rx.cond(
+                    ComposeState.can_materialize,
+                    "me-rpg-materialize-leg-button",
+                    "me-rpg-materialize-leg-button is-disabled",
+                ),
             ),
-            style={
-                "width": "100%",
-                "padding": "30px 22px",
-                "fontSize": "1.65rem",
-                "fontWeight": "900",
-                "letterSpacing": "0.02em",
-                "borderRadius": "14px",
-                "boxShadow": rx.cond(ComposeState.can_materialize, "0 0 44px rgba(124, 58, 237, 0.72)", "none"),
-            },
-        ),
-        rx.el.div(
-            rx.cond(
+            title=rx.cond(
                 ComposeState.can_materialize,
-                "Ready: your selected genes will drive the printable sculpture and report.",
-                "Select at least one gene and keep within the credit budget to materialize.",
+                "Generate the 3D sculpture and report.",
+                "Select at least one gene within budget to materialize. Character name is optional.",
             ),
-            style={"fontSize": "0.78rem", "color": "#94a3b8", "marginTop": "9px", "lineHeight": "1.4"},
         ),
-        rx.el.style("@keyframes me-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }"),
+        class_name="me-rpg-materialize-leg-cta",
+    )
+
+
+def _rpg_marker_gene_chip(gene_name: rx.Var, color: str) -> rx.Component:
+    return rx.el.span(
+        gene_name,
+        class_name="me-rpg-marker-gene-chip",
         style={
-            **_RPG_PANEL_STYLE,
-            "padding": "20px",
-            "marginBottom": "14px",
-            "borderColor": "rgba(167, 139, 250, 0.56)",
-            "boxShadow": "0 0 42px rgba(124, 58, 237, 0.3)",
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "maxWidth": "92px",
+            "padding": "2px 6px",
+            "borderRadius": "999px",
+            "border": f"1px solid {color}99",
+            "background": "rgba(15, 23, 42, 0.78)",
+            "boxShadow": f"0 0 12px {color}55",
+            "color": "#f8fafc",
+            "fontSize": "0.68rem",
+            "fontWeight": "950",
+            "lineHeight": "1.15",
+            "letterSpacing": "0.02em",
+            "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
+            "whiteSpace": "nowrap",
+            "overflow": "hidden",
+            "textOverflow": "ellipsis",
         },
     )
 
@@ -1549,12 +1530,11 @@ def _rpg_silhouette_marker(
     category: str,
     top: str,
     left: str,
-    label: str,
+    _label: str,
 ) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     count = ComposeState.active_gene_counts[category]
-    spent = ComposeState.active_category_prices[category]
     total_count = CATEGORY_COUNTS.get(category, 0)
     is_selected = ComposeState.selected_categories.contains(category)
     is_affordable = ComposeState.affordable_categories.contains(category)
@@ -1565,82 +1545,62 @@ def _rpg_silhouette_marker(
         rx.el.div(
             fomantic_icon(
                 icon_name,
-                size=24,
-                color=rx.cond(visual_active, "#f8fafc", "#94a3b8"),
-            ),
-            rx.el.span(
-                count,
-                style={
-                    "position": "absolute",
-                    "top": "-10px",
-                    "right": "-10px",
-                    "minWidth": "23px",
-                    "height": "23px",
-                    "padding": "0 6px",
-                    "borderRadius": "999px",
-                    "backgroundColor": rx.cond(visual_active, color, "rgba(15, 23, 42, 0.92)"),
-                    "border": rx.cond(visual_active, f"1px solid {color}", "1px solid rgba(148, 163, 184, 0.35)"),
-                    "boxShadow": rx.cond(visual_active, f"0 0 14px {color}", "none"),
-                    "color": "#f8fafc",
-                    "fontSize": "0.72rem",
-                    "fontWeight": "900",
-                    "lineHeight": "23px",
-                    "textAlign": "center",
-                },
+                size=76,
+                color=color,
             ),
             style={
                 "position": "relative",
-                "width": "58px",
-                "height": "58px",
-                "borderRadius": "18px",
+                "width": "56px",
+                "height": "56px",
+                "borderRadius": "16px",
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "center",
-                "background": rx.cond(visual_active, f"linear-gradient(135deg, {color}, #111827)", "rgba(15, 23, 42, 0.82)"),
-                "border": rx.cond(visual_active, f"2px solid {color}", "1px solid rgba(148, 163, 184, 0.35)"),
-                "boxShadow": rx.cond(visual_active, f"0 0 34px {color}", "0 0 10px rgba(15, 23, 42, 0.45)"),
+                "background": rx.cond(visual_active, f"linear-gradient(135deg, {color}44, #111827)", f"linear-gradient(135deg, {color}22, rgba(15, 23, 42, 0.9))"),
+                "border": rx.cond(visual_active, f"2px solid {color}", f"1px solid {color}88"),
+                "boxShadow": rx.cond(visual_active, f"0 0 38px {color}", f"0 0 16px {color}33"),
                 "opacity": rx.cond(is_hovered, "1", rx.cond(is_enabled, rx.cond(visual_active, "1", "0.7"), "0.42")),
             },
         ),
+        rx.cond(
+            count > 0,
+            rx.el.div(
+                rx.foreach(
+                    ComposeState.active_compact_gene_names_by_category[category],
+                    lambda gene_name: _rpg_marker_gene_chip(gene_name, color),
+                ),
+                class_name="me-rpg-marker-gene-cloud",
+                style={
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                    "justifyContent": "center",
+                    "gap": "4px",
+                    "width": "min(210px, 28vw)",
+                    "margin": "6px auto 0",
+                    "pointerEvents": "none",
+                },
+            ),
+            rx.fragment(),
+        ),
         rx.el.div(
-            rx.el.span(label, style={"display": "block"}),
             rx.el.span(
                 category,
                 style={
                     "display": "block",
-                    "fontSize": "0.52rem",
-                    "fontWeight": "800",
-                    "letterSpacing": "0.04em",
-                    "opacity": "0.78",
-                    "marginTop": "2px",
+                    "fontSize": "0.94rem",
+                    "fontWeight": "950",
+                    "letterSpacing": "0.02em",
                     "textTransform": "none",
                 },
             ),
-            rx.el.span(
-                rx.cond(is_selected, "Selected", rx.cond(is_affordable, "Available", "Budget locked")),
-                " · ",
-                spent,
-                " cr",
-                style={
-                    "display": "block",
-                    "fontSize": "0.5rem",
-                    "fontWeight": "800",
-                    "letterSpacing": "0.04em",
-                    "opacity": "0.72",
-                    "marginTop": "2px",
-                    "textTransform": "uppercase",
-                },
-            ),
             style={
-                "marginTop": "4px",
-                "fontSize": "0.68rem",
+                "marginTop": "6px",
+                "fontSize": "0.94rem",
                 "fontWeight": "900",
-                "letterSpacing": "0.05em",
-                "textTransform": "uppercase",
                 "color": rx.cond(visual_active, "#e0f2fe", "#94a3b8"),
                 "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
-                "lineHeight": "1.1",
-                "maxWidth": "132px",
+                "lineHeight": "1.15",
+                "maxWidth": "170px",
                 "textAlign": "center",
             },
         ),
@@ -1668,148 +1628,57 @@ def _rpg_silhouette_marker(
     )
 
 
-def _rpg_character_controls_panel() -> rx.Component:
-    return rx.el.div(
-        _rpg_panel_title(
-            "user",
-            "Character profile",
-            "Choose functional enhancement systems, then activate genes below.",
-        ),
-        rx.el.label(
-            "Character name",
-            html_for="compose-personal-tag",
-            style={
-                "fontSize": "0.76rem",
-                "fontWeight": "800",
-                "letterSpacing": "0.08em",
-                "textTransform": "uppercase",
-                "color": "#94a3b8",
-                "display": "block",
-                "marginBottom": "6px",
-            },
-        ),
-        rx.el.input(
-            id="compose-personal-tag",
-            placeholder="A new human, to be",
-            value=ComposeState.personal_tag,
-            on_change=ComposeState.set_personal_tag,
-            style={
-                "width": "100%",
-                "padding": "11px 13px",
-                "borderRadius": "10px",
-                "border": "1px solid rgba(167, 139, 250, 0.45)",
-                "fontSize": "0.92rem",
-                "outline": "none",
-                "backgroundColor": "rgba(15, 23, 42, 0.88)",
-                "color": "#f8fafc",
-                "boxSizing": "border-box",
-                "marginBottom": "12px",
-            },
-        ),
-        _rpg_stat_bar("Enhancement credits", ComposeState.budget_spent, "#7c3aed"),
-        rx.el.div(
-            "Functional systems",
-            style={
-                "margin": "12px 0 7px",
-                "fontSize": "0.76rem",
-                "fontWeight": "900",
-                "letterSpacing": "0.08em",
-                "textTransform": "uppercase",
-                "color": "#94a3b8",
-            },
-        ),
-        rx.el.div(
-            *[_rpg_category_stat_row(cat) for cat in UNIQUE_CATEGORIES],
-            style={"marginTop": "4px"},
-        ),
-        _rpg_intro_video_panel(),
-        rx.el.div(
-            "The markers around the body are symbolic gene systems, not literal anatomy. "
-            "Use them as quick filters, then pick individual genes in the library.",
-            style={
-                "marginTop": "12px",
-                "padding": "10px 11px",
-                "borderRadius": "10px",
-                "border": "1px solid rgba(34, 211, 238, 0.24)",
-                "background": "rgba(8, 47, 73, 0.32)",
-                "color": "#cbd5e1",
-                "fontSize": "0.8rem",
-                "lineHeight": "1.45",
-            },
-        ),
-        style={**_RPG_PANEL_STYLE, "padding": "14px"},
-    )
-
-
-def _rpg_body_gene_library_cta() -> rx.Component:
-    return rx.el.a(
-        rx.el.span(
-            fomantic_icon("book open", size=24, color="#ffffff"),
-            style={
-                "display": "inline-flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "width": "44px",
-                "height": "44px",
-                "borderRadius": "999px",
-                "background": "rgba(15, 23, 42, 0.44)",
-                "border": "1px solid rgba(255, 255, 255, 0.22)",
-                "boxShadow": "inset 0 0 12px rgba(255, 255, 255, 0.08)",
-            },
-        ),
-        rx.el.span("SELECT GENES", style={"marginLeft": "12px", "color": "#ffffff"}),
-        href="#gene-library",
-        class_name="me-rpg-body-library-cta",
-        title="Open the Gene Library",
-        style={
-            "position": "absolute",
-            "left": "50%",
-            "top": "78%",
-            "transform": "translate(-50%, -50%)",
-            "zIndex": "3",
-            "display": "inline-flex",
-            "alignItems": "center",
-            "justifyContent": "center",
-            "padding": "9px 22px 9px 10px",
-            "borderRadius": "999px",
-            "border": "1px solid rgba(255, 255, 255, 0.24)",
-            "background": "linear-gradient(135deg, rgba(124, 58, 237, 0.98), rgba(79, 70, 229, 0.94))",
-            "boxShadow": "0 0 34px rgba(124, 58, 237, 0.62), 0 12px 30px rgba(2, 6, 23, 0.58)",
-            "color": "#ffffff",
-            "fontSize": "1.12rem",
-            "fontWeight": "900",
-            "letterSpacing": "0.08em",
-            "textTransform": "uppercase",
-            "textDecoration": "none",
-            "whiteSpace": "nowrap",
-            "textShadow": "0 1px 8px rgba(0, 0, 0, 0.72)",
-        },
-    )
-
-
 def _rpg_body_map_panel() -> rx.Component:
     return rx.el.div(
         rx.el.div(
-            _rpg_panel_title(
-                "dna",
-                "Enhancement map",
-                "Select functional gene systems arranged around the body.",
+            rx.el.div(
+                rx.el.div(
+                    rx.el.input(
+                        id="compose-personal-tag",
+                        placeholder="Enter your name here",
+                        value=ComposeState.personal_tag,
+                        on_change=ComposeState.set_personal_tag,
+                        style={
+                            "flex": "1",
+                            "minWidth": "0",
+                            "padding": "15px 18px",
+                            "borderRadius": "14px",
+                            "border": "1px solid rgba(167, 139, 250, 0.45)",
+                            "fontSize": "1.18rem",
+                            "fontWeight": "800",
+                            "outline": "none",
+                            "backgroundColor": "rgba(15, 23, 42, 0.88)",
+                            "color": "#f8fafc",
+                            "boxSizing": "border-box",
+                            "boxShadow": "0 0 24px rgba(124, 58, 237, 0.45), 0 0 52px rgba(56, 189, 248, 0.20)",
+                        },
+                    ),
+                    style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "gap": "10px",
+                        "marginBottom": "7px",
+                    },
+                ),
+                class_name="me-rpg-body-map-title",
             ),
-            class_name="me-rpg-body-map-title",
+            style={
+                "marginBottom": "2px",
+            },
         ),
         rx.el.div(
             _rpg_silhouette_marker("Expression", "18%", "20%", "Expression"),
             _rpg_silhouette_marker("Perception", "18%", "80%", "Senses"),
-            _rpg_silhouette_marker("Longevity & Genome", "42%", "25%", "Genome"),
-            _rpg_silhouette_marker("Stress Resistance", "42%", "75%", "Defense"),
-            _rpg_silhouette_marker("Environmental Adaptation", "68%", "22%", "Adaptation"),
-            _rpg_silhouette_marker("Regeneration", "68%", "78%", "Repair"),
+            _rpg_silhouette_marker("Longevity & Genome", "56%", "25%", "Genome"),
+            _rpg_silhouette_marker("Stress Resistance", "56%", "75%", "Defense"),
+            _rpg_silhouette_marker("Environmental Adaptation", "76%", "22%", "Adaptation"),
+            _rpg_silhouette_marker("Regeneration", "76%", "78%", "Repair"),
             rx.el.img(
                 src="/images/body_only.webp",
                 alt="Transparent human body centered in the enhancement map",
                 class_name="me-rpg-body-image",
             ),
-            _rpg_body_gene_library_cta(),
+            _rpg_materialization_leg_cta(),
             class_name="me-rpg-body-stage",
         ),
         class_name="me-rpg-body-map-panel",
@@ -2028,10 +1897,10 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                 },
             ),
             class_name="me-rpg-gene-body-grid",
-            style={"margin": "12px 0 0 28px"},
+            style={"margin": "10px 0 0 26px"},
         ),
         style={
-            "padding": "14px 16px",
+            "padding": "12px 14px",
             "borderRadius": "12px",
             "borderTop": "1px solid rgba(148, 163, 184, 0.22)",
             "borderRight": "1px solid rgba(148, 163, 184, 0.22)",
@@ -2150,16 +2019,24 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
             class_name="me-rpg-category-gene-grid",
             style={
                 "display": "grid",
-                "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
-                "gap": "8px",
-                "padding": "12px 0 2px 22px",
-                "marginLeft": "14px",
+                "gridTemplateColumns": "minmax(0, 1fr)",
+                "gap": "10px",
+                "padding": "10px 0 2px 16px",
+                "marginLeft": "10px",
                 "borderLeft": f"1px solid {color}44",
             },
         ),
         class_name="me-rpg-category-accordion",
         id=_category_anchor_id(category),
-        style={**_RPG_PANEL_STYLE, "padding": "8px", "marginBottom": "0"},
+        style={
+            "background": "transparent",
+            "border": "none",
+            "borderRadius": "12px",
+            "boxShadow": "none",
+            "color": "#e5e7eb",
+            "marginBottom": "0",
+            "padding": "0",
+        },
     )
 
 
@@ -2170,8 +2047,15 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
             if (window.__meGeneLibraryAnchorsInstalled) return;
             window.__meGeneLibraryAnchorsInstalled = true;
 
-            const openCategory = (hash) => {
-                if (!hash || !hash.startsWith("#gene-library-")) return;
+            const geneLibraryHash = (href) => {
+                if (!href) return "";
+                const index = href.indexOf("#gene-library-");
+                return index >= 0 ? href.slice(index) : "";
+            };
+
+            const openCategory = (href) => {
+                const hash = geneLibraryHash(href);
+                if (!hash) return;
                 const target = document.getElementById(hash.slice(1));
                 if (!target) return;
                 if (target.tagName.toLowerCase() === "details") {
@@ -2181,7 +2065,7 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
             };
 
             document.addEventListener("click", (event) => {
-                const link = event.target.closest('a[href^="#gene-library-"]');
+                const link = event.target.closest('a[href*="#gene-library-"]');
                 if (!link) return;
                 window.setTimeout(() => openCategory(link.getAttribute("href")), 0);
             });
@@ -2192,76 +2076,54 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
     )
 
 
-def _rpg_gene_library_instructions() -> rx.Component:
+def _rpg_gene_library_title() -> rx.Component:
     return rx.el.div(
         rx.el.div(
-            fomantic_icon("circle-alert", size=14, color="#22d3ee"),
-            rx.el.div(
-                rx.el.div(
-                    "Select genes to activate.",
-                    style={"fontSize": "0.88rem", "fontWeight": "900", "color": "#f8fafc"},
-                ),
-                rx.el.div(
-                    "Open a category, read the gene card, then check the genes you want in your active loadout.",
-                    style={"fontSize": "0.78rem", "color": "#cbd5e1", "lineHeight": "1.45", "marginTop": "2px"},
-                ),
-                style={"minWidth": "0", "flex": "1"},
+            fomantic_icon("book open", size=15, color="#a78bfa"),
+            rx.el.span(
+                "Gene library",
+                style={
+                    "marginLeft": "8px",
+                    "fontSize": "1.08rem",
+                    "fontWeight": "900",
+                    "letterSpacing": "0.08em",
+                    "textTransform": "uppercase",
+                    "color": "#f8fafc",
+                },
             ),
-            style={"display": "flex", "alignItems": "flex-start", "gap": "9px"},
+            style={"display": "flex", "alignItems": "center"},
         ),
         rx.el.div(
-            rx.el.span(
-                "Budget: ",
-                style={"fontWeight": "800", "color": "#94a3b8"},
-            ),
+            "Pick individual genes after choosing functional systems on the body map. ",
             rx.el.span(
                 ComposeState.budget_spent,
-                " / ",
+                " out of ",
                 ComposeState.budget_total,
                 " cr used",
-                style={"fontWeight": "900", "color": "#f8fafc"},
-            ),
-            rx.el.span(
-                " · ",
-                style={"color": "#64748b"},
-            ),
-            rx.el.span(
-                ComposeState.budget_remaining,
-                " cr remaining",
-                style={"fontWeight": "900", "color": "#22d3ee"},
+                style={"fontWeight": "950", "color": "#f8fafc"},
             ),
             style={
-                "marginTop": "8px",
-                "fontSize": "0.78rem",
-                "padding": "7px 9px",
-                "borderRadius": "9px",
-                "backgroundColor": "rgba(15, 23, 42, 0.62)",
-                "border": "1px solid rgba(34, 211, 238, 0.24)",
+                "fontSize": "0.98rem",
+                "fontWeight": "800",
+                "color": "#c4b5fd",
+                "marginTop": "2px",
+                "lineHeight": "1.35",
             },
         ),
-        style={
-            "padding": "12px",
-            "borderRadius": "12px",
-            "border": "1px solid rgba(34, 211, 238, 0.28)",
-            "background": "linear-gradient(135deg, rgba(8, 47, 73, 0.42), rgba(15, 23, 42, 0.78))",
-            "marginBottom": "12px",
-        },
+        style={"marginBottom": "12px"},
     )
 
 
 def _rpg_gene_library_panel() -> rx.Component:
     return rx.el.div(
         _rpg_gene_library_anchor_script(),
-        _rpg_panel_title(
-            "book open",
-            "Gene library",
-            "Pick individual genes after choosing functional systems on the body map.",
-        ),
-        _rpg_gene_library_instructions(),
+        _rpg_gene_library_title(),
         rx.el.div(
             *[_rpg_category_gene_accordion(cat) for cat in UNIQUE_CATEGORIES],
             class_name="me-rpg-library-grid",
         ),
+        _rpg_schema_hint_panel(),
+        _rpg_intro_video_panel(),
         class_name="me-rpg-library-panel",
         style={**_RPG_PANEL_STYLE, "padding": "14px"},
     )
@@ -2442,6 +2304,10 @@ def _rpg_flow_css() -> rx.Component:
         .me-rpg-shell {
             font-size: 16px;
         }
+        @keyframes me-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
         details.me-rpg-category-accordion > summary::-webkit-details-marker {
             display: none;
         }
@@ -2450,9 +2316,6 @@ def _rpg_flow_css() -> rx.Component:
         }
         details.me-rpg-category-accordion[open] .me-rpg-accordion-chevron {
             transform: rotate(90deg);
-        }
-        details.me-rpg-category-accordion:not([open]) {
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
         }
         .me-rpg-output-panel .ui.segment,
         .me-rpg-output-panel .ui.message {
@@ -2479,26 +2342,26 @@ def _rpg_flow_css() -> rx.Component:
         }
         .me-rpg-gene-body-grid {
             display: grid;
-            grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.75fr);
-            gap: 18px;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
             align-items: start;
         }
         .me-rpg-hero-grid {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: flex-start;
         }
         .me-rpg-hero-grid > .me-rpg-left-panel {
-            flex: 0.72 1 260px;
-            min-width: min(100%, 260px);
+            flex: 1.36 1 520px;
+            min-width: min(100%, 420px);
         }
         .me-rpg-hero-grid > .me-rpg-center-panel {
-            flex: 1.45 1 420px;
+            flex: 1.3 1 460px;
             min-width: min(100%, 320px);
         }
         .me-rpg-hero-grid > .me-rpg-right-panel {
-            flex: 0.8 1 280px;
-            min-width: min(100%, 280px);
+            flex: 0.46 1 220px;
+            min-width: min(100%, 220px);
         }
         .me-rpg-profile-grid {
             grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.35fr);
@@ -2520,8 +2383,8 @@ def _rpg_flow_css() -> rx.Component:
             margin: 0 auto 2px;
             padding: 10px 14px;
             border-radius: 14px;
-            background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.26));
-            box-shadow: 0 14px 36px rgba(2, 6, 23, 0.22);
+            background: transparent;
+            box-shadow: none;
             text-align: left;
         }
         .me-rpg-body-map-title > div {
@@ -2531,7 +2394,7 @@ def _rpg_flow_css() -> rx.Component:
             position: relative;
             width: 100%;
             min-height: clamp(620px, 76vh, 860px);
-            padding: 10px 26px 0;
+            padding: 10px 26px 82px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -2583,13 +2446,80 @@ def _rpg_flow_css() -> rx.Component:
             transform: translate(-50%, -50%) scale(1.06) !important;
             filter: brightness(1.12);
         }
+        .me-rpg-materialize-leg-cta {
+            position: absolute;
+            left: 50%;
+            bottom: 12px;
+            transform: translateX(-50%);
+            z-index: 4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 7px;
+            pointer-events: auto;
+        }
+        .me-rpg-materialize-leg-button {
+            appearance: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: min(82vw, 260px) !important;
+            min-height: 58px !important;
+            padding: 15px 26px !important;
+            border: 0 !important;
+            border-radius: 999px !important;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 48%, #4c1d95 100%) !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 0 28px rgba(124, 58, 237, 0.62),
+                0 12px 30px rgba(2, 6, 23, 0.38) !important;
+            cursor: pointer !important;
+            font-size: clamp(1.2rem, 2.3vw, 1.75rem) !important;
+            font-weight: 950 !important;
+            letter-spacing: 0.04em !important;
+            line-height: 1 !important;
+            text-transform: uppercase !important;
+            white-space: nowrap !important;
+            transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease !important;
+        }
+        .me-rpg-materialize-leg-button:hover:not(.is-disabled) {
+            transform: translateY(-2px) scale(1.03);
+            filter: brightness(1.08);
+            box-shadow:
+                0 0 38px rgba(124, 58, 237, 0.78),
+                0 16px 38px rgba(2, 6, 23, 0.44) !important;
+        }
+        .me-rpg-materialize-leg-button.is-disabled {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.34) !important;
+            cursor: not-allowed !important;
+            opacity: 0.68 !important;
+        }
+        .me-rpg-materialize-alert {
+            max-width: min(360px, 72vw);
+            padding: 7px 10px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.84);
+            color: #f8fafc;
+            font-size: 0.76rem;
+            font-weight: 800;
+            line-height: 1.25;
+            text-align: center;
+            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.36);
+        }
+        .me-rpg-materialize-error {
+            border: 1px solid rgba(248, 113, 113, 0.48);
+            color: #fecaca;
+        }
+        .me-rpg-materialize-warning {
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            color: #fde68a;
+        }
         .me-rpg-category-anchor:hover {
             filter: brightness(1.12);
         }
-        .me-rpg-body-library-cta:hover {
-            transform: translate(-50%, -54%);
+        .me-rpg-trailer-link:hover {
             filter: brightness(1.12);
-            box-shadow: 0 0 36px rgba(124, 58, 237, 0.62), 0 14px 30px rgba(2, 6, 23, 0.5) !important;
         }
         @media (min-width: 1500px) and (min-height: 900px) {
             .me-rpg-body-stage {
@@ -2614,6 +2544,16 @@ def _rpg_flow_css() -> rx.Component:
             grid-template-columns: 1fr;
             gap: 12px;
         }
+        .me-rpg-library-section {
+            height: calc(100vh - 7rem);
+            max-height: calc(100vh - 7rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            padding-right: 4px;
+            scrollbar-width: thin;
+            scrollbar-gutter: stable;
+        }
         .me-rpg-left-panel,
         .me-rpg-right-panel {
             position: sticky;
@@ -2633,11 +2573,21 @@ def _rpg_flow_css() -> rx.Component:
             .me-rpg-active-grid {
                 grid-template-columns: minmax(0, 1fr) !important;
             }
+            .me-rpg-hero-grid {
+                flex-wrap: wrap;
+            }
             .me-rpg-hero-grid > .me-rpg-left-panel,
             .me-rpg-hero-grid > .me-rpg-center-panel,
             .me-rpg-hero-grid > .me-rpg-right-panel {
                 flex-basis: 100%;
                 min-width: 0;
+            }
+            .me-rpg-library-section {
+                height: auto;
+                max-height: none;
+                overflow: visible;
+                overscroll-behavior: auto;
+                padding-right: 0;
             }
             .me-rpg-gene-body-grid {
                 grid-template-columns: minmax(0, 1fr);
@@ -2658,6 +2608,7 @@ def _rpg_flow_css() -> rx.Component:
                 min-height: clamp(600px, 92vw, 760px) !important;
                 padding-left: 8px !important;
                 padding-right: 8px !important;
+                padding-bottom: 72px !important;
             }
             .me-rpg-body-image {
                 height: clamp(520px, 88vw, 670px) !important;
@@ -2668,6 +2619,15 @@ def _rpg_flow_css() -> rx.Component:
             }
             .me-rpg-body-marker:hover {
                 transform: translate(-50%, -50%) scale(0.86) !important;
+            }
+            .me-rpg-materialize-leg-cta {
+                bottom: 10px;
+            }
+            .me-rpg-materialize-leg-button {
+                min-width: min(78vw, 230px) !important;
+                min-height: 52px !important;
+                padding: 13px 22px !important;
+                font-size: clamp(1.05rem, 5.8vw, 1.45rem) !important;
             }
             .me-rpg-left-panel,
             .me-rpg-center-panel,
@@ -2690,6 +2650,7 @@ def _rpg_flow_css() -> rx.Component:
                 min-height: clamp(430px, 118vw, 560px) !important;
                 padding-left: 0 !important;
                 padding-right: 0 !important;
+                padding-bottom: 62px !important;
             }
             .me-rpg-body-stage::before {
                 inset: 8% 0 3%;
@@ -2718,21 +2679,18 @@ def _rpg_flow_css() -> rx.Component:
                 border-radius: 11px !important;
             }
             .me-rpg-body-marker > div:last-child {
-                max-width: 92px !important;
+                max-width: 120px !important;
+                font-size: 0.62rem !important;
+            }
+            .me-rpg-body-marker > div:last-child span:first-child {
+                font-size: 0.66rem !important;
+            }
+            .me-rpg-body-marker > div:last-child span:nth-child(2) {
                 font-size: 0.52rem !important;
             }
-            .me-rpg-body-marker > div:last-child span:nth-child(2),
-            .me-rpg-body-marker > div:last-child span:nth-child(3) {
-                display: none !important;
-            }
-            .me-rpg-body-library-cta {
-                top: 77% !important;
-                padding: 7px 14px 7px 7px !important;
-                font-size: 0.84rem !important;
-            }
-            .me-rpg-body-library-cta > span:first-child {
-                width: 34px !important;
-                height: 34px !important;
+            .me-rpg-trailer-link {
+                width: 58px !important;
+                height: 58px !important;
             }
         }
         """
@@ -2759,16 +2717,8 @@ def _rpg_character_profile_layout() -> rx.Component:
     return _rpg_shell(
         rx.el.div(
             rx.el.div(
-                _rpg_character_controls_panel(),
-                class_name="me-rpg-left-panel",
-            ),
-            rx.el.div(
                 _rpg_body_map_panel(),
                 class_name="me-rpg-center-panel",
-            ),
-            rx.el.div(
-                _rpg_selected_gene_loadout(),
-                class_name="me-rpg-right-panel",
             ),
             class_name="me-rpg-dashboard me-rpg-hero-grid",
         )
@@ -2779,64 +2729,21 @@ def _rpg_active_genes_layout() -> rx.Component:
     return _rpg_shell(
         rx.el.div(
             rx.el.div(
-                rx.el.div(
-                    _rpg_character_controls_panel(),
-                    class_name="me-rpg-left-panel",
-                ),
-                rx.el.div(
-                    _rpg_body_map_panel(),
-                    class_name="me-rpg-center-panel",
-                ),
-                rx.el.div(
-                    _rpg_materialization_panel(),
-                    _rpg_selected_gene_loadout(),
-                    class_name="me-rpg-right-panel",
-                ),
-                class_name="me-rpg-dashboard me-rpg-hero-grid",
-            ),
-            rx.el.div(
                 _rpg_gene_library_panel(),
                 id="gene-library",
-                class_name="me-rpg-library-section",
+                class_name="me-rpg-left-panel me-rpg-library-section",
             ),
-            _gene_library_float_button(),
-            style={"display": "flex", "flexDirection": "column", "gap": "16px"},
+            rx.el.div(
+                _rpg_body_map_panel(),
+                class_name="me-rpg-center-panel",
+            ),
+            class_name="me-rpg-dashboard me-rpg-hero-grid",
         )
     )
 
 
 def _rpg_materialization_layout() -> rx.Component:
     return _rpg_shell(_rpg_materialization_output())
-
-
-def _gene_library_float_button() -> rx.Component:
-    return rx.el.a(
-        fomantic_icon("book open", size=13, color="#f8fafc"),
-        rx.el.span(" Gene Library", style={"marginLeft": "7px"}),
-        href="#gene-library",
-        class_name="me-gene-library-float",
-        style={
-            "position": "fixed",
-            "right": "22px",
-            "bottom": "22px",
-            "zIndex": "50",
-            "display": "inline-flex",
-            "alignItems": "center",
-            "padding": "10px 14px",
-            "borderRadius": "999px",
-            "border": "1px solid rgba(196, 181, 253, 0.46)",
-            "background": "rgba(124, 58, 237, 0.62)",
-            "backdropFilter": "blur(8px)",
-            "boxShadow": "0 10px 28px rgba(15, 23, 42, 0.38)",
-            "color": "#f8fafc",
-            "fontSize": "0.82rem",
-            "fontWeight": "900",
-            "letterSpacing": "0.05em",
-            "textTransform": "uppercase",
-            "textDecoration": "none",
-            "opacity": "0.78",
-        },
-    )
 
 
 def _rpg_about_layout() -> rx.Component:
@@ -3148,7 +3055,7 @@ def _choice_section() -> rx.Component:
             ),
             rx.el.input(
                 id="compose-personal-tag",
-                placeholder="A new human, to be",
+                placeholder="Enter your name here",
                 value=ComposeState.personal_tag,
                 on_change=ComposeState.set_personal_tag,
                 style={
@@ -4574,276 +4481,6 @@ def _sculpture_tab() -> rx.Component:
             "flexDirection": "column",
             "alignItems": "stretch",
         },
-    )
-
-
-# ── Tab 3: Gene Library ──────────────────────────────────────────────────────
-
-
-def _source_tag(organism: str) -> rx.Component:
-    return rx.el.span(
-        fomantic_icon("paw-print", size=11),
-        rx.el.span(organism, style={"marginLeft": "4px"}),
-        class_name="ui mini teal label",
-        style={"marginTop": "4px"},
-    )
-
-
-def _gene_card(entry: dict) -> rx.Component:
-    cat_color = CATEGORY_COLORS.get(str(entry.get("category", "")), "#7c3aed")
-    paper = str(entry.get("paper_url", "") or "")
-    detail = str(entry.get("category_detail", "") or entry.get("category", ""))
-    confidence = str(entry.get("confidence", "") or "").strip()
-    tested_on = str(entry.get("best_host_tested", "") or "").strip()
-    return rx.el.div(
-        rx.el.div(
-            rx.el.span(
-                entry["gene"],  # type: ignore[index]
-                style={"fontWeight": "700", "fontSize": "1rem", "color": "#1a1a2e", "marginRight": "10px"},
-            ),
-            rx.el.span(
-                detail,
-                class_name="ui mini label",
-                style={
-                    "backgroundColor": f"{cat_color}18 !important",
-                    "color": f"{cat_color} !important",
-                    "border": f"1px solid {cat_color}40 !important",
-                    "maxWidth": "100%",
-                    "whiteSpace": "normal",
-                },
-            ),
-            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
-        ),
-        rx.el.div(
-            _source_tag(entry["source_organism"]),  # type: ignore[index]
-            style={"margin": "6px 0 4px 0", "display": "flex", "gap": "4px", "flexWrap": "wrap"},
-        ),
-        rx.el.p(
-            entry["short_description"],  # type: ignore[index]
-            style={"fontSize": "0.88rem", "color": "#4b5563", "margin": "4px 0 6px 0", "lineHeight": "1.5"},
-        ),
-        rx.el.div(
-            *(
-                [
-                    rx.el.span(
-                        f"Confidence: {confidence}",
-                        class_name="ui mini label",
-                        style={"backgroundColor": "#ecfdf5 !important", "color": "#047857 !important"},
-                    )
-                ]
-                if confidence
-                else []
-            ),
-            *(
-                [
-                    rx.el.span(
-                        f"Tested on: {tested_on}",
-                        class_name="ui mini label",
-                        style={"backgroundColor": "#eff6ff !important", "color": "#1d4ed8 !important"},
-                    )
-                ]
-                if tested_on
-                else []
-            ),
-            style={"display": "flex", "gap": "4px", "flexWrap": "wrap", "margin": "0 0 6px 0"},
-        ),
-        rx.el.details(
-            rx.el.summary(
-                "Full gene details",
-                style={
-                    "cursor": "pointer",
-                    "fontSize": "0.82rem",
-                    "fontWeight": "700",
-                    "color": "#7c3aed",
-                    "marginTop": "4px",
-                },
-            ),
-            rx.el.p(
-                entry["narrative"],  # type: ignore[index]
-                style={"fontSize": "0.86rem", "color": "#4b5563", "margin": "8px 0 6px 0", "lineHeight": "1.55"},
-            ),
-            rx.el.p(
-                entry["mechanism"],  # type: ignore[index]
-                style={
-                    "fontSize": "0.83rem",
-                    "color": "#6b7280",
-                    "margin": "0 0 6px 0",
-                    "lineHeight": "1.5",
-                    "fontStyle": "italic",
-                },
-            ),
-            rx.el.p(
-                entry["achievements"],  # type: ignore[index]
-                style={"fontSize": "0.82rem", "color": "#6b7280", "margin": "0 0 6px 0", "lineHeight": "1.5"},
-            ),
-            (
-                rx.el.p(
-                    f"Evidence tier: {entry['evidence_tier']}",
-                    style={"fontSize": "0.8rem", "color": "#6b7280", "margin": "0 0 4px 0", "lineHeight": "1.45"},
-                )
-                if str(entry.get("evidence_tier", "") or "").strip()
-                else rx.fragment()
-            ),
-            (
-                rx.el.p(
-                    f"Translational gaps: {entry['translational_gaps']}",
-                    style={"fontSize": "0.8rem", "color": "#6b7280", "margin": "0 0 4px 0", "lineHeight": "1.45"},
-                )
-                if str(entry.get("translational_gaps", "") or "").strip()
-                else rx.fragment()
-            ),
-            (
-                rx.el.p(
-                    f"Notes: {entry['notes']}",
-                    style={"fontSize": "0.8rem", "color": "#6b7280", "margin": "0 0 4px 0", "lineHeight": "1.45"},
-                )
-                if str(entry.get("notes", "") or "").strip()
-                else rx.fragment()
-            ),
-            (
-                rx.el.div(
-                    rx.el.a(
-                        fomantic_icon("external-link", size=11),
-                        rx.el.span(" First linked reference", style={"marginLeft": "4px"}),
-                        href=paper,
-                        target="_blank",
-                        style={"fontSize": "0.78rem"},
-                    ),
-                    style={"marginTop": "4px"},
-                )
-                if paper
-                else rx.fragment()
-            ),
-            style={"marginTop": "4px"},
-        ),
-        style={
-            "padding": "14px 16px",
-            "borderRadius": "6px",
-            "backgroundColor": "#ffffff",
-            "border": "1px solid #e5e7eb",
-            "marginBottom": "12px",
-        },
-    )
-
-
-def _gene_library_tab() -> rx.Component:
-    return rx.el.div(
-        # DataGrid at the top
-        rx.el.div(
-            rx.el.h3(
-                fomantic_icon("dna", size=18, color="#7c3aed"),
-                rx.el.span(
-                    f" {len(GENE_LIBRARY)} genes across {len(UNIQUE_CATEGORIES)} categories",
-                    style={"marginLeft": "8px"},
-                ),
-                style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
-            ),
-            rx.el.div(
-                lazyframe_grid(
-                    GeneGridState,
-                    show_toolbar=True,
-                    show_description_in_header=False,
-                    density="compact",
-                    column_header_height=50,
-                    height="340px",
-                    width="100%",
-                    debug_log=False,
-                ),
-                style={"display": rx.cond(GeneGridState.has_data, "block", "none")},
-            ),
-            style={"marginBottom": "24px"},
-        ),
-        # Cards below
-        rx.el.div(class_name="ui divider"),
-        rx.el.div(
-            *[_gene_card(entry) for entry in GENE_LIBRARY],  # type: ignore[arg-type]
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "repeat(auto-fill, minmax(340px, 1fr))",
-                "gap": "0",
-            },
-        ),
-    )
-
-
-# ── Tab 4: Animal Library ────────────────────────────────────────────────────
-
-
-def _animal_card(entry: dict) -> rx.Component:
-    return rx.el.div(
-        rx.el.div(
-            rx.el.span(
-                entry["organism"],  # type: ignore[index]
-                style={"fontWeight": "700", "fontSize": "1rem", "color": "#1a1a2e"},
-            ),
-            style={"marginBottom": "6px"},
-        ),
-        rx.el.p(
-            entry["superpower"],  # type: ignore[index]
-            style={"fontSize": "0.9rem", "color": "#4b5563", "lineHeight": "1.6", "margin": "0 0 8px 0"},
-        ),
-        rx.el.div(
-            rx.el.label("Genes: ", style={"fontSize": "0.8rem", "color": "#9ca3af", "fontWeight": "600"}),
-            rx.el.span(
-                ", ".join(entry["genes"]),  # type: ignore[arg-type]
-                style={"fontSize": "0.8rem", "color": "#6b7280"},
-            ),
-            style={"marginBottom": "4px"},
-        ),
-        rx.el.div(
-            *[
-                rx.el.span(t, class_name="ui mini violet label", style={"margin": "2px"})
-                for t in entry["traits"]  # type: ignore[union-attr]
-            ],
-            style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginTop": "6px"},
-        ),
-        style={
-            "padding": "14px 16px",
-            "borderRadius": "6px",
-            "backgroundColor": "#ffffff",
-            "border": "1px solid #e5e7eb",
-            "marginBottom": "12px",
-        },
-    )
-
-
-def _animal_library_tab() -> rx.Component:
-    return rx.el.div(
-        # DataGrid at the top
-        rx.el.div(
-            rx.el.h3(
-                fomantic_icon("paw", size=18, color="#7c3aed"),
-                rx.el.span(
-                    f" {len(ANIMAL_LIBRARY)} source organisms",
-                    style={"marginLeft": "8px"},
-                ),
-                style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
-            ),
-            rx.el.div(
-                lazyframe_grid(
-                    AnimalGridState,
-                    show_toolbar=True,
-                    show_description_in_header=False,
-                    density="compact",
-                    column_header_height=50,
-                    height="340px",
-                    width="100%",
-                    debug_log=False,
-                ),
-                style={"display": rx.cond(AnimalGridState.has_data, "block", "none")},
-            ),
-            style={"marginBottom": "24px"},
-        ),
-        # Cards below
-        rx.el.div(class_name="ui divider"),
-        rx.el.div(
-            *[_animal_card(entry) for entry in ANIMAL_LIBRARY],  # type: ignore[arg-type]
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "repeat(auto-fill, minmax(340px, 1fr))",
-                "gap": "0",
-            },
-        ),
     )
 
 

@@ -175,34 +175,6 @@ def ws_watchdog() -> rx.Component:
     return rx.script(_WS_WATCHDOG_JS)
 
 
-_MUI_THEME_SHIM_JS = """
-(function () {
-  'use strict';
-  // reflex-mui-datagrid + the bundled MUI build expect theme.alpha() to exist on
-  // the theme object passed through transformTheme(). In Reflex 0.8.28 the CSS-
-  // variables theme path doesn't ship it, which throws
-  //   TypeError: theme.alpha is not a function
-  // crashing the Gene Library / Animal Library tabs. Install a no-op fallback
-  // as a non-enumerable Object.prototype getter so it only fires when code
-  // explicitly reads .alpha on an object, never showing up in iteration.
-  if (!Object.prototype.hasOwnProperty('alpha')) {
-    try {
-      Object.defineProperty(Object.prototype, 'alpha', {
-        configurable: true,
-        enumerable: false,
-        get: function () { return function (color, _value) { return color; }; },
-      });
-    } catch (_e) { /* sealed env — nothing we can do */ }
-  }
-})();
-"""
-
-
-def mui_theme_shim() -> rx.Component:
-    """Patch missing theme.alpha() helper so reflex-mui-datagrid stops crashing."""
-    return rx.script(_MUI_THEME_SHIM_JS)
-
-
 def report_libs() -> rx.Component:
     """Load client-side libraries used by the Share & Report section.
 
@@ -389,7 +361,6 @@ def template(*children: rx.Component) -> rx.Component:
     # when ?interaction=artex activates the kiosk.
     return rx.el.div(
         fomantic_stylesheets(),
-        mui_theme_shim(),
         ws_watchdog(),
         report_libs(),
         global_css,

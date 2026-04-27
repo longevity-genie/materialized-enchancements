@@ -11,17 +11,14 @@ from typing import Any, AsyncIterator, Dict, TypedDict
 from urllib.parse import quote
 
 import reflex as rx
-from reflex_mui_datagrid import LazyFrameGridMixin
 
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
-    ANIMAL_LIBRARY_LF,
     ANIMAL_PRICES,
     CATEGORY_MIN_GENE_PRICES,
     CATEGORY_TRAITS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
-    GENE_LIBRARY_LF,
     GENE_PRICES,
     ORGANISM_MEMBERS,
     UNIQUE_CATEGORIES,
@@ -54,6 +51,8 @@ from materialized_enhancements.env import (
 )
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PERSONAL_TAG = "A new human to be"
 
 
 class KeyReferenceSegment(TypedDict):
@@ -153,6 +152,18 @@ def _count_included_genes_in_choice(
     sel = set(selected_categories)
     inc = set(included_genes)
     return sum(1 for g in GENE_LIBRARY if g["category"] in sel and g["gene"] in inc)
+
+
+def _compact_gene_symbol(gene: str) -> str:
+    """Short display symbol for cramped body-map labels."""
+    without_brackets = re.sub(r"\s*[\(\[\{][^\)\]\}]*[\)\]\}]", "", gene)
+    compact = re.sub(r"\s+", " ", without_brackets).strip()
+    compact = re.sub(r"\s*/\s*", "/", compact)
+    compact = re.sub(r"\s*\+\s*", "+", compact)
+    compact = compact.replace("Greenland shark DNA-repair network+p53 C-term insertion", "Greenland shark")
+    compact = compact.replace("Melanin", "MEL")
+    compact = compact.replace("system", "")
+    return compact.strip()
 
 
 # Soft UX hint only: materialize stays allowed below this count.
@@ -473,7 +484,7 @@ class AppState(rx.State):
 class ComposeState(rx.State):
     """State for the Materialize genetic enhancement tab (parametric form + report)."""
 
-    personal_tag: str = "A new human, to be"
+    personal_tag: str = DEFAULT_PERSONAL_TAG
     selected_categories: list[str] = []
     included_genes: list[str] = []
     expanded_genes: list[str] = []
@@ -653,9 +664,9 @@ class ComposeState(rx.State):
         async with self:
             if self.generating:
                 return
-            tag = self.personal_tag.strip()
+            tag = self.personal_tag.strip() or DEFAULT_PERSONAL_TAG
             cats = list(self.selected_categories)
-            if not cats or not tag:
+            if not cats:
                 return
             credits = _sum_credits_for_included_genes(cats, self.included_genes)
             if credits <= 0:
@@ -663,6 +674,7 @@ class ComposeState(rx.State):
             active = self._active_gene_library()
             if not active:
                 return
+            self.personal_tag = tag
             self.generating = True
             self.generation_error = ""
             self.stl_filename = ""
@@ -1275,6 +1287,19 @@ class ComposeState(rx.State):
         return counts
 
     @rx.var
+    def active_compact_gene_names_by_category(self) -> dict[str, list[str]]:
+        """Per-category compact active gene names for the body-map marker labels."""
+        names: dict[str, list[str]] = {c: [] for c in UNIQUE_CATEGORIES}
+        for g in GENE_LIBRARY:
+            if g["category"] not in self.selected_categories:
+                continue
+            if g["gene"] not in self.included_genes:
+                continue
+            cat = g["category"]
+            names.setdefault(cat, []).append(_compact_gene_symbol(g["gene"]))
+        return names
+
+    @rx.var
     def active_category_prices(self) -> dict[str, int]:
         """Per-category sum of included gene prices for selected categories."""
         totals: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
@@ -1297,7 +1322,6 @@ class ComposeState(rx.State):
         spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
         return (
             len(self.selected_categories) > 0
-            and len(self.personal_tag.strip()) > 0
             and spent > 0
         )
 
@@ -1971,35 +1995,3 @@ class JigsawState(rx.State):
         return len(self.selected_organisms) > 0 and len(self.personal_tag.strip()) > 0
 
 
-class GeneGridState(LazyFrameGridMixin, rx.State):
-    """DataGrid state for the gene library."""
-
-    grid_loaded: bool = False
-
-    def load_grid(self) -> None:
-        if self.grid_loaded:
-            return
-        for _ in self.set_lazyframe(GENE_LIBRARY_LF, {}, chunk_size=100):
-            pass
-        self.grid_loaded = True
-
-    @rx.var
-    def has_data(self) -> bool:
-        return bool(self.lf_grid_loaded)
-
-
-class AnimalGridState(LazyFrameGridMixin, rx.State):
-    """DataGrid state for the animal library."""
-
-    grid_loaded: bool = False
-
-    def load_grid(self) -> None:
-        if self.grid_loaded:
-            return
-        for _ in self.set_lazyframe(ANIMAL_LIBRARY_LF, {}, chunk_size=100):
-            pass
-        self.grid_loaded = True
-
-    @rx.var
-    def has_data(self) -> bool:
-        return bool(self.lf_grid_loaded)

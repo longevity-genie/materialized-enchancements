@@ -26,13 +26,13 @@ materialized-enhancements/          ← repo root
     ├── app.py                      ← rx.App definition + page registration
     ├── materialized_enhancements.py ← Reflex entry-point re-export (required, see note below)
     ├── run.py                      ← entry point: exec `reflex run`
-    ├── state.py                    ← AppState, ComposeState, GeneGridState, CATEGORY_COLORS
-    ├── gene_data.py                ← CSV loader → GENE_LIBRARY, GENE_LIBRARY_LF, CATEGORY_TRAITS, ANIMAL_LIBRARY
+    ├── state.py                    ← AppState, ComposeState, JigsawState, CATEGORY_COLORS
+    ├── gene_data.py                ← CSV loader → GENE_LIBRARY, CATEGORY_TRAITS, ANIMAL_LIBRARY
     │                                  also owns _ORGANISM_PUZZLE_MAP (organism → SVG filename)
     ├── components/
     │   └── layout.py               ← template, two_column_layout, fomantic_icon
     └── pages/
-        └── index.py                ← route "/" (landing + 4 tabs: Sculpture, Jigsaw, Gene Library, Animal Library)
+        └── index.py                ← routes "/", "/materialization", and "/about"
 ```
 
 ### Running the App
@@ -67,7 +67,6 @@ uv run start        # starts Reflex dev server (http://localhost:3000)
 ### Derived data structures (gene_data.py)
 
 - `GENE_LIBRARY: list[GeneEntry]` — all 35 genes
-- `GENE_LIBRARY_LF: pl.LazyFrame` — for DataGrid display
 - `CATEGORY_COUNTS: dict[str, int]` — genes per category
 - `CATEGORY_TRAITS: dict[str, list[str]]` — category → trait names
 - `ANIMAL_LIBRARY: list[AnimalEntry]` — per-organism view
@@ -121,7 +120,7 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 - **Use `class_name` not `class`** — `class` is a reserved Python keyword
 - **CSS Flexbox for layouts** — Fomantic UI Grid is unreliable in Reflex; always use flexbox
 - **State-based tabs** — use `rx.cond` on a state var + `rx.match` for tab content (no jQuery needed)
-- **DataGrid via `reflex-mui-datagrid`** — use `LazyFrameGridMixin` for state, `lazyframe_grid(StateClass, ...)` for rendering
+- **Gene Library UI is custom Reflex/Fomantic cards and accordions** — do not reintroduce `reflex-mui-datagrid` for the current public routes.
 
 ### What Works in Fomantic UI + Reflex
 
@@ -152,8 +151,6 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 - `AppState(rx.State)` — root state, handles legacy `?tab=` redirects
 - `ComposeState(rx.State)` — parametric sculpture tab: category selection, personal tag, totem composition
 - `JigsawState(rx.State)` — preserved jigsaw component state: organism selection, SVG puzzle generation
-- `GeneGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for gene listing
-- `AnimalGridState(LazyFrameGridMixin, rx.State)` — DataGrid state for animal listing
 - All states are independent `rx.State` subclasses (not substates)
 
 ### Routing
@@ -234,7 +231,7 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 
 ## Learned Workspace Facts
 
-- `reflex-mui-datagrid` + Reflex 0.8.28 crashes with `theme.alpha is not a function` on the Gene Library and Animal Library tabs because the CSS-variables MUI theme path does not expose `alpha()`. Fix: mount `mui_theme_shim()` (`_MUI_THEME_SHIM_JS` in `src/materialized_enhancements/components/layout.py`) inside `template()` before any grid renders.
+- Legacy `reflex-mui-datagrid` wiring was removed from the active app. The public Gene Library UI is the custom RPG accordion flow in `src/materialized_enhancements/pages/index.py`.
 - Use `rx.script(js_body_string)` or `rx.script(src=...)` for client JS. `rx.el.script(...)` with a string body can be escaped/not executed by Reflex; inline handlers defined that way won't register on `window`.
 - Browser-side export libraries are vendored under `assets/vendor/` (`html-to-image.js`, `jspdf.umd.min.js`, `qrcode.min.js`, `me_report.js`) and loaded via `rx.script(src="/vendor/<file>.js")` so the app works offline / in kiosk mode without `cdn.jsdelivr.net`.
 - `html-to-image` on this app: move off-screen capture nodes into the viewport for the snapshot; avoid `display: flex` on the snapshot root inside SVG `foreignObject`; call with `skipFonts: true` (Fomantic `semantic.min.css` pulls thousands of twemoji URLs and can exhaust the browser without it — see `h2iOptions()` in `assets/vendor/me_report.js`); for PNG export use full `opacity: 1`, high `z-index`, and `waitImages()` — very low opacity often rasterizes as blank in Chromium.
