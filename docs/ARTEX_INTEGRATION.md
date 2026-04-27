@@ -39,8 +39,8 @@ redirect) sends visitors to. All parameters are optional with env-based defaults
 
 | Parameter | Example | Effect |
 |-----------|---------|--------|
-| `from` | `ARTEX` | Makes the "Send to Wall" button visible regardless of token/env config |
-| `token` | `abcd` | Overrides `ARTEX_API_TOKEN` env var for this session |
+| `from` | `ARTEX` | Marks a kiosk/ARTEX entry point; the wall UI still requires complete ARTEX settings |
+| `token` | `abcd` | Overrides `ARTEX_API_TOKEN` env var for this session and enables wall UI when URL + display ID are also present |
 | `display_id` | `test-wall` | Target display for venue push; overrides `ARTEX_DISPLAY_ID` env |
 | `redirect` | `https://artex.live/` | If present and not `false`: enables the idle-inactivity timer, and redirects here both on idle expiry **and** after a successful publish. Supports `{slug}` substitution. |
 
@@ -50,14 +50,14 @@ when a default is configured in env.
 ### Example kiosk URLs
 
 ```
-# Sculpture tab, full kiosk setup:
-http://my-installation.example/materialize?from=ARTEX&token=abcd&display_id=north-wall&redirect=https://artex.live/
+# Materialization route, full kiosk setup:
+http://my-installation.example/materialization?from=ARTEX&token=abcd&display_id=north-wall&redirect=https://artex.live/
 
 # Jigsaw tab, dev test with slug inspection after publish:
-http://localhost:3000/jigsaw?from=ARTEX&redirect=http://127.0.0.1:8787/public/projects/{slug}
+http://localhost:3000/jigsaw?from=ARTEX&token=abcd&redirect=http://127.0.0.1:8787/public/projects/{slug}
 
 # No redirect, just show the button:
-http://my-installation.example/materialize?from=ARTEX&token=abcd&display_id=entrance&redirect=false
+http://my-installation.example/materialization?from=ARTEX&token=abcd&display_id=entrance&redirect=false
 ```
 
 ---
@@ -241,8 +241,8 @@ All in [`.env.template`](../.env.template) / [`.env`](../.env).
 
 When `uv run start --dev` is used:
 
-- The ARTEX section is always visible (no need for `?from=ARTEX` or a token)
-- Three editable inputs appear above the "Send to Wall" button:
+- The ARTEX section is visible only after the API URL, admin token, and display ID are configured by env or query params.
+- Three editable inputs appear above the "Send to Wall" button when the section is visible:
   - **ARTEX API URL** — override the platform API endpoint
   - **ARTEX Admin Token** — override the token (password input)
   - **Display ID** — override the target display
@@ -301,7 +301,7 @@ uv run start
 
 Navigate to:
 ```
-http://localhost:3000/materialize?from=ARTEX&display_id=test-wall&redirect=false
+http://localhost:3000/materialization?from=ARTEX&token=abcd&display_id=test-wall&redirect=false
 ```
 
 Select gene categories, generate the sculpture, click **Send to Wall**. The display

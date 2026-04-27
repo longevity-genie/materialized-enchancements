@@ -39,6 +39,10 @@ def serve() -> None:
     """Start the single-port production server (Reflex 0.9+ unified mode)."""
     _setup()
 
+    from materialized_enhancements.crawler_assets import generate_crawler_assets
+
+    generate_crawler_assets()
+
     from reflex import constants
     from reflex.constants.base import RunningMode
     from reflex.reflex import _run

@@ -158,9 +158,10 @@ The app uses **Reflex** with **Fomantic UI** (White Mirror light theme). Key pat
 
 ### Routing
 
-Two active routes (no more state-based tab switching):
-- `/` — About / landing page (fully static, SSR-friendly)
-- `/materialize` — Materialize genetic enhancement (parametric composer)
+Three active routes (no more state-based tab switching):
+- `/` — Character profile / active gene loadout builder
+- `/materialization` — Materialize genetic enhancement output, report, and exports
+- `/about` — About / landing page (fully static, SSR-friendly)
 
 The Gene Jigsaw UI is preserved in `src/materialized_enhancements/components/jigsaw.py`
 for future reuse, but it is not currently registered as a public route or tab.
@@ -239,7 +240,7 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - `html-to-image` on this app: move off-screen capture nodes into the viewport for the snapshot; avoid `display: flex` on the snapshot root inside SVG `foreignObject`; call with `skipFonts: true` (Fomantic `semantic.min.css` pulls thousands of twemoji URLs and can exhaust the browser without it — see `h2iOptions()` in `assets/vendor/me_report.js`); for PNG export use full `opacity: 1`, high `z-index`, and `waitImages()` — very low opacity often rasterizes as blank in Chromium.
 - MutationObservers that repaint DOM (e.g. QR painter) must be idempotent with a signature guard, must ignore mutations inside the rewritten subtree, and must debounce via `requestAnimationFrame`; otherwise an `innerHTML` rewrite retriggers the observer and freezes the browser.
 - Sculpture capture: the hidden `<textarea id="stl-b64-data">` must stay mounted for same-origin iframes; `assets/sculpture_viewer/capture.html` is loaded with a changing `nonce` query param and postMessages front/side/back PNGs to the parent.
-- The shareable-report URL encodes state as `/materialize?report=1&name=<b64>&cats=<bitmask>`; `apply_shared_report` re-seeds `ComposeState` deterministically on page load so recipients regenerate the identical sculpture without server persistence. Old `/?tab=sculpture&…` URLs are redirected by `AppState.redirect_legacy_tab`.
+- The shareable-report URL encodes state as `/materialization?report=1&name=<b64>&cats=<bitmask>`; `apply_shared_report` re-seeds `ComposeState` deterministically on page load so recipients regenerate the identical sculpture without server persistence. Old `/?tab=sculpture&…` URLs are redirected by `AppState.redirect_legacy_tab`.
 - PDF export: do not rasterize `#me-report-pdf-long` per A4 page (balloons file size). Use jsPDF `text()` / `splitTextToSize()` from DOM rows. Page 1 is built in `renderCoverPageA4()` from hidden inputs and `window.__reportViews`, not from scaling a screenshot of `#me-report-card`.
 - In Reflex dev mode, `assets/` is copied to `.web/public/` at compile time; the dev server serves the `.web/public/` copy. When you edit vendored JS under `assets/vendor/` without restarting `reflex run`, copy into `.web/public/vendor/` or restart — otherwise you test a stale asset.
 - Gene/sculpture inputs use `data/input/gene_library_extended.csv` and `data/input/gene_properties_extended.csv` (see `gene_data.py` / `sculpture.py`). When the CSV `Category` is hierarchical (`Parent / Detail`), the loader keeps the full string as `category_detail` and derives the parent `category` segment for the nine-way budget, bitmask, and sculpture math so points stay aligned with the original model.

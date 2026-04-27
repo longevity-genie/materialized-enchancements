@@ -49,7 +49,6 @@ from materialized_enhancements.env import (
     ARTEX_API_TOKEN,
     ARTEX_API_URL,
     ARTEX_DISPLAY_ID,
-    DEV_MODE,
     RESEND_API_KEY,
     public_app_url,
 )
@@ -245,6 +244,11 @@ _TAB_ROUTE_MAP: dict[str, str] = {
     "library": "/about",
     "animals": "/about",
 }
+
+
+def _has_artex_integration_settings(api_url: str, api_token: str, display_id: str) -> bool:
+    """Return true only when enough ARTEX settings exist to publish to a wall."""
+    return bool(api_url.strip() and api_token.strip() and display_id.strip())
 
 
 def _html_escape(value: object) -> str:
@@ -744,8 +748,12 @@ class ComposeState(rx.State):
             if not self.stl_download_path:
                 self.artex_error = "No sculpture generated yet."
                 return
-            if not self.artex_api_token.strip():
-                self.artex_error = "API token is required."
+            if not _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            ):
+                self.artex_error = "ARTEX API URL, admin token, and display ID are required."
                 return
             self.artex_creating = True
             self.artex_error = ""
@@ -792,18 +800,21 @@ class ComposeState(rx.State):
     def can_create_artex(self) -> bool:
         return (
             len(self.stl_download_path) > 0
-            and len(self.artex_api_token.strip()) > 0
-            and len(self.artex_display_id.strip()) > 0
+            and _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            )
         )
 
     @rx.var
     def artex_section_visible(self) -> bool:
-        """Show ARTEX UI in dev mode, when ?from=ARTEX is present, or when a token is configured."""
-        if DEV_MODE:
-            return True
-        if self.artex_from_kiosk:
-            return True
-        return len(self.artex_api_token.strip()) > 0
+        """Show ARTEX UI only when wall-publish settings are configured."""
+        return _has_artex_integration_settings(
+            self.artex_api_url,
+            self.artex_api_token,
+            self.artex_display_id,
+        )
 
     def download_artifacts(self):  # type: ignore[return]
         """Download STL and reproducibility JSON in one click."""
@@ -1781,8 +1792,12 @@ class JigsawState(rx.State):
             if not self._stl_bytes:
                 self.artex_error = "No STL generated yet."
                 return
-            if not self.artex_api_token.strip():
-                self.artex_error = "API token is required."
+            if not _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            ):
+                self.artex_error = "ARTEX API URL, admin token, and display ID are required."
                 return
             self.artex_creating = True
             self.artex_error = ""
@@ -1831,18 +1846,21 @@ class JigsawState(rx.State):
     def can_create_artex(self) -> bool:
         return (
             self.stl_ready
-            and len(self.artex_api_token.strip()) > 0
-            and len(self.artex_display_id.strip()) > 0
+            and _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            )
         )
 
     @rx.var
     def artex_section_visible(self) -> bool:
-        """Show ARTEX UI in dev mode, when ?from=ARTEX is present, or when a token is configured."""
-        if DEV_MODE:
-            return True
-        if self.artex_from_kiosk:
-            return True
-        return len(self.artex_api_token.strip()) > 0
+        """Show ARTEX UI only when wall-publish settings are configured."""
+        return _has_artex_integration_settings(
+            self.artex_api_url,
+            self.artex_api_token,
+            self.artex_display_id,
+        )
 
     @rx.var
     def jigsaw_viewer_iframe_src(self) -> str:
