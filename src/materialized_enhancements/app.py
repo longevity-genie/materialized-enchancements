@@ -24,5 +24,8 @@ def normalize_reflex_event_websocket_path(app: ASGIApp) -> ASGIApp:
 
 app = rx.App(
     theme=rx.theme(appearance="light"),
+    head_components=[
+        rx.el.meta(name="viewport", content="width=device-width, initial-scale=1.0"),
+    ],
     api_transformer=normalize_reflex_event_websocket_path,
 )

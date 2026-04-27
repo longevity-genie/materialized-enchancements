@@ -140,257 +140,270 @@ def _landing_tab() -> rx.Component:
         "marginBottom": "12px",
     }
     _a = {"color": "#7c3aed", "fontWeight": "600", "textDecoration": "underline"}
+    _sidebar_card = {
+        "padding": "14px",
+        "borderRadius": "14px",
+        "border": "1px solid rgba(148, 163, 184, 0.22)",
+        "background": "rgba(15, 23, 42, 0.54)",
+        "boxShadow": "0 14px 34px rgba(2, 6, 23, 0.18)",
+    }
+    _sidebar_title = {
+        "fontSize": "0.86rem",
+        "fontWeight": "900",
+        "letterSpacing": "0.08em",
+        "textTransform": "uppercase",
+        "color": "#e9d5ff",
+        "margin": "0 0 10px 0",
+    }
+    _qr_card = {
+        "display": "block",
+        "padding": "14px",
+        "background": "rgba(2, 6, 23, 0.42)",
+        "borderRadius": "12px",
+        "border": "1px solid rgba(196, 181, 253, 0.24)",
+        "textDecoration": "none",
+    }
+    _qr_image = {
+        "width": "min(100%, 190px)",
+        "height": "auto",
+        "aspectRatio": "1 / 1",
+        "objectFit": "cover",
+        "display": "block",
+        "borderRadius": "8px",
+        "margin": "0 auto 10px auto",
+        "boxShadow": "0 2px 10px rgba(0,0,0,0.22)",
+    }
 
     return rx.el.div(
         rx.el.div(
-            rx.el.h1(
-                "Materialized Enhancements",
-                style={
-                    "color": "#1a1a2e",
-                    "fontSize": "2.4rem",
-                    "fontWeight": "800",
-                    "marginBottom": "4px",
-                },
-            ),
-            rx.el.p(
-                "Upgrading human DNA is not science fiction — it is already happening in adults today. "
-                "In alternative jurisdictions like Prospera, medical tourists are actively receiving gene "
-                "therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens "
-                'in ten years as we unlock harder-to-implement targets to shape "The New Human"? Nature '
-                "already has the code for extreme survival: shark longevity, tardigrade radiation shields, "
-                "and axolotl regeneration.",
-                style=_p_body,
-            ),
-            rx.el.p(
-                rx.fragment(
-                    rx.el.strong("Materialized Enhancements", style={"color": "#1a1a2e"}),
-                    " turns this impending synthetic biology into participatory artwork. You select desired "
-                    '"enhancement genes" through the interface. Those selections, combined with a personal '
-                    "digital signature, are the exact inputs to a generative algorithm. The result is a "
-                    "single, unrepeatable 3D form — ready for 3D printing.",
-                ),
-                style=_p_body,
-            ),
-            rx.el.p(
-                "CODAME ART+TECH 『 The New Human 』 · Milano · 2026",
-                style={"color": "#7c3aed", "fontSize": "0.95rem", "fontWeight": "600", "marginBottom": "18px"},
-            ),
             rx.el.div(
-                rx.el.iframe(
-                    src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
-                    title="Materialized Enhancements",
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-                    allow_full_screen=True,
-                    style={
-                        "position": "absolute",
-                        "top": "0",
-                        "left": "0",
-                        "width": "100%",
-                        "height": "100%",
-                        "border": "none",
-                        "borderRadius": "8px",
-                    },
-                ),
-                style={
-                    "width": "100%",
-                    "paddingBottom": "56.25%",
-                    "position": "relative",
-                    "backgroundColor": "#000",
-                    "borderRadius": "8px",
-                    "marginBottom": "28px",
-                    "overflow": "hidden",
-                },
-            ),
-            rx.el.p(
-                "We want you to learn a little genetics in a playful way: browse real enhancement "
-                "genes, see how they are grouped, then take home a souvenir — a unique 3D-printable form "
-                "and a printable enhancement report generated from your choices.",
-                style={**_p_muted, "textAlign": "center", "marginBottom": "16px"},
-            ),
-            rx.el.p(
-                "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
-                style={
-                    "fontSize": "1.35rem",
-                    "lineHeight": "1.55",
-                    "fontWeight": "600",
-                    "color": "#1f2937",
-                    "textAlign": "center",
-                    "marginBottom": "18px",
-                    "maxWidth": "36rem",
-                    "marginLeft": "auto",
-                    "marginRight": "auto",
-                },
-            ),
-            rx.el.div(
-                rx.el.img(
-                    src="/images/HOW_IT_WORKS.jpg",
-                    alt="Materialized Enhancements process: trait input, parametric geometry, STL output, and 3D fabrication.",
-                    loading="lazy",
-                    decoding="async",
-                    style={
-                        "width": "100%",
-                        "maxWidth": "100%",
-                        "height": "auto",
-                        "display": "block",
-                        "borderRadius": "8px",
-                        "marginBottom": "22px",
-                        "boxShadow": "0 4px 18px rgba(0, 0, 0, 0.08)",
-                    },
-                ),
-                style={"width": "100%", "marginTop": "4px"},
-            ),
-            rx.el.div(
-                rx.el.a(
-                    fomantic_icon("atom", size=16),
-                    rx.el.span(
-                        " Materialize genetic enhancement",
-                        style={"marginLeft": "8px", "fontWeight": "600"},
-                    ),
-                    href="/",
-                    class_name="ui primary button",
-                    style={"fontSize": "1.05rem", "padding": "14px 26px", "margin": "4px"},
-                ),
-                style={
-                    "display": "flex",
-                    "flexWrap": "wrap",
-                    "justifyContent": "center",
-                    "gap": "8px",
-                    "marginBottom": "22px",
-                },
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "Team",
-                    style={
-                        "fontSize": "1.35rem",
-                        "fontWeight": "700",
-                        "color": "#374151",
-                        "margin": "0 0 12px 0",
-                        "letterSpacing": "-0.02em",
-                    },
-                ),
-                rx.el.ul(
-                    rx.el.li(
-                        rx.el.strong("Newton Winter", style={"color": "#374151"}),
-                        " — web app, jigsaw generation, geometry optimization, devops, biology, UI — ",
-                        rx.el.a("GitHub", href="https://github.com/winternewt", target="_blank", rel="noopener noreferrer", style=_a),
-                    ),
-                    rx.el.li(
-                        rx.el.strong("Anton Kulaga", style={"color": "#374151"}),
-                        " — concept, biology, UI design, generative video, 3D printing — ",
-                        rx.el.a("GitHub", href="https://github.com/antonkulaga", target="_blank", rel="noopener noreferrer", style=_a),
-                    ),
-                    rx.el.li(
-                        rx.el.strong("Livia Zaharia", style={"color": "#374151"}),
-                        " — parametric geometry, personalized enhancement report, 3D printing — ",
-                        rx.el.a(
-                            "livia.glucosedao.org",
-                            href="http://livia.glucosedao.org/",
-                            target="_blank",
-                            rel="noopener noreferrer",
-                            style=_a,
-                        ),
-                    ),
-                    rx.el.li(
-                        rx.el.strong("Marko Prakhov-Donets", style={"color": "#374151"}),
-                        " — video editing",
-                    ),
-                    style={
-                        "margin": "0",
-                        "paddingLeft": "1.2rem",
-                        "fontSize": "0.9rem",
-                        "lineHeight": "1.65",
-                        "color": "#4b5563",
-                    },
-                ),
-                style={"marginBottom": "8px"},
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "Support the project",
-                    style={
-                        "fontSize": "1.35rem",
-                        "fontWeight": "700",
-                        "color": "#374151",
-                        "margin": "16px 0 12px 0",
-                        "letterSpacing": "-0.02em",
-                    },
-                ),
                 rx.el.div(
+                    rx.el.h1(
+                        "Materialized Enhancements",
+                        style={
+                            "color": "#1a1a2e",
+                            "fontSize": "2.4rem",
+                            "fontWeight": "800",
+                            "marginBottom": "4px",
+                        },
+                    ),
+                    rx.el.p(
+                        "Upgrading human DNA is not science fiction — it is already happening in adults today. "
+                        "In alternative jurisdictions like Prospera, medical tourists are actively receiving gene "
+                        "therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens "
+                        'in ten years as we unlock harder-to-implement targets to shape "The New Human"? Nature '
+                        "already has the code for extreme survival: shark longevity, tardigrade radiation shields, "
+                        "and axolotl regeneration.",
+                        style=_p_body,
+                    ),
+                    rx.el.p(
+                        rx.fragment(
+                            rx.el.strong("Materialized Enhancements", style={"color": "#1a1a2e"}),
+                            " turns this impending synthetic biology into participatory artwork. You select desired "
+                            '"enhancement genes" through the interface. Those selections, combined with a personal '
+                            "digital signature, are the exact inputs to a generative algorithm. The result is a "
+                            "single, unrepeatable 3D form — ready for 3D printing.",
+                        ),
+                        style=_p_body,
+                    ),
+                    rx.el.p(
+                        "CODAME ART+TECH 『 The New Human 』 · Milano · 2026",
+                        style={"color": "#7c3aed", "fontSize": "0.95rem", "fontWeight": "600", "marginBottom": "18px"},
+                    ),
                     rx.el.div(
-                        rx.el.img(
-                            src="/images/kofi.jpg",
-                            alt="Ko-fi QR code — support Materialized Enhancements",
-                            loading="lazy",
-                            decoding="async",
+                        rx.el.iframe(
+                            src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
+                            title="Materialized Enhancements",
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                            allow_full_screen=True,
                             style={
-                                "width": "237px",
-                                "height": "237px",
-                                "display": "block",
-                                "borderRadius": "8px",
-                                "margin": "0 auto 10px auto",
-                                "boxShadow": "0 2px 10px rgba(0,0,0,0.10)",
+                                "position": "absolute",
+                                "top": "0",
+                                "left": "0",
+                                "width": "100%",
+                                "height": "100%",
+                                "border": "none",
+                                "borderRadius": "10px",
                             },
                         ),
-                        rx.el.p(
-                            "Buy us a coffee",
-                            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem", "margin": "0 0 4px 0", "textAlign": "center"},
-                        ),
-                        rx.el.p(
-                            "Support the artists on Ko-fi",
-                            style={"color": "#6b7280", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
-                        ),
                         style={
-                            "flex": "1",
-                            "minWidth": "270px",
-                            "maxWidth": "372px",
-                            "padding": "18px 16px",
-                            "background": "#fafafa",
-                            "borderRadius": "12px",
-                            "border": "1px solid #e5e7eb",
+                            "width": "100%",
+                            "maxWidth": "1200px",
+                            "aspectRatio": "16 / 9",
+                            "position": "relative",
+                            "backgroundColor": "#000",
+                            "borderRadius": "10px",
+                            "margin": "0 auto 18px auto",
+                            "overflow": "hidden",
+                            "boxShadow": "0 16px 36px rgba(2, 6, 23, 0.28)",
+                        },
+                    ),
+                    rx.el.p(
+                        "We want you to learn a little genetics in a playful way: browse real enhancement "
+                        "genes, see how they are grouped, then take home a souvenir — a unique 3D-printable form "
+                        "and a printable enhancement report generated from your choices.",
+                        style={**_p_muted, "marginBottom": "16px"},
+                    ),
+                    rx.el.p(
+                        "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
+                        style={
+                            "fontSize": "1.35rem",
+                            "lineHeight": "1.55",
+                            "fontWeight": "600",
+                            "color": "#1f2937",
+                            "marginBottom": "18px",
+                            "maxWidth": "38rem",
                         },
                     ),
                     rx.el.div(
-                        rx.el.img(
-                            src="/images/product.jpg",
-                            alt="Product QR code — order your 3D-printed sculpture with delivery",
-                            loading="lazy",
-                            decoding="async",
-                            style={
-                                "width": "237px",
-                                "height": "237px",
-                                "display": "block",
-                                "borderRadius": "8px",
-                                "margin": "0 auto 10px auto",
-                                "boxShadow": "0 2px 10px rgba(0,0,0,0.10)",
-                            },
-                        ),
-                        rx.el.p(
-                            "Order your sculpture",
-                            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem", "margin": "0 0 4px 0", "textAlign": "center"},
-                        ),
-                        rx.el.p(
-                            "3D-printed sculpture + delivery",
-                            style={"color": "#6b7280", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                        rx.el.a(
+                            fomantic_icon("atom", size=16),
+                            rx.el.span(
+                                " Materialize genetic enhancement",
+                                style={"marginLeft": "8px", "fontWeight": "600"},
+                            ),
+                            href="/",
+                            class_name="ui primary button",
+                            style={"fontSize": "1.05rem", "padding": "14px 26px", "margin": "4px 0"},
                         ),
                         style={
-                            "flex": "1",
-                            "minWidth": "270px",
-                            "maxWidth": "372px",
-                            "padding": "18px 16px",
-                            "background": "#fafafa",
-                            "borderRadius": "12px",
-                            "border": "1px solid #e5e7eb",
+                            "display": "flex",
+                            "flexWrap": "wrap",
+                            "gap": "8px",
+                            "marginBottom": "4px",
                         },
                     ),
-                    style={
-                        "display": "flex",
-                        "flexWrap": "wrap",
-                        "gap": "16px",
-                        "justifyContent": "center",
-                        "marginBottom": "20px",
-                    },
+                    class_name="me-about-main",
                 ),
+                rx.el.aside(
+                    rx.el.div(
+                        rx.el.div("How it works", style=_sidebar_title),
+                        rx.el.img(
+                            src="/images/HOW_IT_WORKS.jpg",
+                            alt="Materialized Enhancements process: trait input, parametric geometry, STL output, and 3D fabrication.",
+                            loading="lazy",
+                            decoding="async",
+                            style={
+                                "width": "100%",
+                                "height": "auto",
+                                "display": "block",
+                                "borderRadius": "8px",
+                                "boxShadow": "0 4px 18px rgba(0, 0, 0, 0.18)",
+                            },
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    rx.el.div(
+                        rx.el.div("Team", style=_sidebar_title),
+                        rx.el.ul(
+                            rx.el.li(
+                                rx.el.strong("Newton Winter"),
+                                " — web app, jigsaw generation, geometry optimization, devops, biology, UI — ",
+                                rx.el.a("GitHub", href="https://github.com/winternewt", target="_blank", rel="noopener noreferrer", style=_a),
+                            ),
+                            rx.el.li(
+                                rx.el.strong("Anton Kulaga"),
+                                " — concept, biology, UI design, generative video, 3D printing — ",
+                                rx.el.a("GitHub", href="https://github.com/antonkulaga", target="_blank", rel="noopener noreferrer", style=_a),
+                            ),
+                            rx.el.li(
+                                rx.el.strong("Livia Zaharia"),
+                                " — parametric geometry, personalized enhancement report, 3D printing — ",
+                                rx.el.a(
+                                    "livia.glucosedao.org",
+                                    href="http://livia.glucosedao.org/",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    style=_a,
+                                ),
+                            ),
+                            rx.el.li(
+                                rx.el.strong("Marko Prakhov-Donets"),
+                                " — video editing",
+                            ),
+                            style={
+                                "margin": "0",
+                                "paddingLeft": "1.1rem",
+                                "fontSize": "0.86rem",
+                                "lineHeight": "1.58",
+                            },
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    rx.el.div(
+                        rx.el.div("Support the project", style=_sidebar_title),
+                        rx.el.div(
+                            rx.el.a(
+                                rx.el.img(
+                                    src="/images/kofi.jpg",
+                                    alt="Ko-fi QR code — support Materialized Enhancements",
+                                    loading="lazy",
+                                    decoding="async",
+                                    style=_qr_image,
+                                ),
+                                rx.el.strong(
+                                    "Buy us a coffee",
+                                    style={
+                                        "display": "block",
+                                        "fontWeight": "700",
+                                        "color": "#f8fafc",
+                                        "fontSize": "0.95rem",
+                                        "margin": "0 0 4px 0",
+                                        "textAlign": "center",
+                                    },
+                                ),
+                                rx.el.div(
+                                    "Support the artists on Ko-fi",
+                                    style={"color": "#cbd5e1", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                                ),
+                                rx.el.div(
+                                    "https://ko-fi.com/liviazaharia",
+                                    style={
+                                        "color": "#c4b5fd",
+                                        "fontSize": "0.78rem",
+                                        "margin": "6px 0 0 0",
+                                        "textAlign": "center",
+                                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                                        "wordBreak": "break-all",
+                                    },
+                                ),
+                                href="https://ko-fi.com/liviazaharia",
+                                target="_blank",
+                                rel="noopener noreferrer",
+                                style=_qr_card,
+                            ),
+                            rx.el.div(
+                                rx.el.img(
+                                    src="/images/product.jpg",
+                                    alt="Product QR code — order your 3D-printed sculpture with delivery",
+                                    loading="lazy",
+                                    decoding="async",
+                                    style=_qr_image,
+                                ),
+                                rx.el.strong(
+                                    "Order your sculpture",
+                                    style={
+                                        "display": "block",
+                                        "fontWeight": "700",
+                                        "color": "#f8fafc",
+                                        "fontSize": "0.95rem",
+                                        "margin": "0 0 4px 0",
+                                        "textAlign": "center",
+                                    },
+                                ),
+                                rx.el.div(
+                                    "3D-printed sculpture + delivery",
+                                    style={"color": "#cbd5e1", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                                ),
+                                style=_qr_card,
+                            ),
+                            class_name="me-about-support-grid",
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    class_name="me-about-sidebar",
+                ),
+                class_name="me-about-layout",
             ),
             rx.el.p(
                 "The stack is open source and meant to be extended: we invite other artists to plug their "
@@ -406,7 +419,7 @@ def _landing_tab() -> rx.Component:
                 ".",
                 style={**_p_body, "marginTop": "8px", "marginBottom": "0"},
             ),
-            style=_CONTENT_STYLE,
+            style={**_CONTENT_STYLE, "width": "100%", "maxWidth": "100%", "padding": "0 0.75rem"},
         ),
     )
 
@@ -971,7 +984,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             style={"display": "flex", "alignItems": "center"},
         ),
         rx.el.p(
-            gene_item["narrative"],
+            gene_item["short_description"],
             style={
                 "fontSize": "0.83rem",
                 "color": "#374151",
@@ -993,6 +1006,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
         rx.cond(
             is_expanded,
             rx.el.div(
+                _gene_selection_text_block("Full description", gene_item["narrative"]),
                 _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                 _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
                 _gene_selection_text_block("Highest evidence tier", gene_item["evidence_tier"]),
@@ -1067,6 +1081,8 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             "transition": "all 0.15s ease",
             "overflow": "hidden",
         },
+        on_mouse_enter=ComposeState.set_hovered_gene_category(gene_item["category"]),
+        on_mouse_leave=ComposeState.clear_hovered_gene_category,
     )
 
 
@@ -1147,13 +1163,19 @@ def _rpg_stat_bar(label: str, value: rx.Var | int, color: str, total: int = DEFA
     )
 
 
+def _category_anchor_id(category: str) -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in category)
+    compact_slug = "-".join(part for part in slug.split("-") if part)
+    return f"gene-library-{compact_slug}"
+
+
 def _rpg_category_stat_row(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     count = ComposeState.active_gene_counts[category]
     spent = ComposeState.active_category_prices[category]
     total_count = CATEGORY_COUNTS.get(category, 0)
-    return rx.el.div(
+    return rx.el.a(
         rx.el.div(
             rx.el.div(
                 fomantic_icon(icon_name, size=14, color=color),
@@ -1199,7 +1221,10 @@ def _rpg_category_stat_row(category: str) -> rx.Component:
                 "overflow": "hidden",
             },
         ),
-        style={"marginBottom": "8px"},
+        href=f"#{_category_anchor_id(category)}",
+        class_name="me-rpg-category-anchor",
+        title=f"Open {category} genes",
+        style={"display": "block", "marginBottom": "8px", "textDecoration": "none"},
     )
 
 
@@ -1248,6 +1273,127 @@ def _rpg_selected_gene_chip(gene_item: rx.Var) -> rx.Component:
     )
 
 
+def _rpg_schema_hint_panel() -> rx.Component:
+    return rx.el.details(
+        rx.el.summary(
+            fomantic_icon("map outline", size=12, color="#22d3ee"),
+            rx.el.span(" Instructions", style={"marginLeft": "7px"}),
+            style={
+                "cursor": "pointer",
+                "listStyle": "none",
+                "display": "flex",
+                "alignItems": "center",
+                "fontSize": "0.76rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#cffafe",
+            },
+        ),
+        rx.el.div(
+            "Pick a system on the body, open its gene group, then check individual genes.",
+            style={
+                "marginTop": "8px",
+                "color": "#cbd5e1",
+                "fontSize": "0.78rem",
+                "lineHeight": "1.45",
+            },
+        ),
+        rx.el.img(
+            src="/images/HOW_IT_WORKS.jpg",
+            alt="Materialized Enhancements process flow and instructions",
+            loading="lazy",
+            decoding="async",
+            style={
+                "width": "100%",
+                "height": "auto",
+                "display": "block",
+                "marginTop": "10px",
+                "borderRadius": "8px",
+                "border": "1px solid rgba(148, 163, 184, 0.26)",
+                "boxShadow": "0 8px 24px rgba(2, 6, 23, 0.32)",
+            },
+        ),
+        rx.el.a(
+            fomantic_icon("book open", size=13, color="#ffffff"),
+            rx.el.span("Open Gene Library", style={"marginLeft": "8px"}),
+            href="#gene-library",
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "100%",
+                "marginTop": "10px",
+                "padding": "9px 11px",
+                "borderRadius": "10px",
+                "background": "rgba(124, 58, 237, 0.92)",
+                "border": "1px solid rgba(196, 181, 253, 0.5)",
+                "boxShadow": "0 0 18px rgba(124, 58, 237, 0.34)",
+                "color": "#ffffff",
+                "fontSize": "0.78rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.06em",
+                "textTransform": "uppercase",
+                "textDecoration": "none",
+            },
+        ),
+        style={
+            "marginTop": "10px",
+            "padding": "9px 10px",
+            "borderRadius": "10px",
+            "border": "1px solid rgba(34, 211, 238, 0.24)",
+            "background": "rgba(8, 47, 73, 0.28)",
+        },
+        open=True,
+    )
+
+
+def _rpg_intro_video_panel() -> rx.Component:
+    return rx.el.details(
+        rx.el.summary(
+            fomantic_icon("video", size=12, color="#a78bfa"),
+            rx.el.span(" Trailer", style={"marginLeft": "7px"}),
+            style={
+                "cursor": "pointer",
+                "listStyle": "none",
+                "display": "flex",
+                "alignItems": "center",
+                "fontSize": "0.76rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#e9d5ff",
+            },
+        ),
+        rx.el.div(
+            rx.el.iframe(
+                src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
+                title="Materialized Enhancements",
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                allow_full_screen=True,
+                style={
+                    "width": "100%",
+                    "aspectRatio": "16 / 9",
+                    "height": "auto",
+                    "minHeight": "168px",
+                    "border": "none",
+                    "borderRadius": "8px",
+                    "display": "block",
+                },
+            ),
+            style={"marginTop": "8px"},
+        ),
+        style={
+            "marginTop": "10px",
+            "padding": "9px 10px",
+            "borderRadius": "10px",
+            "border": "1px solid rgba(167, 139, 250, 0.24)",
+            "background": "rgba(15, 23, 42, 0.42)",
+        },
+        open=True,
+    )
+
+
 def _rpg_selected_gene_loadout() -> rx.Component:
     return rx.el.div(
         rx.el.div(
@@ -1288,17 +1434,21 @@ def _rpg_selected_gene_loadout() -> rx.Component:
                 },
             ),
             rx.el.div(
-                "Add genes from the Gene library below.",
-                style={
-                    "padding": "12px",
-                    "borderRadius": "10px",
-                    "border": "1px dashed rgba(148, 163, 184, 0.35)",
-                    "color": "#94a3b8",
-                    "fontSize": "0.84rem",
-                    "lineHeight": "1.45",
-                },
+                rx.el.div(
+                    "Add genes from the Gene library below.",
+                    style={
+                        "padding": "12px",
+                        "borderRadius": "10px",
+                        "border": "1px dashed rgba(148, 163, 184, 0.35)",
+                        "color": "#94a3b8",
+                        "fontSize": "0.84rem",
+                        "lineHeight": "1.45",
+                    },
+                ),
+                style={"display": "flex", "flexDirection": "column", "gap": "10px"},
             ),
         ),
+        _rpg_schema_hint_panel(),
         style={**_RPG_PANEL_STYLE, "padding": "14px", "marginBottom": "12px"},
     )
 
@@ -1404,64 +1554,102 @@ def _rpg_silhouette_marker(
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     count = ComposeState.active_gene_counts[category]
-    active = count > 0
-    return rx.el.div(
+    spent = ComposeState.active_category_prices[category]
+    total_count = CATEGORY_COUNTS.get(category, 0)
+    is_selected = ComposeState.selected_categories.contains(category)
+    is_affordable = ComposeState.affordable_categories.contains(category)
+    is_enabled = is_selected | is_affordable
+    is_hovered = ComposeState.hovered_gene_category == category
+    visual_active = is_selected | (count > 0) | is_hovered
+    return rx.el.a(
         rx.el.div(
             fomantic_icon(
                 icon_name,
-                size=14,
-                color=rx.cond(active, "#f8fafc", "#94a3b8"),
+                size=24,
+                color=rx.cond(visual_active, "#f8fafc", "#94a3b8"),
             ),
             rx.el.span(
                 count,
                 style={
                     "position": "absolute",
-                    "top": "-8px",
-                    "right": "-8px",
-                    "minWidth": "18px",
-                    "height": "18px",
-                    "padding": "0 5px",
+                    "top": "-10px",
+                    "right": "-10px",
+                    "minWidth": "23px",
+                    "height": "23px",
+                    "padding": "0 6px",
                     "borderRadius": "999px",
-                    "backgroundColor": rx.cond(active, color, "rgba(15, 23, 42, 0.92)"),
-                    "border": rx.cond(active, f"1px solid {color}", "1px solid rgba(148, 163, 184, 0.35)"),
-                    "boxShadow": rx.cond(active, f"0 0 14px {color}", "none"),
+                    "backgroundColor": rx.cond(visual_active, color, "rgba(15, 23, 42, 0.92)"),
+                    "border": rx.cond(visual_active, f"1px solid {color}", "1px solid rgba(148, 163, 184, 0.35)"),
+                    "boxShadow": rx.cond(visual_active, f"0 0 14px {color}", "none"),
                     "color": "#f8fafc",
-                    "fontSize": "0.62rem",
+                    "fontSize": "0.72rem",
                     "fontWeight": "900",
-                    "lineHeight": "18px",
+                    "lineHeight": "23px",
                     "textAlign": "center",
                 },
             ),
             style={
                 "position": "relative",
-                "width": "38px",
-                "height": "38px",
-                "borderRadius": "13px",
+                "width": "58px",
+                "height": "58px",
+                "borderRadius": "18px",
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "center",
-                "background": rx.cond(active, f"linear-gradient(135deg, {color}, #111827)", "rgba(15, 23, 42, 0.82)"),
-                "border": rx.cond(active, f"1px solid {color}", "1px solid rgba(148, 163, 184, 0.35)"),
-                "boxShadow": rx.cond(active, f"0 0 22px {color}", "0 0 10px rgba(15, 23, 42, 0.45)"),
-                "opacity": rx.cond(active, "1", "0.62"),
+                "background": rx.cond(visual_active, f"linear-gradient(135deg, {color}, #111827)", "rgba(15, 23, 42, 0.82)"),
+                "border": rx.cond(visual_active, f"2px solid {color}", "1px solid rgba(148, 163, 184, 0.35)"),
+                "boxShadow": rx.cond(visual_active, f"0 0 34px {color}", "0 0 10px rgba(15, 23, 42, 0.45)"),
+                "opacity": rx.cond(is_hovered, "1", rx.cond(is_enabled, rx.cond(visual_active, "1", "0.7"), "0.42")),
             },
         ),
-        rx.el.span(
-            label,
+        rx.el.div(
+            rx.el.span(label, style={"display": "block"}),
+            rx.el.span(
+                category,
+                style={
+                    "display": "block",
+                    "fontSize": "0.52rem",
+                    "fontWeight": "800",
+                    "letterSpacing": "0.04em",
+                    "opacity": "0.78",
+                    "marginTop": "2px",
+                    "textTransform": "none",
+                },
+            ),
+            rx.el.span(
+                rx.cond(is_selected, "Selected", rx.cond(is_affordable, "Available", "Budget locked")),
+                " · ",
+                spent,
+                " cr",
+                style={
+                    "display": "block",
+                    "fontSize": "0.5rem",
+                    "fontWeight": "800",
+                    "letterSpacing": "0.04em",
+                    "opacity": "0.72",
+                    "marginTop": "2px",
+                    "textTransform": "uppercase",
+                },
+            ),
             style={
                 "marginTop": "4px",
-                "fontSize": "0.58rem",
+                "fontSize": "0.68rem",
                 "fontWeight": "900",
                 "letterSpacing": "0.05em",
                 "textTransform": "uppercase",
-                "color": rx.cond(active, "#e0f2fe", "#94a3b8"),
+                "color": rx.cond(visual_active, "#e0f2fe", "#94a3b8"),
                 "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
                 "lineHeight": "1.1",
-                "maxWidth": "72px",
+                "maxWidth": "132px",
                 "textAlign": "center",
             },
         ),
-        title=category,
+        on_click=ComposeState.toggle_category(category),
+        href=f"#{_category_anchor_id(category)}",
+        role="button",
+        aria_disabled=rx.cond(is_enabled, "false", "true"),
+        title=f"{category}: {total_count} genes",
+        class_name="me-rpg-body-marker",
         style={
             "position": "absolute",
             "top": top,
@@ -1470,150 +1658,161 @@ def _rpg_silhouette_marker(
             "display": "flex",
             "flexDirection": "column",
             "alignItems": "center",
-            "pointerEvents": "none",
+            "background": "transparent",
+            "border": "none",
+            "padding": "0",
+            "cursor": "pointer",
             "zIndex": "2",
+            "textDecoration": "none",
         },
     )
 
 
-def _rpg_character_body_panel() -> rx.Component:
+def _rpg_character_controls_panel() -> rx.Component:
     return rx.el.div(
+        _rpg_panel_title(
+            "user",
+            "Character profile",
+            "Choose functional enhancement systems, then activate genes below.",
+        ),
+        rx.el.label(
+            "Character name",
+            html_for="compose-personal-tag",
+            style={
+                "fontSize": "0.76rem",
+                "fontWeight": "800",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#94a3b8",
+                "display": "block",
+                "marginBottom": "6px",
+            },
+        ),
+        rx.el.input(
+            id="compose-personal-tag",
+            placeholder="A new human, to be",
+            value=ComposeState.personal_tag,
+            on_change=ComposeState.set_personal_tag,
+            style={
+                "width": "100%",
+                "padding": "11px 13px",
+                "borderRadius": "10px",
+                "border": "1px solid rgba(167, 139, 250, 0.45)",
+                "fontSize": "0.92rem",
+                "outline": "none",
+                "backgroundColor": "rgba(15, 23, 42, 0.88)",
+                "color": "#f8fafc",
+                "boxSizing": "border-box",
+                "marginBottom": "12px",
+            },
+        ),
+        _rpg_stat_bar("Enhancement credits", ComposeState.budget_spent, "#7c3aed"),
         rx.el.div(
-            _rpg_panel_title(
-                "user",
-                "Character profile",
-                "Choose scientifically grounded enhancements from current cross-species genetics knowledge.",
-            ),
-            rx.el.label(
-                "Character name",
-                html_for="compose-personal-tag",
-                style={
-                    "fontSize": "0.76rem",
-                    "fontWeight": "800",
-                    "letterSpacing": "0.08em",
-                    "textTransform": "uppercase",
-                    "color": "#94a3b8",
-                    "display": "block",
-                    "marginBottom": "6px",
-                },
-            ),
-            rx.el.input(
-                id="compose-personal-tag",
-                placeholder="A new human, to be",
-                value=ComposeState.personal_tag,
-                on_change=ComposeState.set_personal_tag,
-                style={
-                    "width": "100%",
-                    "padding": "11px 13px",
-                    "borderRadius": "10px",
-                    "border": "1px solid rgba(167, 139, 250, 0.45)",
-                    "fontSize": "0.92rem",
-                    "outline": "none",
-                    "backgroundColor": "rgba(15, 23, 42, 0.88)",
-                    "color": "#f8fafc",
-                    "boxSizing": "border-box",
-                    "marginBottom": "12px",
-                },
-            ),
-            _rpg_stat_bar("Enhancement credits", ComposeState.budget_spent, "#7c3aed"),
-            rx.el.div(
-                rx.el.div(
-                    _rpg_silhouette_marker("Perception", "14%", "52%", "Sense"),
-                    _rpg_silhouette_marker("Longevity & Genome", "32%", "33%", "Life"),
-                    _rpg_silhouette_marker("Stress Resistance", "38%", "66%", "Defense"),
-                    _rpg_silhouette_marker("Regeneration", "58%", "70%", "Repair"),
-                    _rpg_silhouette_marker("Environmental Adaptation", "66%", "30%", "Adapt"),
-                    _rpg_silhouette_marker("Expression", "84%", "56%", "Express"),
-                    rx.el.img(
-                        src="/puzzle/human_base.svg",
-                        alt="Human body silhouette",
-                        style={
-                            "height": "360px",
-                            "maxWidth": "100%",
-                            "objectFit": "contain",
-                            "filter": "invert(1) sepia(1) saturate(2.4) hue-rotate(175deg) drop-shadow(0 0 18px rgba(56, 189, 248, 0.55))",
-                            "opacity": "0.86",
-                        },
-                    ),
-                    style={
-                        "position": "relative",
-                        "display": "flex",
-                        "justifyContent": "center",
-                        "alignItems": "center",
-                        "padding": "10px",
-                        "borderRadius": "14px",
-                        "background": "radial-gradient(circle at 50% 35%, rgba(56,189,248,0.18), rgba(15,23,42,0.1) 45%, rgba(15,23,42,0.75) 100%)",
-                        "border": "1px solid rgba(56, 189, 248, 0.22)",
-                        "marginTop": "10px",
-                        "marginBottom": "12px",
-                    },
-                ),
-                rx.el.div(
-                    *[_rpg_category_stat_row(cat) for cat in UNIQUE_CATEGORIES],
-                    style={"marginTop": "4px"},
-                ),
-            ),
-            style={**_RPG_PANEL_STYLE, "padding": "14px"},
+            "Functional systems",
+            style={
+                "margin": "12px 0 7px",
+                "fontSize": "0.76rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#94a3b8",
+            },
+        ),
+        rx.el.div(
+            *[_rpg_category_stat_row(cat) for cat in UNIQUE_CATEGORIES],
+            style={"marginTop": "4px"},
         ),
         _rpg_intro_video_panel(),
-        style={"display": "flex", "flexDirection": "column", "gap": "12px"},
+        rx.el.div(
+            "The markers around the body are symbolic gene systems, not literal anatomy. "
+            "Use them as quick filters, then pick individual genes in the library.",
+            style={
+                "marginTop": "12px",
+                "padding": "10px 11px",
+                "borderRadius": "10px",
+                "border": "1px solid rgba(34, 211, 238, 0.24)",
+                "background": "rgba(8, 47, 73, 0.32)",
+                "color": "#cbd5e1",
+                "fontSize": "0.8rem",
+                "lineHeight": "1.45",
+            },
+        ),
+        style={**_RPG_PANEL_STYLE, "padding": "14px"},
     )
 
 
-def _rpg_intro_video_panel() -> rx.Component:
+def _rpg_body_gene_library_cta() -> rx.Component:
+    return rx.el.a(
+        rx.el.span(
+            fomantic_icon("book open", size=24, color="#ffffff"),
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "44px",
+                "height": "44px",
+                "borderRadius": "999px",
+                "background": "rgba(15, 23, 42, 0.44)",
+                "border": "1px solid rgba(255, 255, 255, 0.22)",
+                "boxShadow": "inset 0 0 12px rgba(255, 255, 255, 0.08)",
+            },
+        ),
+        rx.el.span("SELECT GENES", style={"marginLeft": "12px", "color": "#ffffff"}),
+        href="#gene-library",
+        class_name="me-rpg-body-library-cta",
+        title="Open the Gene Library",
+        style={
+            "position": "absolute",
+            "left": "50%",
+            "top": "78%",
+            "transform": "translate(-50%, -50%)",
+            "zIndex": "3",
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "padding": "9px 22px 9px 10px",
+            "borderRadius": "999px",
+            "border": "1px solid rgba(255, 255, 255, 0.24)",
+            "background": "linear-gradient(135deg, rgba(124, 58, 237, 0.98), rgba(79, 70, 229, 0.94))",
+            "boxShadow": "0 0 34px rgba(124, 58, 237, 0.62), 0 12px 30px rgba(2, 6, 23, 0.58)",
+            "color": "#ffffff",
+            "fontSize": "1.12rem",
+            "fontWeight": "900",
+            "letterSpacing": "0.08em",
+            "textTransform": "uppercase",
+            "textDecoration": "none",
+            "whiteSpace": "nowrap",
+            "textShadow": "0 1px 8px rgba(0, 0, 0, 0.72)",
+        },
+    )
+
+
+def _rpg_body_map_panel() -> rx.Component:
     return rx.el.div(
         rx.el.div(
-            fomantic_icon("video", size=15, color="#a78bfa"),
-            rx.el.span(" Intro / How it works", style={"marginLeft": "8px", "fontWeight": "800"}),
-            style={
-                "display": "flex",
-                "alignItems": "center",
-                "color": "#f8fafc",
-                "fontSize": "0.82rem",
-                "letterSpacing": "0.06em",
-                "textTransform": "uppercase",
-            },
+            _rpg_panel_title(
+                "dna",
+                "Enhancement map",
+                "Select functional gene systems arranged around the body.",
+            ),
+            class_name="me-rpg-body-map-title",
         ),
         rx.el.div(
-            rx.el.iframe(
-                src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
-                title="Materialized Enhancements",
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-                allow_full_screen=True,
-                style={
-                    "position": "absolute",
-                    "top": "0",
-                    "left": "0",
-                    "width": "100%",
-                    "height": "100%",
-                    "border": "none",
-                    "borderRadius": "10px",
-                },
+            _rpg_silhouette_marker("Expression", "18%", "20%", "Expression"),
+            _rpg_silhouette_marker("Perception", "18%", "80%", "Senses"),
+            _rpg_silhouette_marker("Longevity & Genome", "42%", "25%", "Genome"),
+            _rpg_silhouette_marker("Stress Resistance", "42%", "75%", "Defense"),
+            _rpg_silhouette_marker("Environmental Adaptation", "68%", "22%", "Adaptation"),
+            _rpg_silhouette_marker("Regeneration", "68%", "78%", "Repair"),
+            rx.el.img(
+                src="/images/body_only.webp",
+                alt="Transparent human body centered in the enhancement map",
+                class_name="me-rpg-body-image",
             ),
-            style={
-                "width": "100%",
-                "paddingBottom": "56.25%",
-                "position": "relative",
-                "backgroundColor": "#000",
-                "borderRadius": "10px",
-                "marginTop": "10px",
-                "overflow": "hidden",
-            },
+            _rpg_body_gene_library_cta(),
+            class_name="me-rpg-body-stage",
         ),
-        rx.el.img(
-            src="/images/HOW_IT_WORKS.jpg",
-            alt="How Materialized Enhancements works, from gene choices to printable art and enhancement report",
-            style={
-                "width": "100%",
-                "height": "auto",
-                "display": "block",
-                "marginTop": "12px",
-                "borderRadius": "10px",
-                "border": "1px solid rgba(167, 139, 250, 0.24)",
-                "boxShadow": "0 18px 42px rgba(15, 23, 42, 0.28)",
-            },
-        ),
-        style={**_RPG_PANEL_STYLE, "padding": "10px 12px"},
+        class_name="me-rpg-body-map-panel",
     )
 
 
@@ -1778,7 +1977,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
         rx.el.div(
             rx.el.div(
                 rx.el.p(
-                    gene_item["narrative"],
+                    gene_item["short_description"],
                     style={
                         "fontSize": "0.98rem",
                         "color": rx.cond(included, "#e0f2fe", "#dbeafe"),
@@ -1790,6 +1989,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                 rx.cond(
                     is_expanded,
                     rx.el.div(
+                        _gene_selection_text_block("Full description", gene_item["narrative"]),
                         _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                         _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
                         style={
@@ -1806,16 +2006,16 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                 _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
                 _gene_tested_on_row(gene_item["best_host_tested"]),
                 rx.cond(
-                    gene_item["key_references"] != "",
-                    _rpg_gene_side_references(gene_item["key_reference_segments"]),
-                    rx.fragment(),
-                ),
-                rx.cond(
                     is_expanded,
                     rx.el.div(
                         _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
                         _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
                         _rpg_gene_side_text("Notes", gene_item["notes"]),
+                        rx.cond(
+                            gene_item["key_references"] != "",
+                            _rpg_gene_side_references(gene_item["key_reference_segments"]),
+                            rx.fragment(),
+                        ),
                         style={"display": "flex", "flexDirection": "column", "gap": "8px", "marginTop": "8px"},
                     ),
                     rx.fragment(),
@@ -1846,6 +2046,8 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             "opacity": rx.cond(cannot_afford, "0.55", "1"),
             "overflow": "hidden",
         },
+        on_mouse_enter=ComposeState.set_hovered_gene_category(gene_category),
+        on_mouse_leave=ComposeState.clear_hovered_gene_category,
     )
 
 
@@ -1945,9 +2147,10 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
                 ComposeState.all_composition_genes,
                 lambda gene_item: _rpg_gene_card_for_category(gene_item, category),
             ),
+            class_name="me-rpg-category-gene-grid",
             style={
-                "display": "flex",
-                "flexDirection": "column",
+                "display": "grid",
+                "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
                 "gap": "8px",
                 "padding": "12px 0 2px 22px",
                 "marginLeft": "14px",
@@ -1955,7 +2158,37 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
             },
         ),
         class_name="me-rpg-category-accordion",
-        style={**_RPG_PANEL_STYLE, "padding": "8px", "marginBottom": "12px"},
+        id=_category_anchor_id(category),
+        style={**_RPG_PANEL_STYLE, "padding": "8px", "marginBottom": "0"},
+    )
+
+
+def _rpg_gene_library_anchor_script() -> rx.Component:
+    return rx.script(
+        """
+        (() => {
+            if (window.__meGeneLibraryAnchorsInstalled) return;
+            window.__meGeneLibraryAnchorsInstalled = true;
+
+            const openCategory = (hash) => {
+                if (!hash || !hash.startsWith("#gene-library-")) return;
+                const target = document.getElementById(hash.slice(1));
+                if (!target) return;
+                if (target.tagName.toLowerCase() === "details") {
+                    target.open = true;
+                }
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            };
+
+            document.addEventListener("click", (event) => {
+                const link = event.target.closest('a[href^="#gene-library-"]');
+                if (!link) return;
+                window.setTimeout(() => openCategory(link.getAttribute("href")), 0);
+            });
+            window.addEventListener("hashchange", () => openCategory(window.location.hash));
+            window.setTimeout(() => openCategory(window.location.hash), 0);
+        })();
+        """
     )
 
 
@@ -2018,16 +2251,159 @@ def _rpg_gene_library_instructions() -> rx.Component:
 
 def _rpg_gene_library_panel() -> rx.Component:
     return rx.el.div(
-        _rpg_materialization_panel(),
-        _rpg_selected_gene_loadout(),
+        _rpg_gene_library_anchor_script(),
         _rpg_panel_title(
             "book open",
             "Gene library",
-            "Pick genes from the accordions below to activate them.",
+            "Pick individual genes after choosing functional systems on the body map.",
         ),
         _rpg_gene_library_instructions(),
-        *[_rpg_category_gene_accordion(cat) for cat in UNIQUE_CATEGORIES],
-        style={"display": "flex", "flexDirection": "column"},
+        rx.el.div(
+            *[_rpg_category_gene_accordion(cat) for cat in UNIQUE_CATEGORIES],
+            class_name="me-rpg-library-grid",
+        ),
+        class_name="me-rpg-library-panel",
+        style={**_RPG_PANEL_STYLE, "padding": "14px"},
+    )
+
+
+def _materialization_info_item(icon_name: str, title: str, body: str) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            fomantic_icon(icon_name, size=16, color="#a78bfa"),
+            rx.el.strong(title, style={"marginLeft": "8px", "fontSize": "0.98rem"}),
+            style={"display": "flex", "alignItems": "center", "marginBottom": "6px"},
+        ),
+        rx.el.p(
+            body,
+            style={"color": "#cbd5e1", "fontSize": "0.9rem", "lineHeight": "1.55", "margin": "0"},
+        ),
+        style={
+            "padding": "12px",
+            "borderRadius": "10px",
+            "backgroundColor": "rgba(15, 23, 42, 0.56)",
+            "border": "1px solid rgba(148, 163, 184, 0.22)",
+        },
+    )
+
+
+def _materialization_support_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.h3(
+            fomantic_icon("print", size=18, color="#a78bfa"),
+            rx.el.span(" Printing, Support, and Partners", style={"marginLeft": "8px"}),
+            style={"color": "#f8fafc", "display": "flex", "alignItems": "center", "margin": "0 0 12px"},
+        ),
+        rx.el.div(
+            _materialization_info_item(
+                "cube",
+                "How to 3D print your sculpture",
+                "Download the STL, open it in a slicer such as PrusaSlicer, Bambu Studio, Cura, or Lychee, "
+                "check the scale in millimeters, choose your material, add supports if your printer needs them, "
+                "then slice and print. The model is designed as a printable art object, but every printer and "
+                "material has its own tolerances.",
+            ),
+            _materialization_info_item(
+                "heart",
+                "Support the project",
+                "If you like the sculpture and report you generated, donations help us keep improving the gene "
+                "library, fabrication pipeline, and public installation.",
+            ),
+            _materialization_info_item(
+                "shipping fast",
+                "Need us to print it?",
+                "We can 3D print your generated sculpture and ship it inside the EU. Other countries are not "
+                "supported yet, but we are working on expanding fulfilment.",
+            ),
+            _materialization_info_item(
+                "industry",
+                "Printing-company partnerships",
+                "If you run a 3D printing company, partner with us so visitors can choose you as a local print "
+                "option in their country.",
+            ),
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(auto-fit, minmax(240px, 1fr))",
+                "gap": "12px",
+                "marginBottom": "14px",
+            },
+        ),
+        rx.el.div(
+            rx.el.a(
+                rx.el.img(
+                    src="/images/kofi.jpg",
+                    alt="Ko-fi QR code - support Materialized Enhancements",
+                    loading="lazy",
+                    decoding="async",
+                    style={
+                        "width": "170px",
+                        "height": "170px",
+                        "display": "block",
+                        "borderRadius": "8px",
+                        "margin": "0 auto 8px auto",
+                        "boxShadow": "0 2px 10px rgba(0,0,0,0.18)",
+                    },
+                ),
+                rx.el.strong("Donate on Ko-fi", style={"display": "block", "textAlign": "center"}),
+                rx.el.span(
+                    "https://ko-fi.com/liviazaharia",
+                    style={
+                        "display": "block",
+                        "color": "#c4b5fd",
+                        "fontSize": "0.78rem",
+                        "textAlign": "center",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                        "wordBreak": "break-all",
+                        "marginTop": "4px",
+                    },
+                ),
+                href="https://ko-fi.com/liviazaharia",
+                target="_blank",
+                rel="noopener noreferrer",
+                style={
+                    "flex": "1 1 220px",
+                    "padding": "14px",
+                    "borderRadius": "12px",
+                    "backgroundColor": "rgba(124, 58, 237, 0.18)",
+                    "border": "1px solid rgba(167, 139, 250, 0.34)",
+                    "textDecoration": "none",
+                },
+            ),
+            rx.el.div(
+                rx.el.img(
+                    src="/images/product.jpg",
+                    alt="Product QR code - request a 3D-printed sculpture with EU delivery",
+                    loading="lazy",
+                    decoding="async",
+                    style={
+                        "width": "170px",
+                        "height": "170px",
+                        "display": "block",
+                        "borderRadius": "8px",
+                        "margin": "0 auto 8px auto",
+                        "boxShadow": "0 2px 10px rgba(0,0,0,0.18)",
+                    },
+                ),
+                rx.el.strong("Request print + delivery", style={"display": "block", "textAlign": "center"}),
+                rx.el.span(
+                    "Scan to request a finished sculpture shipped inside the EU.",
+                    style={"display": "block", "color": "#cbd5e1", "fontSize": "0.82rem", "textAlign": "center", "marginTop": "4px"},
+                ),
+                style={
+                    "flex": "1 1 220px",
+                    "padding": "14px",
+                    "borderRadius": "12px",
+                    "backgroundColor": "rgba(20, 83, 45, 0.22)",
+                    "border": "1px solid rgba(34, 197, 94, 0.30)",
+                },
+            ),
+            style={"display": "flex", "flexWrap": "wrap", "gap": "12px"},
+        ),
+        style={
+            **_RPG_PANEL_STYLE,
+            "padding": "14px",
+            "marginTop": "14px",
+        },
     )
 
 
@@ -2055,6 +2431,7 @@ def _rpg_materialization_output() -> rx.Component:
                 "top": "16px",
             },
         ),
+        _materialization_support_panel(),
         class_name="me-rpg-output-panel",
     )
 
@@ -2106,11 +2483,136 @@ def _rpg_flow_css() -> rx.Component:
             gap: 18px;
             align-items: start;
         }
+        .me-rpg-hero-grid {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .me-rpg-hero-grid > .me-rpg-left-panel {
+            flex: 0.72 1 260px;
+            min-width: min(100%, 260px);
+        }
+        .me-rpg-hero-grid > .me-rpg-center-panel {
+            flex: 1.45 1 420px;
+            min-width: min(100%, 320px);
+        }
+        .me-rpg-hero-grid > .me-rpg-right-panel {
+            flex: 0.8 1 280px;
+            min-width: min(100%, 280px);
+        }
         .me-rpg-profile-grid {
             grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.35fr);
         }
         .me-rpg-active-grid {
             grid-template-columns: minmax(320px, 0.68fr) minmax(0, 1.55fr);
+        }
+        .me-rpg-center-panel {
+            min-width: 0;
+        }
+        .me-rpg-body-map-panel {
+            position: relative;
+            min-width: 0;
+            padding: 4px 0 0;
+            color: #e5e7eb;
+        }
+        .me-rpg-body-map-title {
+            max-width: 520px;
+            margin: 0 auto 2px;
+            padding: 10px 14px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.26));
+            box-shadow: 0 14px 36px rgba(2, 6, 23, 0.22);
+            text-align: left;
+        }
+        .me-rpg-body-map-title > div {
+            margin-bottom: 0 !important;
+        }
+        .me-rpg-body-stage {
+            position: relative;
+            width: 100%;
+            min-height: clamp(620px, 76vh, 860px);
+            padding: 10px 26px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+            isolation: isolate;
+        }
+        .me-rpg-body-stage::before {
+            content: "";
+            position: absolute;
+            inset: 3% 10% 2%;
+            border-radius: 999px;
+            background:
+                radial-gradient(circle at 50% 38%, rgba(56, 189, 248, 0.32), rgba(56, 189, 248, 0.07) 33%, rgba(2, 6, 23, 0) 64%),
+                radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.28), rgba(2, 6, 23, 0) 68%);
+            filter: blur(18px);
+            opacity: 0.94;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .me-rpg-body-stage::after {
+            content: "";
+            position: absolute;
+            inset: 18% 31% 8%;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(248, 113, 113, 0.16), rgba(56, 189, 248, 0.13));
+            filter: blur(30px);
+            opacity: 0.75;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .me-rpg-body-image {
+            position: relative;
+            z-index: 1;
+            height: clamp(560px, 72vh, 820px);
+            max-width: min(100%, 760px);
+            object-fit: contain;
+            filter:
+                blur(0.28px)
+                drop-shadow(0 0 20px rgba(56, 189, 248, 0.48))
+                drop-shadow(0 0 52px rgba(124, 58, 237, 0.34))
+                drop-shadow(0 22px 42px rgba(2, 6, 23, 0.56));
+            transform: translateZ(0);
+            opacity: 0.96;
+        }
+        .me-rpg-body-marker {
+            transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+        }
+        .me-rpg-body-marker:hover {
+            transform: translate(-50%, -50%) scale(1.06) !important;
+            filter: brightness(1.12);
+        }
+        .me-rpg-category-anchor:hover {
+            filter: brightness(1.12);
+        }
+        .me-rpg-body-library-cta:hover {
+            transform: translate(-50%, -54%);
+            filter: brightness(1.12);
+            box-shadow: 0 0 36px rgba(124, 58, 237, 0.62), 0 14px 30px rgba(2, 6, 23, 0.5) !important;
+        }
+        @media (min-width: 1500px) and (min-height: 900px) {
+            .me-rpg-body-stage {
+                min-height: clamp(720px, 82vh, 1040px);
+            }
+            .me-rpg-body-image {
+                height: clamp(660px, 78vh, 980px);
+                max-width: min(100%, 900px);
+            }
+        }
+        @media (min-width: 1800px) and (min-height: 1050px) {
+            .me-rpg-body-stage {
+                min-height: clamp(820px, 84vh, 1160px);
+            }
+            .me-rpg-body-image {
+                height: clamp(760px, 80vh, 1100px);
+                max-width: min(100%, 1020px);
+            }
+        }
+        .me-rpg-library-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
         }
         .me-rpg-left-panel,
         .me-rpg-right-panel {
@@ -2118,18 +2620,119 @@ def _rpg_flow_css() -> rx.Component:
             top: 16px;
             align-self: start;
         }
-        @media (max-width: 980px) {
+        @media (max-width: 1320px) {
+            .me-rpg-hero-grid {
+                align-items: stretch;
+            }
+            .me-rpg-right-panel {
+                position: static !important;
+            }
+        }
+        @media (max-width: 1100px) {
             .me-rpg-profile-grid,
             .me-rpg-active-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+            .me-rpg-hero-grid > .me-rpg-left-panel,
+            .me-rpg-hero-grid > .me-rpg-center-panel,
+            .me-rpg-hero-grid > .me-rpg-right-panel {
+                flex-basis: 100%;
+                min-width: 0;
             }
             .me-rpg-gene-body-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .me-rpg-category-gene-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
+                padding-left: 0 !important;
+                margin-left: 0 !important;
+                border-left: none !important;
+            }
+            .me-rpg-body-map-panel {
+                padding-top: 0;
+            }
+            .me-rpg-body-map-title {
+                max-width: none;
+            }
+            .me-rpg-body-stage {
+                min-height: clamp(600px, 92vw, 760px) !important;
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(520px, 88vw, 670px) !important;
+                max-width: min(100%, 560px) !important;
+            }
+            .me-rpg-body-marker {
+                transform: translate(-50%, -50%) scale(0.78) !important;
+            }
+            .me-rpg-body-marker:hover {
+                transform: translate(-50%, -50%) scale(0.86) !important;
             }
             .me-rpg-left-panel,
+            .me-rpg-center-panel,
             .me-rpg-right-panel,
             .me-rpg-output-panel > div {
                 position: static !important;
+            }
+        }
+        @media (max-width: 560px) {
+            .me-rpg-shell {
+                padding: 10px !important;
+            }
+            .me-rpg-dashboard {
+                gap: 12px;
+            }
+            .me-rpg-body-map-title {
+                padding: 9px 11px;
+            }
+            .me-rpg-body-stage {
+                min-height: clamp(430px, 118vw, 560px) !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            .me-rpg-body-stage::before {
+                inset: 8% 0 3%;
+            }
+            .me-rpg-body-stage::after {
+                inset: 20% 20% 9%;
+            }
+            .me-rpg-body-image {
+                height: clamp(360px, 104vw, 470px) !important;
+                max-width: min(100%, 380px) !important;
+                filter:
+                    blur(0.22px)
+                    drop-shadow(0 0 16px rgba(56, 189, 248, 0.42))
+                    drop-shadow(0 0 38px rgba(124, 58, 237, 0.32))
+                    drop-shadow(0 18px 34px rgba(2, 6, 23, 0.54));
+            }
+            .me-rpg-body-marker {
+                transform: translate(-50%, -50%) scale(0.72) !important;
+            }
+            .me-rpg-body-marker:hover {
+                transform: translate(-50%, -50%) scale(0.78) !important;
+            }
+            .me-rpg-body-marker > div:first-child {
+                width: 34px !important;
+                height: 34px !important;
+                border-radius: 11px !important;
+            }
+            .me-rpg-body-marker > div:last-child {
+                max-width: 92px !important;
+                font-size: 0.52rem !important;
+            }
+            .me-rpg-body-marker > div:last-child span:nth-child(2),
+            .me-rpg-body-marker > div:last-child span:nth-child(3) {
+                display: none !important;
+            }
+            .me-rpg-body-library-cta {
+                top: 77% !important;
+                padding: 7px 14px 7px 7px !important;
+                font-size: 0.84rem !important;
+            }
+            .me-rpg-body-library-cta > span:first-child {
+                width: 34px !important;
+                height: 34px !important;
             }
         }
         """
@@ -2156,15 +2759,18 @@ def _rpg_character_profile_layout() -> rx.Component:
     return _rpg_shell(
         rx.el.div(
             rx.el.div(
-                _rpg_character_body_panel(),
+                _rpg_character_controls_panel(),
                 class_name="me-rpg-left-panel",
             ),
             rx.el.div(
+                _rpg_body_map_panel(),
+                class_name="me-rpg-center-panel",
+            ),
+            rx.el.div(
                 _rpg_selected_gene_loadout(),
-                _rpg_intro_video_panel(),
                 class_name="me-rpg-right-panel",
             ),
-            class_name="me-rpg-dashboard me-rpg-profile-grid",
+            class_name="me-rpg-dashboard me-rpg-hero-grid",
         )
     )
 
@@ -2173,20 +2779,64 @@ def _rpg_active_genes_layout() -> rx.Component:
     return _rpg_shell(
         rx.el.div(
             rx.el.div(
-                _rpg_character_body_panel(),
-                class_name="me-rpg-left-panel",
+                rx.el.div(
+                    _rpg_character_controls_panel(),
+                    class_name="me-rpg-left-panel",
+                ),
+                rx.el.div(
+                    _rpg_body_map_panel(),
+                    class_name="me-rpg-center-panel",
+                ),
+                rx.el.div(
+                    _rpg_materialization_panel(),
+                    _rpg_selected_gene_loadout(),
+                    class_name="me-rpg-right-panel",
+                ),
+                class_name="me-rpg-dashboard me-rpg-hero-grid",
             ),
             rx.el.div(
                 _rpg_gene_library_panel(),
-                class_name="me-rpg-right-panel",
+                id="gene-library",
+                class_name="me-rpg-library-section",
             ),
-            class_name="me-rpg-dashboard me-rpg-active-grid",
+            _gene_library_float_button(),
+            style={"display": "flex", "flexDirection": "column", "gap": "16px"},
         )
     )
 
 
 def _rpg_materialization_layout() -> rx.Component:
     return _rpg_shell(_rpg_materialization_output())
+
+
+def _gene_library_float_button() -> rx.Component:
+    return rx.el.a(
+        fomantic_icon("book open", size=13, color="#f8fafc"),
+        rx.el.span(" Gene Library", style={"marginLeft": "7px"}),
+        href="#gene-library",
+        class_name="me-gene-library-float",
+        style={
+            "position": "fixed",
+            "right": "22px",
+            "bottom": "22px",
+            "zIndex": "50",
+            "display": "inline-flex",
+            "alignItems": "center",
+            "padding": "10px 14px",
+            "borderRadius": "999px",
+            "border": "1px solid rgba(196, 181, 253, 0.46)",
+            "background": "rgba(124, 58, 237, 0.62)",
+            "backdropFilter": "blur(8px)",
+            "boxShadow": "0 10px 28px rgba(15, 23, 42, 0.38)",
+            "color": "#f8fafc",
+            "fontSize": "0.82rem",
+            "fontWeight": "900",
+            "letterSpacing": "0.05em",
+            "textTransform": "uppercase",
+            "textDecoration": "none",
+            "opacity": "0.78",
+        },
+    )
 
 
 def _rpg_about_layout() -> rx.Component:
@@ -2210,11 +2860,42 @@ def _rpg_about_layout() -> rx.Component:
                 #me-about-page .ui.primary.button {
                     color: #ffffff !important;
                 }
+                #me-about-page .me-about-layout {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 18px;
+                    align-items: start;
+                    margin-bottom: 24px;
+                }
+                #me-about-page .me-about-main,
+                #me-about-page .me-about-sidebar {
+                    min-width: 0;
+                }
+                #me-about-page .me-about-sidebar {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                #me-about-page .me-about-support-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 12px;
+                }
+                @media (min-width: 1100px) {
+                    #me-about-page .me-about-layout {
+                        grid-template-columns: minmax(0, 1fr) minmax(440px, 600px);
+                        gap: 24px;
+                    }
+                    #me-about-page .me-about-sidebar {
+                        position: sticky;
+                        top: 18px;
+                    }
+                }
                 """
             ),
             _landing_tab(),
             id="me-about-page",
-            style={**_RPG_PANEL_STYLE, "padding": "22px 12px"},
+            style={**_RPG_PANEL_STYLE, "padding": "24px 18px"},
         )
     )
 
@@ -2778,7 +3459,7 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
             },
         ),
         rx.el.p(
-            gene_item["description"],
+            gene_item["short_description"],
             class_name="me-report-desc",
             style={"fontSize": "0.86rem", "color": "#374151", "margin": "2px 0 0 0", "lineHeight": "1.5"},
         ),
@@ -3912,6 +4593,8 @@ def _gene_card(entry: dict) -> rx.Component:
     cat_color = CATEGORY_COLORS.get(str(entry.get("category", "")), "#7c3aed")
     paper = str(entry.get("paper_url", "") or "")
     detail = str(entry.get("category_detail", "") or entry.get("category", ""))
+    confidence = str(entry.get("confidence", "") or "").strip()
+    tested_on = str(entry.get("best_host_tested", "") or "").strip()
     return rx.el.div(
         rx.el.div(
             rx.el.span(
@@ -3936,10 +4619,49 @@ def _gene_card(entry: dict) -> rx.Component:
             style={"margin": "6px 0 4px 0", "display": "flex", "gap": "4px", "flexWrap": "wrap"},
         ),
         rx.el.p(
-            entry["narrative"],  # type: ignore[index]
+            entry["short_description"],  # type: ignore[index]
             style={"fontSize": "0.88rem", "color": "#4b5563", "margin": "4px 0 6px 0", "lineHeight": "1.5"},
         ),
-        (
+        rx.el.div(
+            *(
+                [
+                    rx.el.span(
+                        f"Confidence: {confidence}",
+                        class_name="ui mini label",
+                        style={"backgroundColor": "#ecfdf5 !important", "color": "#047857 !important"},
+                    )
+                ]
+                if confidence
+                else []
+            ),
+            *(
+                [
+                    rx.el.span(
+                        f"Tested on: {tested_on}",
+                        class_name="ui mini label",
+                        style={"backgroundColor": "#eff6ff !important", "color": "#1d4ed8 !important"},
+                    )
+                ]
+                if tested_on
+                else []
+            ),
+            style={"display": "flex", "gap": "4px", "flexWrap": "wrap", "margin": "0 0 6px 0"},
+        ),
+        rx.el.details(
+            rx.el.summary(
+                "Full gene details",
+                style={
+                    "cursor": "pointer",
+                    "fontSize": "0.82rem",
+                    "fontWeight": "700",
+                    "color": "#7c3aed",
+                    "marginTop": "4px",
+                },
+            ),
+            rx.el.p(
+                entry["narrative"],  # type: ignore[index]
+                style={"fontSize": "0.86rem", "color": "#4b5563", "margin": "8px 0 6px 0", "lineHeight": "1.55"},
+            ),
             rx.el.p(
                 entry["mechanism"],  # type: ignore[index]
                 style={
@@ -3949,22 +4671,51 @@ def _gene_card(entry: dict) -> rx.Component:
                     "lineHeight": "1.5",
                     "fontStyle": "italic",
                 },
-            )
-            if str(entry.get("mechanism", "") or "").strip()
-            else rx.fragment()
-        ),
-        rx.el.div(
-            rx.el.a(
-                fomantic_icon("external-link", size=11),
-                rx.el.span(" First linked reference", style={"marginLeft": "4px"}),
-                href=paper,
-                target="_blank",
-                style={"fontSize": "0.78rem"},
+            ),
+            rx.el.p(
+                entry["achievements"],  # type: ignore[index]
+                style={"fontSize": "0.82rem", "color": "#6b7280", "margin": "0 0 6px 0", "lineHeight": "1.5"},
+            ),
+            (
+                rx.el.p(
+                    f"Evidence tier: {entry['evidence_tier']}",
+                    style={"fontSize": "0.8rem", "color": "#6b7280", "margin": "0 0 4px 0", "lineHeight": "1.45"},
+                )
+                if str(entry.get("evidence_tier", "") or "").strip()
+                else rx.fragment()
+            ),
+            (
+                rx.el.p(
+                    f"Translational gaps: {entry['translational_gaps']}",
+                    style={"fontSize": "0.8rem", "color": "#6b7280", "margin": "0 0 4px 0", "lineHeight": "1.45"},
+                )
+                if str(entry.get("translational_gaps", "") or "").strip()
+                else rx.fragment()
+            ),
+            (
+                rx.el.p(
+                    f"Notes: {entry['notes']}",
+                    style={"fontSize": "0.8rem", "color": "#6b7280", "margin": "0 0 4px 0", "lineHeight": "1.45"},
+                )
+                if str(entry.get("notes", "") or "").strip()
+                else rx.fragment()
+            ),
+            (
+                rx.el.div(
+                    rx.el.a(
+                        fomantic_icon("external-link", size=11),
+                        rx.el.span(" First linked reference", style={"marginLeft": "4px"}),
+                        href=paper,
+                        target="_blank",
+                        style={"fontSize": "0.78rem"},
+                    ),
+                    style={"marginTop": "4px"},
+                )
+                if paper
+                else rx.fragment()
             ),
             style={"marginTop": "4px"},
-        )
-        if paper
-        else rx.fragment(),
+        ),
         style={
             "padding": "14px 16px",
             "borderRadius": "6px",
@@ -4103,8 +4854,8 @@ _RPG_ROUTES: set[str] = {"/", "/materialization", "/about"}
 
 def _tab_link(route: str, icon: str, label: str, active_route: str) -> rx.Component:
     return rx.el.a(
-        fomantic_icon(icon, size=14),
-        rx.el.span(f" {label}", style={"marginLeft": "6px"}),
+        fomantic_icon(icon, size=18),
+        rx.el.span(f" {label}", style={"marginLeft": "8px"}),
         class_name="active item" if route == active_route else "item",
         href=route,
     )
@@ -4112,8 +4863,8 @@ def _tab_link(route: str, icon: str, label: str, active_route: str) -> rx.Compon
 
 def _disabled_materialization_tab() -> rx.Component:
     return rx.el.span(
-        fomantic_icon("atom", size=14),
-        rx.el.span(" Materialization", style={"marginLeft": "6px"}),
+        fomantic_icon("atom", size=18),
+        rx.el.span(" Materialization", style={"marginLeft": "8px"}),
         class_name="disabled item",
         title="Materialize selected genes first.",
         style={
@@ -4153,6 +4904,11 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         #me-top-tab-menu.ui.top.attached.tabular.menu .item {
             color: #cbd5e1 !important;
             border-color: transparent !important;
+            font-size: 1.25rem !important;
+            padding: 1.05em 1.35em !important;
+            min-height: 3.6rem !important;
+            display: inline-flex !important;
+            align-items: center !important;
         }
         #me-top-tab-menu.ui.top.attached.tabular.menu .item:hover {
             background: rgba(124, 58, 237, 0.16) !important;

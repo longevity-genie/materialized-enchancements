@@ -18,6 +18,7 @@ class GeneEntry(TypedDict):
     category: str
     category_detail: str
     trait: str
+    short_description: str
     narrative: str
     mechanism: str
     achievements: str
@@ -45,6 +46,7 @@ _LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Gene": "gene",
     "Source Organism": "source_organism",
     "Category": "category_detail",
+    "Short Description": "short_description",
     "Narrative": "narrative",
     "Mechanism": "mechanism",
     "Achievements (effect sizes)": "achievements",
@@ -67,6 +69,7 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
             pl.col("gene").str.strip_chars(),
             pl.col("source_organism").str.strip_chars(),
             pl.col("category_detail").str.strip_chars(),
+            pl.col("short_description").str.strip_chars(),
             pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
             pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("trait"),
             pl.col("narrative").alias("description"),
@@ -93,6 +96,7 @@ def load_gene_library_lf(path: Path = DATA_PATH) -> pl.LazyFrame:
             pl.col("gene").str.strip_chars(),
             pl.col("source_organism").str.strip_chars(),
             pl.col("category_detail").str.strip_chars(),
+            pl.col("short_description").str.strip_chars(),
             pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
             pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("trait"),
             pl.col("narrative").alias("description"),
@@ -109,6 +113,7 @@ def load_gene_library_lf(path: Path = DATA_PATH) -> pl.LazyFrame:
             "category",
             "category_detail",
             "trait",
+            "short_description",
             "narrative",
             "mechanism",
             "achievements",

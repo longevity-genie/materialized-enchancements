@@ -73,6 +73,7 @@ class SculptureSelectedGene(TypedDict):
     category: str
     category_detail: str
     source_organism: str
+    short_description: str
     narrative: str
     mechanism: str
     achievements: str
@@ -476,6 +477,7 @@ class ComposeState(rx.State):
     selected_categories: list[str] = []
     included_genes: list[str] = []
     expanded_genes: list[str] = []
+    hovered_gene_category: str = ""
 
     sculpture_params: Dict[str, Any] = {}
     generating: bool = False
@@ -585,6 +587,12 @@ class ComposeState(rx.State):
             self.expanded_genes = [g for g in self.expanded_genes if g != gene]
         else:
             self.expanded_genes = [*self.expanded_genes, gene]
+
+    def set_hovered_gene_category(self, category: str) -> None:
+        self.hovered_gene_category = category
+
+    def clear_hovered_gene_category(self) -> None:
+        self.hovered_gene_category = ""
 
     def _prune_included_genes(self) -> None:
         """Drop included genes that are no longer in any selected category."""
@@ -1054,6 +1062,7 @@ class ComposeState(rx.State):
                 "category": g["category"],
                 "category_detail": g["category_detail"],
                 "source_organism": g["source_organism"],
+                "short_description": g["short_description"],
                 "narrative": g["narrative"],
                 "mechanism": g["mechanism"],
                 "achievements": g["achievements"],
