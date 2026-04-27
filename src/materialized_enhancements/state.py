@@ -240,10 +240,10 @@ CATEGORY_ICONS: dict[str, str] = {
 
 
 _TAB_ROUTE_MAP: dict[str, str] = {
-    "landing": "/",
-    "sculpture": "/materialize",
-    "library": "/",
-    "animals": "/",
+    "landing": "/about",
+    "sculpture": "/",
+    "library": "/about",
+    "animals": "/about",
 }
 
 
@@ -569,6 +569,13 @@ class ComposeState(rx.State):
         self.included_genes = [*self.included_genes, gene]
         self._recompute_params()
 
+    def deselect_all_genes(self) -> None:
+        """Clear the active RPG gene loadout."""
+        self.selected_categories = []
+        self.included_genes = []
+        self.expanded_genes = []
+        self._recompute_params()
+
     def toggle_gene_details(self, gene: str) -> None:
         if gene in self.expanded_genes:
             self.expanded_genes = [g for g in self.expanded_genes if g != gene]
@@ -629,7 +636,7 @@ class ComposeState(rx.State):
         self.sculpture_params = params
 
     @rx.event(background=True)
-    async def materialize(self) -> None:
+    async def materialize(self) -> AsyncIterator[rx.event.EventSpec]:
         """Run the full sculpture pipeline in the background."""
         async with self:
             if self.generating:
@@ -650,6 +657,8 @@ class ComposeState(rx.State):
             self.stl_download_path = ""
             self.pipeline_stats = {}
             self.stl_base64 = ""
+
+        yield rx.redirect("/materialization")
 
         try:
             loop = asyncio.get_event_loop()
@@ -1172,7 +1181,7 @@ class ComposeState(rx.State):
             if cat in UNIQUE_CATEGORIES:
                 idx = UNIQUE_CATEGORIES.index(cat) + 1
                 bitmask |= 1 << (idx - 1)
-        return f"{public_app_url()}/materialize?report=1&name={quote(name_b64)}&cats={bitmask}"
+        return f"{public_app_url()}/materialization?report=1&name={quote(name_b64)}&cats={bitmask}"
 
     def apply_shared_report(self):  # type: ignore[return]
         """Decode ?report=1&name=<b64>&cats=<bitmask> and regenerate the same sculpture.
@@ -1288,6 +1297,10 @@ class ComposeState(rx.State):
     @rx.var
     def has_stl(self) -> bool:
         return len(self.stl_download_path) > 0
+
+    @rx.var
+    def materialization_tab_enabled(self) -> bool:
+        return self.generating or len(self.stl_download_path) > 0
 
     @rx.var
     def has_params(self) -> bool:
