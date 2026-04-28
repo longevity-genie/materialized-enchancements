@@ -50,8 +50,8 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/about",
         title="About Materialized Enhancements",
         description=(
-            "Project background for the CODAME Art+Tech hackathon artwork, explaining how biological "
-            "enhancement choices become generative, wearable, 3D-printable forms."
+            "Project background for the Materialized Enhancements artwork, started at CODAME Art+Tech "
+            "and now developed by the joint GlucoseDAO and Longevity Genie team."
         ),
         changefreq="monthly",
         priority=0.8,

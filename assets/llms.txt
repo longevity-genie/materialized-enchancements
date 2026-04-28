@@ -12,7 +12,7 @@
 
 - [Character Profile](https://materialized-enhancements.longevity-genie.info/): Interactive genetic enhancement loadout builder: visitors choose real-world genes, source organisms, and enhancement categories that shape a future-human profile.
 - [Materialization](https://materialized-enhancements.longevity-genie.info/materialization): 3D materialization page for the selected gene profile, including the generated sculpture, shareable report, STL export, and ARTEX publishing flow.
-- [About Materialized Enhancements](https://materialized-enhancements.longevity-genie.info/about): Project background for the CODAME Art+Tech hackathon artwork, explaining how biological enhancement choices become generative, wearable, 3D-printable forms.
+- [About Materialized Enhancements](https://materialized-enhancements.longevity-genie.info/about): Project background for the Materialized Enhancements artwork, started at CODAME Art+Tech and now developed by the joint GlucoseDAO and Longevity Genie team.
 
 ## Crawl Guidance
 

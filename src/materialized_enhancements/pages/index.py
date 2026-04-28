@@ -28,6 +28,7 @@ _CONTENT_STYLE: dict = {
 
 _ROUTE_METADATA = {route.path: route for route in PUBLIC_ROUTES}
 _SITE_TITLE = "Materialized Enhancements"
+_REPORT_PORTRAIT_UPLOAD_ID = "report-portrait-upload"
 _SOCIAL_META: list[dict[str, str]] = [
     {"name": "robots", "content": "index, follow"},
     {"property": "og:type", "content": "website"},
@@ -264,6 +265,31 @@ def _landing_tab() -> rx.Component:
             style=_team_member_card,
         )
 
+    def _contact_link(label: str, href: str) -> rx.Component:
+        external_attrs: dict[str, str] = (
+            {"target": "_blank", "rel": "noopener noreferrer"}
+            if href.startswith("http")
+            else {}
+        )
+        return rx.el.a(
+            label,
+            href=href,
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "padding": "9px 12px",
+                "borderRadius": "999px",
+                "border": "1px solid rgba(196, 181, 253, 0.38)",
+                "background": "rgba(124, 58, 237, 0.14)",
+                "color": "#ddd6fe",
+                "fontSize": "0.86rem",
+                "fontWeight": "800",
+                "textDecoration": "none",
+            },
+            **external_attrs,
+        )
+
     return rx.el.div(
         rx.el.div(
             rx.el.div(
@@ -297,7 +323,8 @@ def _landing_tab() -> rx.Component:
                         style=_p_body,
                     ),
                     rx.el.p(
-                        "CODAME ART+TECH 『 The New Human 』 · Milano · 2026",
+                        "Started at CODAME ART+TECH 『 The New Human 』 in Milano, now developed by the joint "
+                        "GlucoseDAO and Longevity Genie team.",
                         style={"color": "#7c3aed", "fontSize": "0.95rem", "fontWeight": "600", "marginBottom": "18px"},
                     ),
                     rx.el.div(
@@ -333,6 +360,65 @@ def _landing_tab() -> rx.Component:
                         "genes, see how they are grouped, then take home a souvenir — a unique 3D-printable form "
                         "and a printable enhancement report generated from your choices.",
                         style={**_p_muted, "marginBottom": "16px"},
+                    ),
+                    rx.el.p(
+                        "We also do a lot of open-source work across personalized genomics, aging research, "
+                        "bio AI agents, glucose prediction, and parametric art. For parametric art and glucose prediction, see ",
+                        rx.el.a(
+                            "Livia Zaharia's work",
+                            href="http://livia.glucosedao.org/",
+                            target="_blank",
+                            rel="noopener noreferrer",
+                            style=_a,
+                        ),
+                        ".",
+                        style={**_p_body, "marginBottom": "16px"},
+                    ),
+                    rx.el.div(
+                        rx.el.h2(
+                            "Want to collaborate, contribute, or report a mistake?",
+                            style={
+                                "color": "#1a1a2e",
+                                "fontSize": "1.35rem",
+                                "fontWeight": "900",
+                                "margin": "0 0 8px 0",
+                            },
+                        ),
+                        rx.el.p(
+                            "The gene list is not complete, and the project is meant to grow. If you found a missing "
+                            "gene, a questionable annotation, a useful paper, or want to collaborate on art, science, "
+                            "education, venues, fabrication, or new generative models, open a GitHub issue or talk to us directly.",
+                            style={**_p_body, "marginBottom": "12px"},
+                        ),
+                        rx.el.div(
+                            _contact_link(
+                                "Open a GitHub issue",
+                                "https://github.com/winternewt/materialized-enchancements/issues",
+                            ),
+                            _contact_link("Email Livia", "mailto:liviazaharia2020@gmail.com"),
+                            _contact_link("Email Anton", "mailto:antonkulaga@gmail.com"),
+                            _contact_link(
+                                "Livia on LinkedIn",
+                                "https://www.linkedin.com/in/livia-zaharia-4b1425a0/",
+                            ),
+                            _contact_link(
+                                "Anton on LinkedIn",
+                                "https://www.linkedin.com/in/antonkulaga/",
+                            ),
+                            style={
+                                "display": "flex",
+                                "flexWrap": "wrap",
+                                "gap": "8px",
+                            },
+                        ),
+                        style={
+                            "padding": "16px",
+                            "borderRadius": "16px",
+                            "border": "1px solid #d4c5f9",
+                            "background": "#f3f0ff",
+                            "boxShadow": "0 10px 24px rgba(124, 58, 237, 0.12)",
+                            "margin": "0 0 18px 0",
+                        },
                     ),
                     rx.el.p(
                         "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
@@ -419,6 +505,42 @@ def _landing_tab() -> rx.Component:
                         style=_sidebar_card,
                     ),
                     rx.el.div(
+                        rx.el.div("Collaborate or report a mistake", style=_sidebar_title),
+                        rx.el.p(
+                            "This project is open source and the gene library is a living research artifact. "
+                            "If you know a missing enhancement gene, spot an annotation mistake, want to plug in "
+                            "a new generative model, or want to collaborate on an exhibition, please reach out.",
+                            style={
+                                "color": "#cbd5e1",
+                                "fontSize": "0.93rem",
+                                "lineHeight": "1.55",
+                                "margin": "0 0 12px 0",
+                            },
+                        ),
+                        rx.el.div(
+                            _contact_link(
+                                "Open a GitHub issue",
+                                "https://github.com/winternewt/materialized-enchancements/issues",
+                            ),
+                            _contact_link("Email Livia", "mailto:liviazaharia2020@gmail.com"),
+                            _contact_link(
+                                "Livia on LinkedIn",
+                                "https://www.linkedin.com/in/livia-zaharia-4b1425a0/",
+                            ),
+                            _contact_link("Email Anton", "mailto:antonkulaga@gmail.com"),
+                            _contact_link(
+                                "Anton on LinkedIn",
+                                "https://www.linkedin.com/in/antonkulaga/",
+                            ),
+                            style={
+                                "display": "flex",
+                                "flexWrap": "wrap",
+                                "gap": "8px",
+                            },
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    rx.el.div(
                         rx.el.div("Support the project", style=_sidebar_title),
                         rx.el.div(
                             rx.el.a(
@@ -496,10 +618,20 @@ def _landing_tab() -> rx.Component:
             rx.el.p(
                 "The stack is open source and meant to be extended: we invite other artists to plug their "
                 "own generative models into the same biological input engine, and we welcome scientists to "
-                "contribute to the gene list—new papers, new targets, or clearer annotations. ",
+                "contribute to the gene list with new papers, new targets, or clearer annotations. "
+                "The current list is not meant to be complete, so corrections and missing genes are welcome as "
+                "GitHub issues. ",
                 rx.el.a(
                     "Browse the repository on GitHub",
                     href="https://github.com/winternewt/materialized-enchancements",
+                    target="_blank",
+                    rel="noopener noreferrer",
+                    style=_a,
+                ),
+                " or ",
+                rx.el.a(
+                    "open an issue",
+                    href="https://github.com/winternewt/materialized-enchancements/issues",
                     target="_blank",
                     rel="noopener noreferrer",
                     style=_a,
@@ -2553,6 +2685,48 @@ def _materialization_edit_character_cta() -> rx.Component:
     )
 
 
+def _shared_report_banner() -> rx.Component:
+    return rx.cond(
+        ComposeState.has_loaded_shared_report,
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("share alternate", size=18, color="#c4b5fd"),
+                rx.el.div(
+                    rx.el.strong("This materialization was shared with you.", style={"color": "#f8fafc"}),
+                    rx.el.div(
+                        "Explore the model and report below, then create your own character profile.",
+                        style={"color": "#cbd5e1", "fontSize": "0.92rem", "marginTop": "2px"},
+                    ),
+                    style={"flex": "1", "minWidth": "220px"},
+                ),
+                rx.el.a(
+                    "Create your own",
+                    href="/",
+                    class_name="ui primary button",
+                    style={"textDecoration": "none", "fontWeight": "800"},
+                ),
+                style={"display": "flex", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"},
+            ),
+            style={
+                "padding": "14px",
+                "border": "1px solid rgba(167, 139, 250, 0.38)",
+                "borderRadius": "12px",
+                "background": "linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(15, 23, 42, 0.78))",
+            },
+        ),
+        rx.cond(
+            ComposeState.shared_report_error != "",
+            rx.el.div(
+                fomantic_icon("warning sign", size=16, color="#fecaca"),
+                rx.el.span(ComposeState.shared_report_error, style={"marginLeft": "8px"}),
+                class_name="ui red message",
+                style={"margin": "0"},
+            ),
+            rx.fragment(),
+        ),
+    )
+
+
 def _rpg_materialization_output() -> rx.Component:
     return rx.el.div(
         rx.el.textarea(
@@ -2561,6 +2735,7 @@ def _rpg_materialization_output() -> rx.Component:
             style={"display": "none"},
         ),
         _report_capture_iframe(),
+        _shared_report_banner(),
         _materialization_edit_character_cta(),
         _sculpture_section(),
         _report_section(),
@@ -3988,6 +4163,64 @@ def _report_view_tile(label: str, img_id: str) -> rx.Component:
     )
 
 
+def _report_portrait(size_px: int = 84) -> rx.Component:
+    return rx.cond(
+        ComposeState.has_report_portrait,
+        rx.el.img(
+            src=ComposeState.report_portrait_data_url,
+            alt="Uploaded report portrait",
+            style={
+                "width": f"{size_px}px",
+                "height": f"{size_px}px",
+                "objectFit": "cover",
+                "borderRadius": "999px",
+                "border": "2px solid rgba(167, 139, 250, 0.62)",
+                "boxShadow": "0 0 22px rgba(124, 58, 237, 0.28)",
+                "backgroundColor": "rgba(15, 23, 42, 0.72)",
+                "flexShrink": "0",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _report_character_note_block(font_size: str = "0.86rem") -> rx.Component:
+    return rx.cond(
+        ComposeState.has_report_character_note,
+        rx.el.div(
+            rx.el.div(
+                "CHARACTER NOTE",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
+                    "marginBottom": "4px",
+                },
+            ),
+            rx.el.p(
+                ComposeState.report_character_note,
+                style={
+                    "fontSize": font_size,
+                    "color": "#dbeafe",
+                    "lineHeight": "1.45",
+                    "margin": "0",
+                    "fontStyle": "italic",
+                },
+            ),
+            style={
+                "padding": "9px 11px",
+                "border": "1px solid rgba(167, 139, 250, 0.28)",
+                "borderRadius": "8px",
+                "backgroundColor": "rgba(124, 58, 237, 0.12)",
+                "marginBottom": "14px",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
 def _report_card() -> rx.Component:
     """The rasterizable RPG loadout report card used for on-screen sharing."""
     return rx.el.div(
@@ -4055,6 +4288,7 @@ def _report_card() -> rx.Component:
             },
         ),
         rx.el.div(
+            _report_portrait(86),
             rx.el.div(
                 rx.el.span("CHARACTER", style={"fontSize": "0.78rem", "color": "#94a3b8", "letterSpacing": "0.12em", "fontWeight": "800"}),
                 rx.el.div(
@@ -4091,6 +4325,7 @@ def _report_card() -> rx.Component:
             ),
             style={"display": "flex", "gap": "16px", "flexWrap": "wrap", "marginBottom": "14px"},
         ),
+        _report_character_note_block(),
         rx.el.div(
             _report_view_tile("FRONT", "report-view-front"),
             _report_view_tile("SIDE", "report-view-side"),
@@ -4168,57 +4403,14 @@ def _report_card() -> rx.Component:
         ),
         rx.el.div(
             rx.el.div(
-                rx.el.div(
-                    "SCAN TO RECREATE",
-                    style={
-                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
-                        "fontSize": "0.8rem",
-                        "letterSpacing": "0.12em",
-                        "color": "#a78bfa",
-                        "fontWeight": "900",
-                        "marginBottom": "4px",
-                    },
-                ),
-                rx.el.div(
-                    id="report-qr",
-                    style={
-                        "width": "5.75rem",
-                        "height": "5.75rem",
-                        "backgroundColor": "#ffffff",
-                        "border": "1px solid rgba(167, 139, 250, 0.42)",
-                        "borderRadius": "8px",
-                        "padding": "4px",
-                        "display": "flex",
-                        "alignItems": "center",
-                        "justifyContent": "center",
-                    },
-                ),
+                "materialized-enhancements",
+                style={"fontSize": "0.9rem", "fontWeight": "900", "color": "#c4b5fd"},
             ),
             rx.el.div(
-                rx.el.div(
-                    "materialized-enhancements",
-                    style={"fontSize": "0.9rem", "fontWeight": "900", "color": "#c4b5fd"},
-                ),
-                rx.el.div(
-                    "CODAME \u00b7 The New Human \u00b7 Milano 2026",
-                    style={"fontSize": "0.75rem", "color": "#94a3b8", "marginTop": "2px"},
-                ),
-                rx.el.div(
-                    id="report-share-url",
-                    style={
-                        "fontSize": "0.78rem",
-                        "color": "#cbd5e1",
-                        "marginTop": "6px",
-                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
-                        "wordBreak": "break-all",
-                        "maxWidth": "100%",
-                    },
-                ),
-                style={"flex": "1", "marginLeft": "16px", "overflow": "hidden"},
+                "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+                style={"fontSize": "0.75rem", "color": "#94a3b8", "marginTop": "2px"},
             ),
             style={
-                "display": "flex",
-                "alignItems": "flex-start",
                 "paddingTop": "12px",
                 "borderTop": "1px solid rgba(167, 139, 250, 0.28)",
             },
@@ -4443,6 +4635,7 @@ def _report_png_card() -> rx.Component:
         ),
         # NAME / SEED / POINTS row
         rx.el.div(
+            _report_portrait(96),
             rx.el.div(
                 rx.el.div("CHARACTER", style={"fontSize": "0.82rem", "color": "#94a3b8", "letterSpacing": "0.14em", "marginBottom": "2px", "fontWeight": "800"}),
                 rx.el.div(
@@ -4479,6 +4672,7 @@ def _report_png_card() -> rx.Component:
             ),
             style={"display": "flex", "gap": "20px", "marginBottom": "16px"},
         ),
+        _report_character_note_block("0.78rem"),
         # Categories on top
         rx.el.div(
             rx.el.div(
@@ -4755,15 +4949,256 @@ def _report_capture_iframe() -> rx.Component:
     )
 
 
-def _report_action_bar() -> rx.Component:
+def _published_report_link(label: str, href: rx.Var, icon_name: str) -> rx.Component:
+    return rx.el.a(
+        fomantic_icon(icon_name, size=14),
+        rx.el.span(label, style={"marginLeft": "6px"}),
+        href=href,
+        target="_blank",
+        rel="noopener noreferrer",
+        class_name="ui button",
+        style={**_SOCIAL_BUTTON_STYLE, "fontSize": "0.82rem"},
+    )
+
+
+def _published_report_links() -> rx.Component:
+    return rx.cond(
+        ComposeState.has_published_report,
+        rx.el.div(
+            rx.el.div(
+                "Generated download links",
+                style={
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                    "marginBottom": "8px",
+                },
+            ),
+            rx.el.div(
+                _published_report_link("Landing page", ComposeState.report_public_url, "external alternate"),
+                _published_report_link("STL model", ComposeState.report_model_url, "cube"),
+                _published_report_link("PNG", ComposeState.report_png_url, "image outline"),
+                _published_report_link("PDF", ComposeState.report_pdf_url, "file pdf outline"),
+                _published_report_link("Params", ComposeState.report_params_url, "code"),
+                style={"display": "flex", "gap": "8px", "flexWrap": "wrap"},
+            ),
+            rx.el.div(
+                ComposeState.report_public_url,
+                style={
+                    "fontSize": "0.76rem",
+                    "color": "#9ca3af",
+                    "marginTop": "8px",
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "wordBreak": "break-all",
+                },
+            ),
+            style={
+                "marginTop": "10px",
+                "padding": "10px",
+                "border": "1px solid rgba(148, 163, 184, 0.24)",
+                "borderRadius": "8px",
+                "backgroundColor": "rgba(15, 23, 42, 0.35)",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _report_portrait_upload_panel() -> rx.Component:
     return rx.el.div(
         rx.el.div(
+            "Customize report",
+            style={
+                "width": "100%",
+                "fontSize": "0.78rem",
+                "fontWeight": "700",
+                "color": "#cbd5e1",
+                "textTransform": "uppercase",
+                "letterSpacing": "0.08em",
+            },
+        ),
+        rx.el.p(
+            "Optional: choose a portrait or user picture. It is applied immediately to the report card, PNG, PDF, and sharable folder.",
+            style={"width": "100%", "margin": "0", "fontSize": "0.82rem", "color": "#9ca3af"},
+        ),
+        rx.el.label(
+            "Character note",
+            style={"fontSize": "0.82rem", "fontWeight": "700", "color": "#cbd5e1"},
+        ),
+        rx.el.textarea(
+            value=ComposeState.report_character_note,
+            on_change=ComposeState.set_report_character_note,
+            placeholder="Optional: explain this profile, dedication, prompt, or story.",
+            max_length=420,
+            rows=3,
+            style={
+                "width": "min(100%, 420px)",
+                "resize": "vertical",
+                "border": "1px solid rgba(167, 139, 250, 0.42)",
+                "borderRadius": "8px",
+                "backgroundColor": "rgba(15, 23, 42, 0.72)",
+                "color": "#e5e7eb",
+                "padding": "9px 10px",
+                "fontSize": "0.86rem",
+                "lineHeight": "1.4",
+            },
+        ),
+        rx.el.div(
+            "Optional short note shown on the report. Editing it clears old share links so the sharable folder can be regenerated.",
+            style={"fontSize": "0.74rem", "color": "#9ca3af", "maxWidth": "420px"},
+        ),
+        rx.upload(
+            rx.el.div(
+                fomantic_icon("image outline", size=16),
+                rx.el.span(" Drop image here or click to select", style={"marginLeft": "6px"}),
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "width": "100%",
+                    "minHeight": "44px",
+                    "color": "#cbd5e1",
+                },
+            ),
+            id=_REPORT_PORTRAIT_UPLOAD_ID,
+            on_drop=ComposeState.upload_report_portrait(
+                rx.upload_files(upload_id=_REPORT_PORTRAIT_UPLOAD_ID)
+            ),
+            border="1px dashed rgba(167, 139, 250, 0.52)",
+            border_radius="8px",
+            padding="6px",
+            width="min(100%, 420px)",
+        ),
+        rx.el.div(
+            rx.foreach(rx.selected_files(_REPORT_PORTRAIT_UPLOAD_ID), lambda name: rx.el.span(name)),
+            style={"fontSize": "0.76rem", "color": "#9ca3af", "wordBreak": "break-all"},
+        ),
+        rx.cond(
+            ComposeState.has_report_portrait,
             rx.el.button(
-                fomantic_icon("copy", size=16),
-                rx.el.span(" Copy share link", style={"marginLeft": "2px"}),
-                on_click=rx.call_script("window.__meCopyShareLink && window.__meCopyShareLink()"),
+                fomantic_icon("trash", size=14),
+                rx.el.span(" Remove image", style={"marginLeft": "6px"}),
+                on_click=ComposeState.clear_report_portrait,
                 class_name="ui button",
-                style=_SOCIAL_BUTTON_STYLE,
+                style={**_SOCIAL_BUTTON_STYLE, "fontSize": "0.82rem"},
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            ComposeState.has_report_portrait,
+            rx.el.div(
+                _report_portrait(54),
+                rx.el.span(
+                    ComposeState.report_portrait_filename,
+                    style={"fontSize": "0.78rem", "color": "#cbd5e1", "wordBreak": "break-all"},
+                ),
+                style={"display": "flex", "alignItems": "center", "gap": "10px"},
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            ComposeState.report_portrait_error != "",
+            rx.el.div(
+                ComposeState.report_portrait_error,
+                class_name="ui red message",
+                style={"fontSize": "0.82rem", "padding": "8px 10px", "margin": "0"},
+            ),
+            rx.fragment(),
+        ),
+        style={
+            "display": "flex",
+            "gap": "8px",
+            "flexDirection": "column",
+            "alignItems": "flex-start",
+            "padding": "10px",
+            "border": "1px solid rgba(148, 163, 184, 0.24)",
+            "borderRadius": "8px",
+            "backgroundColor": "rgba(15, 23, 42, 0.35)",
+            "marginBottom": "10px",
+        },
+    )
+
+
+def _share_qr_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.div(
+                "SHARE QR",
+                style={
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                id="report-qr",
+                style={
+                    "width": "5.75rem",
+                    "height": "5.75rem",
+                    "backgroundColor": "#ffffff",
+                    "border": "1px solid rgba(167, 139, 250, 0.42)",
+                    "borderRadius": "8px",
+                    "padding": "4px",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                },
+            ),
+        ),
+        rx.el.div(
+            rx.el.div(
+                rx.cond(
+                    ComposeState.has_published_report,
+                    "Public share folder",
+                    "Share link will appear here",
+                ),
+                style={"fontSize": "0.82rem", "fontWeight": "700", "color": "#c4b5fd"},
+            ),
+            rx.el.div(
+                id="report-share-url",
+                style={
+                    "fontSize": "0.78rem",
+                    "color": "#cbd5e1",
+                    "marginTop": "6px",
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "wordBreak": "break-all",
+                    "maxWidth": "100%",
+                },
+            ),
+            style={"flex": "1", "minWidth": "180px", "overflow": "hidden"},
+        ),
+        style={
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "14px",
+            "width": "100%",
+            "padding": "10px",
+            "border": "1px solid rgba(148, 163, 184, 0.24)",
+            "borderRadius": "8px",
+            "backgroundColor": "rgba(15, 23, 42, 0.35)",
+        },
+    )
+
+
+def _report_action_bar() -> rx.Component:
+    return rx.el.div(
+        _report_portrait_upload_panel(),
+        rx.el.div(
+            rx.el.div(
+                "Report exports",
+                style={
+                    "width": "100%",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                },
             ),
             rx.el.button(
                 fomantic_icon("download", size=16),
@@ -4779,31 +5214,84 @@ def _report_action_bar() -> rx.Component:
                 class_name="ui button",
                 style={**_SOCIAL_BUTTON_STYLE, "backgroundColor": "#1a1a2e !important", "color": "#ffffff !important", "border": "none !important"},
             ),
+            rx.el.button(
+                fomantic_icon("cloud upload", size=16),
+                rx.el.span(
+                    rx.cond(
+                        ComposeState.report_publishing,
+                        " Generating sharable folder…",
+                        rx.cond(
+                            ComposeState.has_published_report,
+                            " Regenerate sharable folder",
+                            " Generate sharable folder",
+                        ),
+                    ),
+                    style={"marginLeft": "2px"},
+                ),
+                on_click=ComposeState.start_report_publish,
+                class_name=rx.cond(
+                    ComposeState.can_publish_report,
+                    "ui button",
+                    "ui disabled button",
+                ),
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
             style={"display": "flex", "gap": "10px", "flexWrap": "wrap", "marginBottom": "10px"},
         ),
         rx.el.div(
+            rx.el.div(
+                "Sharing",
+                style={
+                    "width": "100%",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                },
+            ),
+            rx.el.p(
+                rx.cond(
+                    ComposeState.has_published_report,
+                    "Your model and report are saved. QR, copy, and social buttons now use the public folder.",
+                    "To share, first generate a sharable folder. This saves the model and report, then creates the QR and social link.",
+                ),
+                style={"width": "100%", "margin": "0", "fontSize": "0.82rem", "color": "#9ca3af"},
+            ),
+            _share_qr_panel(),
+            rx.el.button(
+                fomantic_icon("copy", size=16),
+                rx.el.span(" Copy public link", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meCopyShareLink && window.__meCopyShareLink()"),
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
             rx.el.button(
                 fomantic_icon("twitter", size=16),
                 rx.el.span(" Share on X", style={"marginLeft": "2px"}),
                 on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('twitter')"),
-                class_name="ui button",
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
                 style=_SOCIAL_BUTTON_STYLE,
             ),
             rx.el.button(
                 fomantic_icon("facebook", size=16),
                 rx.el.span(" Share on Facebook", style={"marginLeft": "2px"}),
                 on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('facebook')"),
-                class_name="ui button",
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
                 style=_SOCIAL_BUTTON_STYLE,
             ),
             rx.el.button(
                 fomantic_icon("linkedin", size=16),
                 rx.el.span(" Share on LinkedIn", style={"marginLeft": "2px"}),
                 on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('linkedin')"),
-                class_name="ui button",
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
                 style=_SOCIAL_BUTTON_STYLE,
             ),
-            style={"display": "flex", "gap": "10px", "flexWrap": "wrap"},
+            style={"display": "flex", "gap": "10px", "flexWrap": "wrap", "marginTop": "12px"},
         ),
         rx.el.div(
             id="report-copy-feedback",
@@ -4816,6 +5304,16 @@ def _report_action_bar() -> rx.Component:
                 "fontWeight": "600",
             },
         ),
+        rx.cond(
+            ComposeState.report_publish_error != "",
+            rx.el.div(
+                ComposeState.report_publish_error,
+                class_name="ui red message",
+                style={"fontSize": "0.82rem", "padding": "8px 10px", "marginTop": "8px"},
+            ),
+            rx.fragment(),
+        ),
+        _published_report_links(),
         style={"marginTop": "6px"},
     )
 
@@ -4841,6 +5339,12 @@ def _report_section() -> rx.Component:
                         style={"display": "none"},
                     ),
                     rx.el.input(
+                        id="report-published-url",
+                        value=ComposeState.report_public_url,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
                         id="report-share-name",
                         value=ComposeState.input_personal_tag,
                         read_only=True,
@@ -4855,6 +5359,18 @@ def _report_section() -> rx.Component:
                     rx.el.input(
                         id="report-share-points",
                         value=ComposeState.param_points,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-userpic-data-url",
+                        value=ComposeState.report_portrait_data_url,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.textarea(
+                        id="report-character-note",
+                        value=ComposeState.report_character_note,
                         read_only=True,
                         style={"display": "none"},
                     ),
@@ -5144,7 +5660,7 @@ def index_page() -> rx.Component:
     title=_page_title("/materialization"),
     description=_page_description("/materialization"),
     meta=_SOCIAL_META,
-    on_load=[ComposeState.apply_shared_report, ComposeState.apply_artex_params],
+    on_load=[ComposeState.apply_saved_report, ComposeState.apply_shared_report, ComposeState.apply_artex_params],
 )
 def materialization_page() -> rx.Component:
     """Materialization — 3D output, viewer, report, and export actions."""

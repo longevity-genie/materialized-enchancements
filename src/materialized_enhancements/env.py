@@ -11,6 +11,7 @@ for a short-lived session token at publish time.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -63,6 +64,28 @@ def public_app_url() -> str:
 # Module-level constant kept for the report-canonical-base hidden input rendered
 # by pages/index.py (Reflex renders it at compile time, not per-request).
 PUBLIC_APP_URL: str = public_app_url()
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+GENERATED_PUBLIC_DIR: Path = Path(
+    os.getenv("GENERATED_PUBLIC_DIR", str(REPO_ROOT / "data" / "output" / "public"))
+).expanduser()
+GENERATED_URL_PREFIX: str = "/" + os.getenv("GENERATED_URL_PREFIX", "/generated").strip().strip("/")
+
+
+def ensure_generated_public_dirs() -> None:
+    """Create generated public output folders for fresh clones and runtime use."""
+    (GENERATED_PUBLIC_DIR / "reports").mkdir(parents=True, exist_ok=True)
+
+
+def generated_public_path(*parts: str) -> Path:
+    """Return a path under the public generated output root."""
+    return GENERATED_PUBLIC_DIR.joinpath(*parts)
+
+
+def generated_public_url(relative_path: str) -> str:
+    """Return an absolute public URL for a generated artifact."""
+    path = relative_path.strip().lstrip("/")
+    return f"{public_app_url()}{GENERATED_URL_PREFIX}/{path}"
 
 # Resend transactional email — used by the "Send to email" buttons on the
 # sculpture and jigsaw pages. RESEND_FROM_EMAIL must be a verified sender

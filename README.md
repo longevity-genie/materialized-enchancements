@@ -29,23 +29,37 @@ The output is both object and dossier: an STL generated from the selected biolog
 
 ## How it works
 
-The repository implements this pipeline: choose a character name, spend enhancement credits on genes, recompute the parametric geometry from the active loadout, generate the STL, and export the result as a printable object, report, or ARTEX venue package.
+The repository implements this pipeline: choose a character name, spend enhancement credits on genes, recompute the parametric geometry from the active loadout, generate the STL, and export the result as a printable object, report, sharable landing page, email bundle, or ARTEX venue package.
 
 ![Materialized Enhancements — process flow from trait input through parametric logic to STL and physical fabrication](assets/images/HOW_IT_WORKS.jpg)
 
 ---
 
+## Visitor Flow
+
+1. **Build a character profile** — name a future self and browse the RPG-style gene library grouped by enhancement category.
+2. **Spend enhancement credits** — select specific genes within the 100 cr budget. The human silhouette lights up by category, and the active genes become the actual input to the sculpture.
+3. **Materialize** — generate a deterministic 3D-printable STL from the selected genes and character name.
+4. **Review the output** — inspect front/side/back viewer captures, download STL + params JSON, and optionally send the bundle by email.
+5. **Customize the report** — optionally add a short **Character note** and upload a portrait/user picture; both appear in the report card, square PNG, A4 PDF, and generated share folder.
+6. **Share deliberately** — local downloads work immediately, but QR/copy/social sharing stays locked until **Generate sharable folder** writes a public landing page and downloadable artifacts.
+7. **Extend to venue display** — in kiosk/ARTEX mode, send the generated sculpture to a physical display wall.
+
+---
+
 ## Current App Layout
 
-The older public demo has been replaced by a darker RPG-style flow:
+The older public demo has been replaced by a darker RPG-style flow with route-based tabs:
 
 | Route | Tab label | Purpose |
 |---|---|---|
-| `/` | **Character profile** | Main loadout builder. Set the character name, spend the 100 cr enhancement budget, inspect category stats, and add genes from the extended library. |
-| `/materialization` | **Materialization** | Unlocked once a valid loadout exists. Generates the printable 3D model, viewer captures, A4 report, PNG card, share link, email bundle, and optional ARTEX publish. |
+| `/` | **Character profile** | Main loadout builder. Set the character name, spend the 100 cr enhancement budget, inspect category stats, browse the extended accordion gene library, and add/remove specific genes. |
+| `/materialization` | **Materialization** | Unlocked once a valid loadout exists. Shows the 3D output, viewer captures, STL/params downloads, report customization, PNG/PDF exports, sharable folder generation, email bundle, and optional ARTEX publish. |
 | `/about` | **About** | Static project story, video, process image, team, support links, and repository links. |
 
 The organism-puzzle prototype is still preserved in `src/materialized_enhancements/components/jigsaw.py` and `JigsawState` for future reuse, but it is no longer a public route or visitor-facing tab.
+
+The active public Gene Library is custom Reflex/Fomantic UI, not `reflex-mui-datagrid`. Narrative gene descriptions stay visible by default; mechanism, evidence, references, notes, and numeric biophysical fields are tucked into expandable detail sections.
 
 ---
 
@@ -83,7 +97,50 @@ uv run serve           # production mode (single-port, Reflex 0.9+ unified serve
 `uv run serve` refreshes crawler-facing assets in `assets/` before startup:
 `robots.txt`, `sitemap.xml`, and `llms.txt`.
 
-Copy `.env.template` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout, Resend API key). For production, set `REFLEX_API_URL` to your public domain in `.env`.
+Copy `.env.template` to `.env` to override defaults (ARTEX endpoints, kiosk redirects, idle timeout, Resend API key). For production, set `REFLEX_API_URL` to your public domain in `.env`, and set `DEPLOY_URL` or `PUBLIC_APP_URL` so QR codes, report links, and social share intents use absolute public URLs.
+
+---
+
+## Generated Report Links
+
+The **Materialization** tab keeps report exports local until the visitor explicitly chooses to share. After a model is materialized, **Generate sharable folder** saves the model and report into a public folder for users who know the link:
+
+- `index.html` — crawler-friendly landing page with Open Graph/Twitter preview metadata.
+- `model.stl` — the printable sculpture.
+- `params.json` — reproducibility parameters and pipeline stats.
+- `report.png` — square social preview card.
+- `report.pdf` — A4 personal enhancement report.
+
+By default these files are written to `data/output/public/reports/<slug>/` and served at `/generated/reports/<slug>/`. The generated output folder is gitignored because it contains runtime artifacts, not source files.
+
+Visitors can optionally add a **Character note** before exporting or sharing. This short text is meant for the profile's explanation, dedication, prompt, or story. They can also upload a portrait/user picture. The note and image are kept in session state and included in the report card, square PNG, A4 PDF, and any newly generated sharable folder.
+
+Social media shares point to the generated `index.html`, not directly to the image. The page uses `report.png` as `og:image` for the card preview, then offers visitors both **Make your own character** and **Open this exact character** actions.
+
+In development, `uv run start` runs a split server: the frontend is `http://localhost:3000` and the backend is `http://localhost:8000`. Generated report files are also mirrored into `.web/public/generated/`, and the sharable URL is resolved from the browser origin, so local links can be tested from `http://localhost:3000/generated/...`. Use `http`, not `https`, for localhost unless you have configured TLS yourself.
+
+### Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DEPLOY_URL` | *(unset)* | Preferred canonical public origin for absolute report/share URLs. |
+| `PUBLIC_APP_URL` | `http://localhost:3000` | Fallback canonical origin when `DEPLOY_URL` is not set. |
+| `GENERATED_PUBLIC_DIR` | `data/output/public` | Filesystem root for published generated reports. |
+| `GENERATED_URL_PREFIX` | `/generated` | URL prefix served by the Reflex backend for generated files. |
+
+The deterministic recreate link (`/materialization?report=1&name=<b64>&cats=<bitmask>`) still exists internally. QR, copy-link, and social buttons stay unavailable until the sharable folder has been generated; after that they use the generated landing page URL so Facebook, LinkedIn, X, and similar crawlers see an absolute URL and preview image.
+
+### Report Export Pipeline
+
+```
+Materialized STL + report DOM
+  → browser renders front/side/back captures
+  → html-to-image builds the 1080×1080 PNG card
+  → jsPDF builds the A4 PDF from DOM text + captures + optional note/portrait
+  → Generate sharable folder writes index.html, report.png, report.pdf, model.stl, params.json
+```
+
+The browser-side path is intentional: report images and PDFs are generated in the visitor's browser using vendored `assets/vendor/` scripts, so the Python backend does not need extra image-processing dependencies.
 
 ---
 
@@ -238,7 +295,7 @@ uv run pytest tests/test_artex_integration.py -v -s
 - **Frontend UI**: [Reflex](https://reflex.dev/) + Fomantic UI, styled as an RPG character/loadout builder
 - **Data model**: Polars loaders over `data/input/gene_library_extended.csv` and `gene_properties_extended.csv`
 - **3D generation**: Python parametric geometry pipeline in `src/materialized_enhancements/sculpture.py`
-- **Reports and exports**: browser-side `html-to-image`, `jsPDF`, QR code generation, STL + JSON bundles
+- **Reports and exports**: browser-side `html-to-image`, `jsPDF`, QR code generation, optional portrait upload, STL + JSON bundles, generated static share folders
 - **Publishing target**: [ARTEX Platform API](https://github.com/CODAME/artex-open) for shipping materialized artifacts to venue displays
 - **Dependency management**: uv, python-dotenv
 
