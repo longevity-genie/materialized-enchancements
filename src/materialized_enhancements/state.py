@@ -280,6 +280,16 @@ CATEGORY_ICONS: dict[str, str] = {
 }
 
 
+CATEGORY_DESCRIPTIONS: dict[str, str] = {
+    "Stress Resistance": "Protection against radiation, toxins, heat, cold, dryness, and other harsh conditions.",
+    "Longevity & Genome": "DNA repair, cancer resistance, and cellular maintenance for longer healthy life.",
+    "Regeneration": "Repair and regrowth abilities for wounds, tissues, limbs, and organs.",
+    "Environmental Adaptation": "Body changes for unusual habitats such as underwater, low oxygen, or extreme climates.",
+    "Perception": "Expanded senses such as better vision, hearing, navigation, or environmental awareness.",
+    "Expression": "Visible biological traits such as color, light, texture, or other surface-level signals.",
+}
+
+
 _TAB_ROUTE_MAP: dict[str, str] = {
     "landing": "/about",
     "sculpture": "/",

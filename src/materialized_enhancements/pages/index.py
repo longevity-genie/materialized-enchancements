@@ -15,6 +15,7 @@ from materialized_enhancements.gene_data import (
 )
 from materialized_enhancements.state import (
     CATEGORY_COLORS,
+    CATEGORY_DESCRIPTIONS,
     CATEGORY_ICONS,
     AppState,
     ComposeState,
@@ -35,6 +36,11 @@ _SOCIAL_META: list[dict[str, str]] = [
     {"property": "og:site_name", "content": _SITE_TITLE},
     {"name": "twitter:card", "content": "summary"},
 ]
+
+
+def _category_tooltip(category: str) -> str:
+    description = CATEGORY_DESCRIPTIONS.get(category, "Genetic enhancement category.")
+    return f"{category}: {description}"
 
 
 def _page_title(route_path: str) -> str:
@@ -650,6 +656,7 @@ def _landing_tab() -> rx.Component:
 def _category_button(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
     total_count = CATEGORY_COUNTS.get(category, 0)
     total_price = CATEGORY_PRICES.get(category, 0)
     active_count = ComposeState.active_gene_counts[category]
@@ -702,6 +709,8 @@ def _category_button(category: str) -> rx.Component:
             style={"display": "flex", "alignItems": "center", "width": "100%"},
         ),
         on_click=ComposeState.select_category(category),
+        title=tooltip,
+        aria_label=tooltip,
         style={
             "marginBottom": "6px",
             "textAlign": "left",
@@ -1405,9 +1414,14 @@ def _category_anchor_id(category: str) -> str:
     return f"gene-library-{compact_slug}"
 
 
+def _category_css_slug(category: str) -> str:
+    return _category_anchor_id(category).removeprefix("gene-library-")
+
+
 def _rpg_category_stat_row(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
     count = ComposeState.active_gene_counts[category]
     spent = ComposeState.active_category_prices[category]
     total_count = CATEGORY_COUNTS.get(category, 0)
@@ -1459,7 +1473,8 @@ def _rpg_category_stat_row(category: str) -> rx.Component:
         ),
         href=f"#{_category_anchor_id(category)}",
         class_name="me-rpg-category-anchor",
-        title=f"Open {category} genes",
+        title=tooltip,
+        aria_label=tooltip,
         style={"display": "block", "marginBottom": "8px", "textDecoration": "none"},
     )
 
@@ -1815,7 +1830,7 @@ def _rpg_marker_gene_chip(gene_name: rx.Var, color: str) -> rx.Component:
             "background": "rgba(15, 23, 42, 0.96)",
             "boxShadow": f"0 0 12px {color}55",
             "color": "#f8fafc",
-            "fontSize": "0.64rem",
+            "fontSize": "0.72rem",
             "fontWeight": "950",
             "lineHeight": "1.15",
             "letterSpacing": "0.02em",
@@ -1863,6 +1878,7 @@ def _rpg_silhouette_marker(
 ) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
     count = ComposeState.active_gene_counts[category]
     total_count = CATEGORY_COUNTS.get(category, 0)
     is_selected = ComposeState.selected_categories.contains(category)
@@ -1898,6 +1914,10 @@ def _rpg_silhouette_marker(
                     icon_name,
                     size=50,
                     color=color,
+                    style={
+                        "transform": "scale(0.86)",
+                        "transformOrigin": "center",
+                    },
                 ),
                 rx.cond(
                     count > 0,
@@ -1929,8 +1949,8 @@ def _rpg_silhouette_marker(
                 class_name="me-rpg-marker-icon-node",
                 style={
                     "position": "relative",
-                    "width": "62px",
-                    "height": "62px",
+                    "width": "65px",
+                    "height": "65px",
                     "borderRadius": "999px",
                     "display": "flex",
                     "alignItems": "center",
@@ -1957,7 +1977,7 @@ def _rpg_silhouette_marker(
                 category,
                 style={
                     "display": "block",
-                    "fontSize": "1.08rem",
+                    "fontSize": "0.98rem",
                     "fontWeight": "950",
                     "letterSpacing": "0.02em",
                     "textTransform": "none",
@@ -1971,16 +1991,18 @@ def _rpg_silhouette_marker(
                 "top": "calc(50% + 46px)",
                 "transform": "translateX(-50%)",
                 "marginTop": "0",
-                "padding": "3px 8px",
+                "padding": "5px 10px",
+                "boxSizing": "border-box",
+                "width": "max-content",
                 "borderRadius": "6px",
                 "background": "rgba(15, 23, 42, 0.72)",
                 "border": f"1px solid {color}55",
-                "fontSize": "1.08rem",
+                "fontSize": "0.98rem",
                 "fontWeight": "900",
                 "color": rx.cond(visual_active, "#e0f2fe", "#94a3b8"),
                 "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
-                "lineHeight": "1.15",
-                "maxWidth": "210px",
+                "lineHeight": "1.2",
+                "maxWidth": "280px",
                 "textAlign": "center",
                 "boxShadow": "0 8px 20px rgba(2, 6, 23, 0.26)",
             },
@@ -1989,8 +2011,9 @@ def _rpg_silhouette_marker(
         href=f"#{_category_anchor_id(category)}",
         role="button",
         aria_disabled=rx.cond(is_enabled, "false", "true"),
-        title=f"{category}: {total_count} genes",
-        class_name="me-rpg-body-marker",
+        title=tooltip,
+        aria_label=tooltip,
+        class_name=f"me-rpg-body-marker me-rpg-body-marker--{_category_css_slug(category)}",
         style={
             "position": "absolute",
             "top": top,
@@ -2144,22 +2167,50 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
 
     return rx.el.div(
         rx.el.div(
-            rx.el.label(
-                rx.el.input(
-                    type="checkbox",
-                    checked=included,
-                    disabled=cannot_afford,
-                    on_change=ComposeState.toggle_gene_from_library(gene_sym, gene_category),
+            rx.cond(
+                included,
+                rx.el.button(
+                    "REMOVE",
+                    on_click=ComposeState.toggle_gene_from_library(gene_sym, gene_category),
+                    title="Remove gene",
                     style={
-                        "accentColor": "#7c3aed",
-                        "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
-                        "opacity": rx.cond(cannot_afford, "0.45", "1"),
+                        "width": "92px",
+                        "minHeight": "40px",
+                        "padding": "9px 12px",
+                        "borderRadius": "8px",
+                        "border": "1px solid rgba(248, 113, 113, 0.48)",
+                        "background": "rgba(127, 29, 29, 0.34)",
+                        "color": "#fecaca",
+                        "fontSize": "0.78rem",
+                        "fontWeight": "900",
+                        "letterSpacing": "0.08em",
+                        "cursor": "pointer",
                         "flexShrink": "0",
-                        "width": "40px",
-                        "height": "40px",
-                        "marginTop": "2px",
                     },
                 ),
+                rx.el.button(
+                    "ADD",
+                    disabled=cannot_afford,
+                    on_click=ComposeState.toggle_gene_from_library(gene_sym, gene_category),
+                    title=rx.cond(cannot_afford, "Not enough enhancement credits", "Add gene"),
+                    style={
+                        "width": "92px",
+                        "minHeight": "40px",
+                        "padding": "9px 12px",
+                        "borderRadius": "8px",
+                        "border": rx.cond(cannot_afford, "1px solid rgba(248, 113, 113, 0.42)", "1px solid rgba(167, 139, 250, 0.58)"),
+                        "background": rx.cond(cannot_afford, "rgba(127, 29, 29, 0.22)", "linear-gradient(135deg, #7c3aed, #6d28d9)"),
+                        "color": rx.cond(cannot_afford, "#fca5a5", "#ffffff"),
+                        "fontSize": "0.82rem",
+                        "fontWeight": "900",
+                        "letterSpacing": "0.1em",
+                        "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
+                        "opacity": rx.cond(cannot_afford, "0.72", "1"),
+                        "flexShrink": "0",
+                    },
+                ),
+            ),
+            rx.el.div(
                 rx.el.div(
                     rx.el.div(
                         rx.el.span(
@@ -2198,11 +2249,8 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                     style={"flex": "1", "minWidth": "0"},
                 ),
                 style={
-                    "display": "flex",
-                    "gap": "14px",
-                    "alignItems": "flex-start",
-                    "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
                     "flex": "1",
+                    "minWidth": "0",
                 },
             ),
             rx.el.button(
@@ -2311,6 +2359,7 @@ def _rpg_gene_card_for_category(gene_item: rx.Var, category: str) -> rx.Componen
 def _rpg_category_gene_accordion(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
     count = ComposeState.active_gene_counts[category]
     spent = ComposeState.active_category_prices[category]
     is_selected = ComposeState.selected_categories.contains(category)
@@ -2390,6 +2439,8 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
                 "boxShadow": f"0 0 18px {color}18",
                 "outline": "none",
             },
+            title=tooltip,
+            aria_label=tooltip,
         ),
         rx.el.div(
             rx.foreach(
@@ -2907,6 +2958,12 @@ def _rpg_flow_css() -> rx.Component:
             transform: translate(-50%, -50%) scale(1.06) !important;
             filter: brightness(1.12);
         }
+        .me-rpg-marker-icon-node i.icon {
+            font-size: 60px !important;
+            width: 1em !important;
+            height: 1em !important;
+            line-height: 1 !important;
+        }
         .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item {
             position: absolute;
             left: 50%;
@@ -3279,7 +3336,7 @@ def _rpg_flow_css() -> rx.Component:
                 padding: 9px 11px;
             }
             .me-rpg-body-stage {
-                min-height: clamp(430px, 118vw, 560px) !important;
+                min-height: clamp(540px, 138vw, 680px) !important;
                 padding-left: 0 !important;
                 padding-right: 0 !important;
                 padding-bottom: 62px !important;
@@ -3291,8 +3348,8 @@ def _rpg_flow_css() -> rx.Component:
                 inset: 20% 20% 9%;
             }
             .me-rpg-body-image {
-                height: clamp(360px, 104vw, 470px) !important;
-                max-width: min(100%, 380px) !important;
+                height: clamp(430px, 116vw, 560px) !important;
+                max-width: min(100%, 440px) !important;
                 filter:
                     blur(0.22px)
                     drop-shadow(0 0 16px rgba(56, 189, 248, 0.42))
@@ -3307,12 +3364,36 @@ def _rpg_flow_css() -> rx.Component:
             .me-rpg-body-marker:hover {
                 transform: translate(-50%, -50%) scale(0.78) !important;
             }
+            .me-rpg-body-marker--expression {
+                top: 29% !important;
+                left: 39% !important;
+            }
+            .me-rpg-body-marker--perception {
+                top: 29% !important;
+                left: 61% !important;
+            }
+            .me-rpg-body-marker--longevity-genome {
+                top: 52% !important;
+                left: 30% !important;
+            }
+            .me-rpg-body-marker--stress-resistance {
+                top: 52% !important;
+                left: 70% !important;
+            }
+            .me-rpg-body-marker--environmental-adaptation {
+                top: 77% !important;
+                left: 35% !important;
+            }
+            .me-rpg-body-marker--regeneration {
+                top: 77% !important;
+                left: 65% !important;
+            }
             .me-rpg-marker-icon-node {
-                width: 50px !important;
-                height: 50px !important;
+                width: 53px !important;
+                height: 53px !important;
             }
             .me-rpg-marker-icon-node i.icon {
-                font-size: 40px !important;
+                font-size: 52px !important;
             }
             .me-rpg-marker-count-badge {
                 min-width: 20px !important;
@@ -3326,7 +3407,7 @@ def _rpg_flow_css() -> rx.Component:
             .me-rpg-marker-gene-chip {
                 width: 58px !important;
                 min-height: 18px !important;
-                font-size: 0.54rem !important;
+                font-size: 0.62rem !important;
                 padding: 1px 4px !important;
             }
             .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(1) {
@@ -3387,11 +3468,11 @@ def _rpg_flow_css() -> rx.Component:
             }
             .me-rpg-marker-label {
                 top: calc(50% + 36px) !important;
-                max-width: 170px !important;
-                font-size: 0.86rem !important;
+                max-width: 230px !important;
+                font-size: 0.98rem !important;
             }
             .me-rpg-marker-label span:first-child {
-                font-size: 0.9rem !important;
+                font-size: 1.02rem !important;
             }
             .me-rpg-marker-category-full {
                 font-size: 0.52rem !important;
