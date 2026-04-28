@@ -9,7 +9,6 @@ dependencies = [
   "granian>=2.7.1",
   "polars>=1.0.0",
   "pydantic>=2.0.0",
-  "reflex-mui-datagrid>=0.2.3",
   "compass-web>=0.2.3",
   "dotenv>=0.9.9",
   "pillow>=12.2.0",

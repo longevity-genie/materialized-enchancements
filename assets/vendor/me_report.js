@@ -13,6 +13,13 @@
     var el = document.getElementById('report-share-path');
     return el ? el.value : '';
   }
+  function publishedReportUrl() {
+    var el = document.getElementById('report-published-url');
+    return el && el.value ? String(el.value).trim() : '';
+  }
+  function generatedShareUrl() {
+    return window.__mePendingPublishedReportUrl || publishedReportUrl();
+  }
   /** Server-provided canonical origin (DEPLOY_URL / PUBLIC_APP_URL); falls back to browser. */
   function canonicalOrigin() {
     var el = document.getElementById('report-canonical-base');
@@ -25,7 +32,18 @@
     var origin = canonicalOrigin();
     if (!p) return origin + '/';
     if (/^https?:\/\//i.test(p)) return p;
+    if (p.charAt(0) === '/') return origin + p;
     return origin + '/' + (p.charAt(0) === '?' ? '' : '') + p;
+  }
+  function reportTargetUrl() {
+    return generatedShareUrl();
+  }
+  function browserAbsoluteUrl(pathOrUrl) {
+    var v = String(pathOrUrl || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    if (v.charAt(0) === '/') return window.location.origin + v;
+    return window.location.origin + '/' + v;
   }
   function safeName() {
     var raw = (document.getElementById('report-share-name') || {}).value || 'anon';
@@ -34,29 +52,72 @@
   function safeSeed() {
     return (document.getElementById('report-share-seed') || {}).value || '0';
   }
+  function userpicDataUrl() {
+    var el = document.getElementById('report-userpic-data-url');
+    return el && el.value ? String(el.value).trim() : '';
+  }
+  function characterNote() {
+    var el = document.getElementById('report-character-note');
+    return el && el.value ? String(el.value).trim() : '';
+  }
 
   /* ---------------------------------------------------------- painters */
 
   function paintShareUrl() {
     var urlEl = document.getElementById('report-share-url');
-    if (urlEl) urlEl.textContent = absoluteShareUrl();
+    if (!urlEl) return;
+    var url = reportTargetUrl();
+    urlEl.textContent = url || 'Generate a sharable folder to create a public QR/link.';
+  }
+
+  function qrPlaceholder(el) {
+    if (!el) return false;
+    el.innerHTML = '';
+    var span = document.createElement('span');
+    span.textContent = 'Generate sharable folder';
+    span.style.cssText =
+      'font-size:10px;line-height:1.2;text-align:center;color:#9ca3af;';
+    el.appendChild(span);
+    return false;
+  }
+
+  function qrFallback(el, url, message) {
+    if (!el) return false;
+    el.innerHTML = '';
+    var a = document.createElement('a');
+    a.href = url;
+    a.textContent = message || 'Open report link';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.cssText =
+      'font-size:10px;line-height:1.2;text-align:center;word-break:break-word;color:#7c3aed;';
+    el.appendChild(a);
+    return false;
   }
 
   function renderQrInto(el) {
-    if (!el || typeof qrcode === 'undefined') return false;
+    var url = reportTargetUrl();
+    if (!el) return false;
+    if (!url) return qrPlaceholder(el);
+    if (typeof qrcode === 'undefined') return qrFallback(el, url, 'QR library missing. Open link.');
     try {
       var qr = qrcode(0, 'M');
-      qr.addData(absoluteShareUrl());
+      qr.addData(url);
       qr.make();
       el.innerHTML = qr.createImgTag(4, 0);
       var img = el.querySelector('img');
       if (img) {
+        img.alt = 'QR code for ' + url;
         img.style.width = '100%';
         img.style.height = '100%';
         img.style.display = 'block';
+        img.style.objectFit = 'contain';
       }
+      if (!img || !img.getAttribute('src')) return qrFallback(el, url, 'Open report link');
       return true;
-    } catch (_e) { return false; }
+    } catch (_e) {
+      return qrFallback(el, url, 'Open report link');
+    }
   }
   function paintQr() {
     /* PNG export card has no QR; PDF cover uses QR from this same on-screen element. */
@@ -94,7 +155,7 @@
   var lastViewsSig = '';
 
   window.__mePaintReport = function () {
-    var url = absoluteShareUrl();
+    var url = reportTargetUrl();
     if (url !== lastShareUrl) {
       paintShareUrl();
       paintQr();
@@ -172,6 +233,13 @@
   function missingLib(name) {
     console.warn('[materialized] skipping action: ' + name + ' is not loaded yet');
     feedback(name + ' not loaded — reload the page.', '#b91c1c');
+  }
+
+  function dataUrlBase64(dataUrl, label) {
+    var s = String(dataUrl || '');
+    var commaIdx = s.indexOf('base64,');
+    if (commaIdx < 0) throw new Error(label + ' output did not contain base64 payload.');
+    return s.slice(commaIdx + 7);
   }
 
   /**
@@ -319,6 +387,21 @@
       feedback('PNG saved (1080\u00d71080)!');
     });
   };
+
+  async function buildReportPngDataUrl() {
+    if (typeof htmlToImage === 'undefined') throw new Error('html-to-image library not loaded.');
+    var node = document.getElementById('me-report-png-card');
+    if (!node) throw new Error('PNG card not mounted.');
+    var dataUrl = await snapshotNode(node, {
+      width: 1080,
+      height: 1080,
+      canvasWidth: 1080,
+      canvasHeight: 1080,
+      pixelRatio: 1,
+    });
+    if (!dataUrl || dataUrl.length < 200) throw new Error('empty PNG');
+    return dataUrl;
+  }
 
   /** Extract gene rows from the hidden `#me-report-pdf-long` DOM subtree.
    * Each row in that element is laid out as
@@ -484,6 +567,36 @@
     });
   }
 
+  function loadUserpicRasterForPdf() {
+    var src = userpicDataUrl();
+    if (!src) return Promise.resolve(null);
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var size = 256;
+          var w = img.naturalWidth || img.width || 1;
+          var h = img.naturalHeight || img.height || 1;
+          var side = Math.min(w, h);
+          var sx = Math.max(0, (w - side) / 2);
+          var sy = Math.max(0, (h - side) / 2);
+          var c = document.createElement('canvas');
+          c.width = size;
+          c.height = size;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, size, size);
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(c.toDataURL('image/png'));
+        } catch (_e) {
+          resolve(null);
+        }
+      };
+      img.onerror = function () { resolve(null); };
+      img.src = src;
+    });
+  }
+
   /** Build a PNG data URL for the share QR (same generator as on-screen QR). */
   function qrDataUrlForShare() {
     return new Promise(function (resolve) {
@@ -493,7 +606,7 @@
       }
       try {
         var qr = qrcode(0, 'M');
-        qr.addData(absoluteShareUrl());
+        qr.addData(reportTargetUrl());
         qr.make();
         var tag = qr.createImgTag(4, 0);
         var div = document.createElement('div');
@@ -549,40 +662,53 @@
     var name = pdfSafeWinAnsi((document.getElementById('report-share-name') || {}).value || '');
     var seed = pdfSafeWinAnsi(String((document.getElementById('report-share-seed') || {}).value || ''));
     var points = pdfSafeWinAnsi(String((document.getElementById('report-share-points') || {}).value || ''));
+    var note = pdfSafeWinAnsi(characterNote());
     var cats = pdfSafeWinAnsi((document.getElementById('report-export-categories') || {}).value || '');
     var urlText = pdfSafeWinAnsi(
       ((document.getElementById('report-share-url') || {}).textContent || '').trim() ||
-      absoluteShareUrl()
+      reportTargetUrl()
     );
 
     var views = window.__reportViews || {};
+    var userpic = await loadUserpicRasterForPdf();
     var imgSize = Math.min(52, (w - 6) / 3);
 
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
-    pdf.setTextColor(107, 114, 128);
+    pdf.setTextColor(124, 58, 237);
     pdf.text(pdfSafeWinAnsi('MATERIALIZED ENHANCEMENTS'), m, y + 4);
     pdf.setFontSize(18);
     pdf.setTextColor(26, 26, 46);
-    pdf.text(pdfSafeWinAnsi('Personal enhancement report'), m, y + 12);
-    y += 16;
+    pdf.text(pdfSafeWinAnsi('Character enhancement report'), m, y + 12);
+    if (userpic) {
+      try {
+        var portraitSize = 20;
+        var portraitX = pageW - m - portraitSize;
+        var portraitY = y + 1;
+        pdf.setDrawColor(167, 139, 250);
+        pdf.setLineWidth(0.35);
+        pdf.rect(portraitX - 1, portraitY - 1, portraitSize + 2, portraitSize + 2);
+        pdf.addImage(userpic, 'PNG', portraitX, portraitY, portraitSize, portraitSize);
+      } catch (_e) {}
+    }
+    y += userpic ? 26 : 16;
 
-    pdf.setDrawColor(26, 26, 46);
+    pdf.setDrawColor(167, 139, 250);
     pdf.setLineWidth(0.35);
     pdf.line(m, y, pageW - m, y);
     y += 5;
 
     pdf.setFont('courier', 'bold');
     pdf.setFontSize(10);
-    pdf.setTextColor(185, 28, 28);
-    var stamp = pdfSafeWinAnsi('SPECIMEN #' + seed);
+    pdf.setTextColor(124, 58, 237);
+    var stamp = pdfSafeWinAnsi('LOADOUT #' + seed);
     pdf.text(stamp, pageW - m - pdf.getTextWidth(stamp), y);
     y += 6;
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7);
     pdf.setTextColor(156, 163, 175);
-    pdf.text(pdfSafeWinAnsi('NAME'), m, y);
+    pdf.text(pdfSafeWinAnsi('CHARACTER'), m, y);
     pdf.text(pdfSafeWinAnsi('SEED'), m + 58, y);
     pdf.text(pdfSafeWinAnsi('POINTS'), m + 108, y);
     y += 4;
@@ -596,6 +722,20 @@
     pdf.setTextColor(26, 26, 46);
     pdf.text(points, m + 108, y);
     y += 8;
+
+    if (note) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(7);
+      pdf.setTextColor(107, 114, 128);
+      pdf.text(pdfSafeWinAnsi('CHARACTER NOTE'), m, y);
+      y += 4;
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(8.2);
+      pdf.setTextColor(55, 65, 81);
+      var noteLines = pdf.splitTextToSize(note, w);
+      pdf.text(noteLines, m, y + 3);
+      y += noteLines.length * 3.7 + 5;
+    }
 
     var vx = m;
     var labels = ['FRONT', 'SIDE', 'BACK'];
@@ -839,6 +979,16 @@
     });
   };
 
+  async function waitReportMounted(timeoutMs) {
+    var deadline = Date.now() + (timeoutMs || 6000);
+    while (!document.getElementById('me-report-card') && Date.now() < deadline) {
+      await new Promise(function (r) { setTimeout(r, 100); });
+    }
+    if (!document.getElementById('me-report-card')) {
+      throw new Error('Report card not mounted.');
+    }
+  }
+
   /**
    * Build the same A4 PDF as __meDownloadPdf but resolve with
    * {filename, base64} instead of triggering a download. Used by the
@@ -853,25 +1003,15 @@
     if (typeof jspdf === 'undefined') {
       return JSON.stringify({ error: 'jsPDF library not loaded.' });
     }
-    var deadline = Date.now() + timeoutMs;
-    while (!document.getElementById('me-report-card') && Date.now() < deadline) {
-      await new Promise(function (r) { setTimeout(r, 100); });
-    }
-    if (!document.getElementById('me-report-card')) {
-      return JSON.stringify({ error: 'Report card not mounted.' });
-    }
     stopObserver();
     try {
+      await waitReportMounted(timeoutMs);
       window.__mePaintReport();
       await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
       var pdf = await buildReportPdf();
       // jsPDF's `datauristring` returns "data:application/pdf;filename=...;base64,<b64>"
       var dataUri = pdf.output('datauristring');
-      var commaIdx = dataUri.indexOf('base64,');
-      if (commaIdx < 0) {
-        return JSON.stringify({ error: 'PDF output did not contain base64 payload.' });
-      }
-      var b64 = dataUri.slice(commaIdx + 7);
+      var b64 = dataUrlBase64(dataUri, 'PDF');
       var filename = 'materialized_' + safeName() + '_s' + safeSeed() + '.pdf';
       return JSON.stringify({ filename: filename, base64: b64 });
     } catch (err) {
@@ -882,8 +1022,45 @@
     }
   };
 
+  window.__meBuildReportBundleBase64 = async function (timeoutMs, publishedUrlOverride) {
+    timeoutMs = timeoutMs || 8000;
+    if (typeof jspdf === 'undefined') {
+      return JSON.stringify({ error: 'jsPDF library not loaded.' });
+    }
+    if (typeof htmlToImage === 'undefined') {
+      return JSON.stringify({ error: 'html-to-image library not loaded.' });
+    }
+    window.__mePendingPublishedReportUrl = browserAbsoluteUrl(publishedUrlOverride);
+    stopObserver();
+    try {
+      await waitReportMounted(timeoutMs);
+      window.__mePaintReport();
+      await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+      var pngDataUrl = await buildReportPngDataUrl();
+      var pdf = await buildReportPdf();
+      var pdfDataUri = pdf.output('datauristring');
+      return JSON.stringify({
+        png_filename: 'materialized_' + safeName() + '_s' + safeSeed() + '.png',
+        png_base64: dataUrlBase64(pngDataUrl, 'PNG'),
+        pdf_filename: 'materialized_' + safeName() + '_s' + safeSeed() + '.pdf',
+        pdf_base64: dataUrlBase64(pdfDataUri, 'PDF'),
+        share_url: reportTargetUrl(),
+      });
+    } catch (err) {
+      console.error('[materialized] __meBuildReportBundleBase64 failed', err);
+      return JSON.stringify({ error: (err && err.message) ? err.message : String(err) });
+    } finally {
+      if (!publishedReportUrl()) window.__mePendingPublishedReportUrl = '';
+      startObserver();
+    }
+  };
+
   window.__meCopyShareLink = async function () {
-    var url = absoluteShareUrl();
+    var url = reportTargetUrl();
+    if (!url) {
+      feedback('Generate a sharable folder first.', '#b45309');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(url);
     } catch (_e) {
@@ -898,7 +1075,12 @@
   };
 
   window.__meShareIntent = function (network) {
-    var url = encodeURIComponent(absoluteShareUrl());
+    var rawUrl = reportTargetUrl();
+    if (!rawUrl) {
+      feedback('Generate a sharable folder first.', '#b45309');
+      return;
+    }
+    var url = encodeURIComponent(rawUrl);
     var text = encodeURIComponent('My Materialized Enhancements personal enhancement report');
     var target = '';
     if (network === 'twitter')       target = 'https://twitter.com/intent/tweet?text=' + text + '&url=' + url;

@@ -6,22 +6,21 @@ import binascii
 import json
 import logging
 import re
+import shutil
+import uuid
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, TypedDict
 from urllib.parse import quote
 
 import reflex as rx
-from reflex_mui_datagrid import LazyFrameGridMixin
 
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
-    ANIMAL_LIBRARY_LF,
     ANIMAL_PRICES,
     CATEGORY_MIN_GENE_PRICES,
     CATEGORY_TRAITS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
-    GENE_LIBRARY_LF,
     GENE_PRICES,
     ORGANISM_MEMBERS,
     UNIQUE_CATEGORIES,
@@ -49,12 +48,26 @@ from materialized_enhancements.env import (
     ARTEX_API_TOKEN,
     ARTEX_API_URL,
     ARTEX_DISPLAY_ID,
-    DEV_MODE,
     RESEND_API_KEY,
+    REPO_ROOT,
+    ensure_generated_public_dirs,
+    generated_public_path,
+    generated_public_url,
     public_app_url,
 )
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PERSONAL_TAG = "A new human to be"
+REPORT_CHARACTER_NOTE_MAX_CHARS: int = 420
+REPORT_PORTRAIT_MAX_BYTES: int = 2_500_000
+REPORT_PORTRAIT_ALLOWED_TYPES: set[str] = {"image/jpeg", "image/png", "image/webp"}
+REPORT_PORTRAIT_FALLBACK_MIME_BY_SUFFIX: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
 
 
 class KeyReferenceSegment(TypedDict):
@@ -74,6 +87,7 @@ class SculptureSelectedGene(TypedDict):
     category: str
     category_detail: str
     source_organism: str
+    short_description: str
     narrative: str
     mechanism: str
     achievements: str
@@ -88,6 +102,8 @@ class SculptureSelectedGene(TypedDict):
     description: str
     enhancement: str
     paper_url: str
+    puzzle_svg: str
+    puzzle_src: str
     included: bool
     price: int
     protein_length_aa: str
@@ -153,6 +169,31 @@ def _count_included_genes_in_choice(
     sel = set(selected_categories)
     inc = set(included_genes)
     return sum(1 for g in GENE_LIBRARY if g["category"] in sel and g["gene"] in inc)
+
+
+def _compact_gene_symbol(gene: str) -> str:
+    """Short display symbol for cramped body-map labels."""
+    without_brackets = re.sub(r"\s*[\(\[\{][^\)\]\}]*[\)\]\}]", "", gene)
+    compact = re.sub(r"\s+", " ", without_brackets).strip()
+    compact = re.sub(r"\s*/\s*", "/", compact)
+    compact = re.sub(r"\s*\+\s*", "+", compact)
+    compact = compact.replace("Greenland shark DNA-repair network+p53 C-term insertion", "GLS-p53")
+    compact = compact.replace("POT1/SIRT3/RTEL1", "POT1+")
+    compact = compact.replace("PprI/PprA", "PprI")
+    compact = compact.replace("CLOCK+BMAL1", "CLOCK")
+    compact = compact.replace("MB+GSH", "MB/GSH")
+    compact = compact.replace("AFPs/AFGPs", "AFP")
+    compact = compact.replace("Prestin/SLC26A5", "Prestin")
+    compact = compact.replace("Reflectin+chromatophore", "Reflectin")
+    compact = compact.replace("Firefly luciferase+luciferin", "FLuc")
+    compact = compact.replace("Tapetum lucidum", "Tapetum")
+    compact = compact.replace("CBP family", "CBP")
+    compact = compact.replace("piwi/smedwi", "smedwi")
+    compact = compact.replace("STING S358", "STING")
+    compact = compact.replace("scn4aa", "SCN4A")
+    compact = compact.replace("Melanin", "MEL")
+    compact = compact.replace("system", "")
+    return compact.strip()
 
 
 # Soft UX hint only: materialize stays allowed below this count.
@@ -221,37 +262,45 @@ def _confidence_bucket(raw: str) -> str:
 
 
 CATEGORY_COLORS: dict[str, str] = {
-    "Radiation & Extremophile": "#e67e22",
-    "Longevity & Cancer Resistance": "#27ae60",
-    "Biological Immortality & Regeneration": "#16a085",
-    "Immunity & Physiology": "#2980b9",
-    "Sleep & Consciousness": "#8e44ad",
-    "New Senses": "#e84393",
-    "Display & Expression": "#d63031",
-    "Energy": "#f39c12",
-    "Materials": "#00b894",
+    "Stress Resistance": "#e67e22",
+    "Longevity & Genome": "#27ae60",
+    "Regeneration": "#16a085",
+    "Environmental Adaptation": "#2980b9",
+    "Perception": "#e84393",
+    "Expression": "#8e44ad",
 }
 
 CATEGORY_ICONS: dict[str, str] = {
-    "Radiation & Extremophile": "sun",
-    "Longevity & Cancer Resistance": "heartbeat",
-    "Biological Immortality & Regeneration": "sync",
-    "Immunity & Physiology": "shield",
-    "Sleep & Consciousness": "moon",
-    "New Senses": "eye",
-    "Display & Expression": "paint brush",
-    "Energy": "bolt",
-    "Materials": "cube",
+    "Stress Resistance": "shield",
+    "Longevity & Genome": "heartbeat",
+    "Regeneration": "sync",
+    "Environmental Adaptation": "globe",
+    "Perception": "eye",
+    "Expression": "paint brush",
+}
+
+
+CATEGORY_DESCRIPTIONS: dict[str, str] = {
+    "Stress Resistance": "Protection against radiation, toxins, heat, cold, dryness, and other harsh conditions.",
+    "Longevity & Genome": "DNA repair, cancer resistance, and cellular maintenance for longer healthy life.",
+    "Regeneration": "Repair and regrowth abilities for wounds, tissues, limbs, and organs.",
+    "Environmental Adaptation": "Body changes for unusual habitats such as underwater, low oxygen, or extreme climates.",
+    "Perception": "Expanded senses such as better vision, hearing, navigation, or environmental awareness.",
+    "Expression": "Visible biological traits such as color, light, texture, or other surface-level signals.",
 }
 
 
 _TAB_ROUTE_MAP: dict[str, str] = {
-    "landing": "/",
-    "sculpture": "/materialize",
-    "jigsaw": "/jigsaw",
-    "library": "/",
-    "animals": "/",
+    "landing": "/about",
+    "sculpture": "/",
+    "library": "/about",
+    "animals": "/about",
 }
+
+
+def _has_artex_integration_settings(api_url: str, api_token: str, display_id: str) -> bool:
+    """Return true only when enough ARTEX settings exist to publish to a wall."""
+    return bool(api_url.strip() and api_token.strip() and display_id.strip())
 
 
 def _html_escape(value: object) -> str:
@@ -264,6 +313,125 @@ def _html_escape(value: object) -> str:
         .replace('"', "&quot;")
         .replace("'", "&#39;")
     )
+
+
+def _safe_report_slug(name: str, seed: object) -> str:
+    """Stable-ish readable folder name plus random suffix to avoid collisions."""
+    tag = re.sub(r"[^a-zA-Z0-9_-]+", "-", name.strip().lower()).strip("-")[:36] or "anonymous"
+    return f"{tag}-s{seed}-{uuid.uuid4().hex[:10]}"
+
+
+def _is_safe_report_slug(value: str) -> bool:
+    """Allow only single-directory report slugs generated by this app."""
+    return bool(re.fullmatch(r"[a-zA-Z0-9_-]{1,96}", value.strip()))
+
+
+def _artifact_payload(
+    *,
+    personal_tag: str,
+    selected_categories: list[str],
+    included_genes: list[str],
+    sculpture_params: dict[str, Any],
+    pipeline_stats: dict[str, Any],
+    share_url: str,
+) -> dict[str, Any]:
+    return {
+        "name": personal_tag,
+        "selected_categories": selected_categories,
+        "included_genes": included_genes,
+        "sculpture_params": sculpture_params,
+        "pipeline_stats": pipeline_stats,
+        "share_url": share_url,
+    }
+
+
+def _decode_base64_payload(value: str, *, expected_label: str) -> bytes:
+    payload = value.strip()
+    if "," in payload and payload.lower().startswith("data:"):
+        payload = payload.split(",", 1)[1]
+    if not payload:
+        raise ValueError(f"{expected_label} payload is empty")
+    return base64.b64decode(payload, validate=True)
+
+
+def _build_report_landing_html(
+    *,
+    title: str,
+    description: str,
+    page_url: str,
+    image_url: str,
+    pdf_url: str,
+    stl_url: str,
+    params_url: str,
+    recreate_url: str,
+    make_own_url: str,
+) -> str:
+    escaped_title = _html_escape(title)
+    escaped_description = _html_escape(description)
+    escaped_page_url = _html_escape(page_url)
+    escaped_image_url = _html_escape(image_url)
+    escaped_pdf_url = _html_escape(pdf_url)
+    escaped_stl_url = _html_escape(stl_url)
+    escaped_params_url = _html_escape(params_url)
+    escaped_recreate_url = _html_escape(recreate_url)
+    escaped_make_own_url = _html_escape(make_own_url)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0;url={escaped_page_url}">
+  <title>{escaped_title}</title>
+  <meta name="description" content="{escaped_description}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{escaped_title}">
+  <meta property="og:description" content="{escaped_description}">
+  <meta property="og:url" content="{escaped_page_url}">
+  <meta property="og:image" content="{escaped_image_url}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{escaped_title}">
+  <meta name="twitter:description" content="{escaped_description}">
+  <meta name="twitter:image" content="{escaped_image_url}">
+  <style>
+    body {{ margin: 0; font-family: system-ui, sans-serif; background: #f8f9fa; color: #1a1a2e; }}
+    main {{ max-width: 920px; margin: 0 auto; padding: 32px 20px; }}
+    img {{ width: 100%; max-width: 640px; border-radius: 14px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14); }}
+    a {{ color: #7c3aed; font-weight: 700; }}
+    .links {{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }}
+    .links a {{ padding: 10px 14px; border: 1px solid #d4c5f9; border-radius: 999px; background: #f3f0ff; text-decoration: none; }}
+    .links a.primary {{ background: #7c3aed; color: #ffffff; border-color: #7c3aed; }}
+    .hint {{ color: #6b7280; line-height: 1.6; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{escaped_title}</h1>
+    <p class="hint">{escaped_description}</p>
+    <p class="hint">Opening the interactive materialization page. If it does not open, use the first button below.</p>
+    <p><img src="{escaped_image_url}" alt="{escaped_title} preview"></p>
+    <div class="links">
+      <a class="primary" href="{escaped_page_url}">Open shared materialization</a>
+      <a href="{escaped_make_own_url}">Make your own character</a>
+      <a href="{escaped_recreate_url}">Recreate this character</a>
+      <a href="{escaped_pdf_url}">Download PDF report</a>
+      <a href="{escaped_stl_url}">Download STL model</a>
+      <a href="{escaped_params_url}">Download params JSON</a>
+    </div>
+  </main>
+</body>
+</html>
+"""
+
+
+def _mirror_generated_report_for_dev(source_dir: Path, relative_dir: str) -> None:
+    """Mirror generated reports into Vite's public dir when the dev frontend exists."""
+    web_public_root = REPO_ROOT / ".web" / "public"
+    if not web_public_root.exists():
+        return
+    web_public_dir = REPO_ROOT / ".web" / "public" / "generated" / relative_dir
+    if web_public_dir.exists():
+        shutil.rmtree(web_public_dir)
+    shutil.copytree(source_dir, web_public_dir)
 
 
 def _build_sculpture_email_html(
@@ -475,10 +643,11 @@ class AppState(rx.State):
 class ComposeState(rx.State):
     """State for the Materialize genetic enhancement tab (parametric form + report)."""
 
-    personal_tag: str = "A new human, to be"
+    personal_tag: str = DEFAULT_PERSONAL_TAG
     selected_categories: list[str] = []
     included_genes: list[str] = []
     expanded_genes: list[str] = []
+    hovered_gene_category: str = ""
 
     sculpture_params: Dict[str, Any] = {}
     generating: bool = False
@@ -488,14 +657,28 @@ class ComposeState(rx.State):
     pipeline_stats: Dict[str, Any] = {}
     choice_expanded: bool = True
     sculpture_expanded: bool = False
-    viewer_expanded: bool = False
+    viewer_expanded: bool = True
     stl_base64: str = ""
     viewer_nonce: int = 0
 
     # Share & Report section
-    report_expanded: bool = False
+    report_expanded: bool = True
     report_views_ready: bool = False
     report_copy_feedback: str = ""
+    report_publishing: bool = False
+    report_publish_error: str = ""
+    report_public_slug: str = ""
+    report_public_url: str = ""
+    report_model_url: str = ""
+    report_png_url: str = ""
+    report_pdf_url: str = ""
+    report_params_url: str = ""
+    report_character_note: str = ""
+    report_portrait_data_url: str = ""
+    report_portrait_filename: str = ""
+    report_portrait_error: str = ""
+    shared_report_slug: str = ""
+    shared_report_error: str = ""
 
     # ARTEX integration — defaults from .env
     artex_api_url: str = ARTEX_API_URL
@@ -537,6 +720,21 @@ class ComposeState(rx.State):
         self._prune_included_genes()
         self._recompute_params()
 
+    def select_category(self, category: str) -> None:
+        """Select a category from the body map without treating a repeat click as removal."""
+        if category in self.selected_categories:
+            return
+        remaining = DEFAULT_BUDGET - _sum_credits_for_included_genes(
+            self.selected_categories,
+            self.included_genes,
+        )
+        min_one = CATEGORY_MIN_GENE_PRICES[category]
+        if min_one > remaining:
+            return
+        self.selected_categories = [*self.selected_categories, category]
+        self._prune_included_genes()
+        self._recompute_params()
+
     def remove_category(self, category: str) -> None:
         self.selected_categories = [c for c in self.selected_categories if c != category]
         self._prune_included_genes()
@@ -553,11 +751,47 @@ class ComposeState(rx.State):
             self.included_genes = [*self.included_genes, gene]
         self._recompute_params()
 
+    def toggle_gene_from_library(self, gene: str, category: str) -> None:
+        """Toggle a gene from the RPG library, auto-enabling its category."""
+        if gene in self.included_genes:
+            self.included_genes = [g for g in self.included_genes if g != gene]
+            remaining_in_category = [
+                g for g in GENE_LIBRARY
+                if g["category"] == category and g["gene"] in self.included_genes
+            ]
+            if not remaining_in_category:
+                self.selected_categories = [c for c in self.selected_categories if c != category]
+            self._recompute_params()
+            return
+
+        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
+        add_price = int(GENE_PRICES.get(gene, 0))
+        if spent + add_price > DEFAULT_BUDGET:
+            return
+
+        if category not in self.selected_categories:
+            self.selected_categories = [*self.selected_categories, category]
+        self.included_genes = [*self.included_genes, gene]
+        self._recompute_params()
+
+    def deselect_all_genes(self) -> None:
+        """Clear the active RPG gene loadout."""
+        self.selected_categories = []
+        self.included_genes = []
+        self.expanded_genes = []
+        self._recompute_params()
+
     def toggle_gene_details(self, gene: str) -> None:
         if gene in self.expanded_genes:
             self.expanded_genes = [g for g in self.expanded_genes if g != gene]
         else:
             self.expanded_genes = [*self.expanded_genes, gene]
+
+    def set_hovered_gene_category(self, category: str) -> None:
+        self.hovered_gene_category = category
+
+    def clear_hovered_gene_category(self) -> None:
+        self.hovered_gene_category = ""
 
     def _prune_included_genes(self) -> None:
         """Drop included genes that are no longer in any selected category."""
@@ -613,14 +847,14 @@ class ComposeState(rx.State):
         self.sculpture_params = params
 
     @rx.event(background=True)
-    async def materialize(self) -> None:
+    async def materialize(self) -> AsyncIterator[rx.event.EventSpec]:
         """Run the full sculpture pipeline in the background."""
         async with self:
             if self.generating:
                 return
-            tag = self.personal_tag.strip()
+            tag = self.personal_tag.strip() or DEFAULT_PERSONAL_TAG
             cats = list(self.selected_categories)
-            if not cats or not tag:
+            if not cats:
                 return
             credits = _sum_credits_for_included_genes(cats, self.included_genes)
             if credits <= 0:
@@ -628,12 +862,23 @@ class ComposeState(rx.State):
             active = self._active_gene_library()
             if not active:
                 return
+            self.personal_tag = tag
             self.generating = True
             self.generation_error = ""
             self.stl_filename = ""
             self.stl_download_path = ""
             self.pipeline_stats = {}
             self.stl_base64 = ""
+            self.report_publish_error = ""
+            self.report_public_slug = ""
+            self.report_public_url = ""
+            self.report_model_url = ""
+            self.report_png_url = ""
+            self.report_pdf_url = ""
+            self.report_params_url = ""
+            self.viewer_expanded = True
+
+        yield rx.redirect("/materialization")
 
         try:
             loop = asyncio.get_event_loop()
@@ -665,8 +910,9 @@ class ComposeState(rx.State):
             self.stl_base64 = base64.b64encode(stl_bytes).decode("ascii")
             self.viewer_nonce += 1
             self.choice_expanded = False
-            self.sculpture_expanded = True
+            self.sculpture_expanded = False
             self.viewer_expanded = True
+            self.report_expanded = True
 
     def toggle_choice_expanded(self) -> None:
         self.choice_expanded = not self.choice_expanded
@@ -719,8 +965,12 @@ class ComposeState(rx.State):
             if not self.stl_download_path:
                 self.artex_error = "No sculpture generated yet."
                 return
-            if not self.artex_api_token.strip():
-                self.artex_error = "API token is required."
+            if not _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            ):
+                self.artex_error = "ARTEX API URL, admin token, and display ID are required."
                 return
             self.artex_creating = True
             self.artex_error = ""
@@ -767,18 +1017,21 @@ class ComposeState(rx.State):
     def can_create_artex(self) -> bool:
         return (
             len(self.stl_download_path) > 0
-            and len(self.artex_api_token.strip()) > 0
-            and len(self.artex_display_id.strip()) > 0
+            and _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            )
         )
 
     @rx.var
     def artex_section_visible(self) -> bool:
-        """Show ARTEX UI in dev mode, when ?from=ARTEX is present, or when a token is configured."""
-        if DEV_MODE:
-            return True
-        if self.artex_from_kiosk:
-            return True
-        return len(self.artex_api_token.strip()) > 0
+        """Show ARTEX UI only when wall-publish settings are configured."""
+        return _has_artex_integration_settings(
+            self.artex_api_url,
+            self.artex_api_token,
+            self.artex_display_id,
+        )
 
     def download_artifacts(self):  # type: ignore[return]
         """Download STL and reproducibility JSON in one click."""
@@ -801,6 +1054,214 @@ class ComposeState(rx.State):
             data=json.dumps(artifact, indent=2).encode("utf-8"),
             filename=json_name,
         )
+
+    @rx.var
+    def can_publish_report(self) -> bool:
+        return len(self.stl_download_path) > 0 and not self.report_publishing
+
+    @rx.var
+    def has_published_report(self) -> bool:
+        return len(self.report_public_url) > 0
+
+    @rx.var
+    def has_loaded_shared_report(self) -> bool:
+        return len(self.shared_report_slug) > 0 and not self.shared_report_error
+
+    @rx.var
+    def has_report_portrait(self) -> bool:
+        return len(self.report_portrait_data_url) > 0
+
+    @rx.var
+    def has_report_character_note(self) -> bool:
+        return len(self.report_character_note.strip()) > 0
+
+    def set_report_character_note(self, value: str) -> None:
+        self.report_character_note = value.strip()[:REPORT_CHARACTER_NOTE_MAX_CHARS]
+        self.report_public_slug = ""
+        self.report_public_url = ""
+        self.report_model_url = ""
+        self.report_png_url = ""
+        self.report_pdf_url = ""
+        self.report_params_url = ""
+
+    async def upload_report_portrait(self, files: list[rx.UploadFile]) -> None:
+        """Attach an optional user photo to the personal report."""
+        if not files:
+            self.report_portrait_error = "Choose an image first."
+            return
+        file = files[0]
+        filename = Path(file.filename or "portrait").name
+        suffix = Path(filename).suffix.lower()
+        mime = (file.content_type or REPORT_PORTRAIT_FALLBACK_MIME_BY_SUFFIX.get(suffix, "")).lower()
+        if mime not in REPORT_PORTRAIT_ALLOWED_TYPES:
+            self.report_portrait_error = "Use a PNG, JPG, or WebP image."
+            return
+        data = await file.read()
+        if len(data) > REPORT_PORTRAIT_MAX_BYTES:
+            self.report_portrait_error = "Image is too large. Please use an image under 2.5 MB."
+            return
+        self.report_portrait_data_url = f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+        self.report_portrait_filename = filename
+        self.report_portrait_error = ""
+        self.report_public_slug = ""
+        self.report_public_url = ""
+        self.report_model_url = ""
+        self.report_png_url = ""
+        self.report_pdf_url = ""
+        self.report_params_url = ""
+
+    def clear_report_portrait(self) -> None:
+        self.report_portrait_data_url = ""
+        self.report_portrait_filename = ""
+        self.report_portrait_error = ""
+        self.report_public_slug = ""
+        self.report_public_url = ""
+        self.report_model_url = ""
+        self.report_png_url = ""
+        self.report_pdf_url = ""
+        self.report_params_url = ""
+
+    def start_report_publish(self):  # type: ignore[return]
+        """Build browser-only report assets, then persist them to public downloads."""
+        if not self.stl_download_path:
+            self.report_publish_error = "Generate a 3D model first."
+            return
+        tag = self.personal_tag.strip() or "anonymous"
+        seed = self.sculpture_params.get("seed", self.param_seed)
+        slug = _safe_report_slug(tag, seed)
+        public_path = f"/materialization?shared_report={quote(slug)}"
+        self.report_publish_error = ""
+        self.report_publishing = True
+        self.report_expanded = True
+        self.report_public_slug = slug
+        self.report_public_url = ""
+        self.report_model_url = ""
+        self.report_png_url = ""
+        self.report_pdf_url = ""
+        self.report_params_url = ""
+        public_url_arg = json.dumps(public_path)
+        yield rx.call_script(
+            "window.__meBuildReportBundleBase64 ? "
+            f"window.__meBuildReportBundleBase64(8000, {public_url_arg}) : "
+            "JSON.stringify({error: 'Report bundle builder not loaded.'})",
+            callback=ComposeState.receive_report_bundle_and_publish,
+        )
+
+    def receive_report_bundle_and_publish(self, payload: str):  # type: ignore[return]
+        """Persist report PNG/PDF from the browser plus STL/params from the server."""
+        try:
+            data = json.loads(payload) if payload else {}
+        except (ValueError, TypeError):
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+
+        err = str(data.get("error", "")).strip()
+        if err:
+            self.report_publishing = False
+            self.report_publish_error = err
+            yield rx.toast.error(f"Could not publish report: {err}")
+            return
+        if not self.stl_download_path:
+            self.report_publishing = False
+            self.report_publish_error = "No sculpture generated yet."
+            yield rx.toast.error(self.report_publish_error)
+            return
+
+        stl_path = Path(self.stl_download_path)
+        if not stl_path.exists():
+            self.report_publishing = False
+            self.report_publish_error = "STL file not found on disk."
+            yield rx.toast.error(self.report_publish_error)
+            return
+
+        tag = self.personal_tag.strip() or "anonymous"
+        seed = self.sculpture_params.get("seed", self.param_seed)
+        slug = self.report_public_slug or _safe_report_slug(tag, seed)
+        rel_dir = f"reports/{slug}"
+        ensure_generated_public_dirs()
+        out_dir = generated_public_path("reports", slug)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            png_bytes = _decode_base64_payload(str(data.get("png_base64", "")), expected_label="PNG")
+            pdf_bytes = _decode_base64_payload(str(data.get("pdf_base64", "")), expected_label="PDF")
+        except (ValueError, binascii.Error) as exc:
+            self.report_publishing = False
+            self.report_publish_error = str(exc)
+            yield rx.toast.error(f"Could not publish report: {exc}")
+            return
+
+        model_path = out_dir / "model.stl"
+        params_path = out_dir / "params.json"
+        png_path = out_dir / "report.png"
+        pdf_path = out_dir / "report.pdf"
+        html_path = out_dir / "index.html"
+
+        relative_model = f"{rel_dir}/model.stl"
+        relative_params = f"{rel_dir}/params.json"
+        relative_png = f"{rel_dir}/report.png"
+        relative_pdf = f"{rel_dir}/report.pdf"
+
+        public_url = str(data.get("share_url", "")).strip() or f"{public_app_url()}/materialization?shared_report={quote(slug)}"
+        model_url = generated_public_url(relative_model)
+        params_url = generated_public_url(relative_params)
+        png_url = generated_public_url(relative_png)
+        pdf_url = generated_public_url(relative_pdf)
+        recreate_url = self.share_url
+        make_own_url = f"{public_app_url()}/"
+
+        artifact = _artifact_payload(
+            personal_tag=tag,
+            selected_categories=list(self.selected_categories),
+            included_genes=list(self.included_genes),
+            sculpture_params=dict(self.sculpture_params),
+            pipeline_stats=dict(self.pipeline_stats),
+            share_url=recreate_url,
+        )
+        if self.report_character_note.strip():
+            artifact["character_note"] = self.report_character_note.strip()
+        if self.report_portrait_filename:
+            artifact["report_portrait_filename"] = self.report_portrait_filename
+        title = f"Materialized Enhancements report for {tag}"
+        description = "A generated personal enhancement report with downloadable STL model and A4 report."
+
+        try:
+            shutil.copyfile(stl_path, model_path)
+            params_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+            png_path.write_bytes(png_bytes)
+            pdf_path.write_bytes(pdf_bytes)
+            html_path.write_text(
+                _build_report_landing_html(
+                    title=title,
+                    description=description,
+                    page_url=public_url,
+                    image_url=png_url,
+                    pdf_url=pdf_url,
+                    stl_url=model_url,
+                    params_url=params_url,
+                    recreate_url=recreate_url,
+                    make_own_url=make_own_url,
+                ),
+                encoding="utf-8",
+            )
+            _mirror_generated_report_for_dev(out_dir, rel_dir)
+        except OSError as exc:
+            logger.exception("Generated report publish failed")
+            self.report_publishing = False
+            self.report_publish_error = f"Could not write generated report: {exc}"
+            yield rx.toast.error(self.report_publish_error)
+            return
+
+        self.report_publishing = False
+        self.report_publish_error = ""
+        self.report_public_slug = slug
+        self.report_public_url = public_url
+        self.report_model_url = model_url
+        self.report_png_url = png_url
+        self.report_pdf_url = pdf_url
+        self.report_params_url = params_url
+        yield rx.toast.success("Generated report links are ready.")
 
     def set_recipient_email(self, value: str) -> None:
         self.recipient_email = value
@@ -1005,11 +1466,10 @@ class ComposeState(rx.State):
         return traits
 
     @rx.var
-    def selected_genes(self) -> list[SculptureSelectedGene]:
+    def all_composition_genes(self) -> list[SculptureSelectedGene]:
+        """All gene cards with current inclusion state, used by the RPG selector."""
         rows: list[SculptureSelectedGene] = []
         for g in GENE_LIBRARY:
-            if g["category"] not in self.selected_categories:
-                continue
             prop_row = resolve_gene_properties_row(g["gene"], g["gene_id"])
             price = int(prop_row.get("gene_price", 0))
             row: SculptureSelectedGene = {
@@ -1019,6 +1479,7 @@ class ComposeState(rx.State):
                 "category": g["category"],
                 "category_detail": g["category_detail"],
                 "source_organism": g["source_organism"],
+                "short_description": g["short_description"],
                 "narrative": g["narrative"],
                 "mechanism": g["mechanism"],
                 "achievements": g["achievements"],
@@ -1033,12 +1494,21 @@ class ComposeState(rx.State):
                 "description": g["description"],
                 "enhancement": g["enhancement"],
                 "paper_url": g["paper_url"],
+                "puzzle_svg": g["puzzle_svg"],
+                "puzzle_src": f"/puzzle/{quote(g['puzzle_svg'])}" if g["puzzle_svg"] else "",
                 "included": g["gene"] in self.included_genes,
                 "price": price,
                 **_gene_props_flat(g["gene"], g["gene_id"]),
             }
             rows.append(row)
         return rows
+
+    @rx.var
+    def selected_genes(self) -> list[SculptureSelectedGene]:
+        return [
+            g for g in self.all_composition_genes
+            if g["category"] in self.selected_categories
+        ]
 
     @rx.var
     def included_composition_genes(self) -> list[SculptureSelectedGene]:
@@ -1150,7 +1620,73 @@ class ComposeState(rx.State):
             if cat in UNIQUE_CATEGORIES:
                 idx = UNIQUE_CATEGORIES.index(cat) + 1
                 bitmask |= 1 << (idx - 1)
-        return f"{public_app_url()}/materialize?report=1&name={quote(name_b64)}&cats={bitmask}"
+        return f"{public_app_url()}/materialization?report=1&name={quote(name_b64)}&cats={bitmask}"
+
+    def apply_saved_report(self) -> None:
+        """Load a generated report bundle from ?shared_report=<slug>."""
+        params = self.router.url.query_parameters
+        slug = str(params.get("shared_report", "")).strip()
+        if not slug:
+            return
+        self.shared_report_slug = slug
+        self.shared_report_error = ""
+        if not _is_safe_report_slug(slug):
+            self.shared_report_error = "Shared report link is invalid."
+            return
+
+        rel_dir = f"reports/{slug}"
+        out_dir = generated_public_path("reports", slug)
+        params_path = out_dir / "params.json"
+        model_path = out_dir / "model.stl"
+        if not params_path.exists() or not model_path.exists():
+            self.shared_report_error = "Shared report files are not available on this server."
+            return
+
+        try:
+            artifact = json.loads(params_path.read_text(encoding="utf-8"))
+            stl_bytes = model_path.read_bytes()
+        except (OSError, ValueError, TypeError) as exc:
+            logger.warning("apply_saved_report: could not read shared report %s: %s", slug, exc)
+            self.shared_report_error = "Shared report files could not be loaded."
+            return
+        if not isinstance(artifact, dict):
+            self.shared_report_error = "Shared report metadata is invalid."
+            return
+
+        categories = [
+            str(cat) for cat in artifact.get("selected_categories", [])
+            if str(cat) in UNIQUE_CATEGORIES
+        ]
+        genes = [
+            str(gene) for gene in artifact.get("included_genes", [])
+            if any(entry["gene"] == str(gene) for entry in GENE_LIBRARY)
+        ]
+        if not genes:
+            genes = [entry["gene"] for entry in GENE_LIBRARY if entry["category"] in categories]
+
+        self.personal_tag = str(artifact.get("name", "")).strip() or DEFAULT_PERSONAL_TAG
+        self.selected_categories = categories
+        self.included_genes = genes
+        self.sculpture_params = dict(artifact.get("sculpture_params", {}))
+        self.pipeline_stats = dict(artifact.get("pipeline_stats", {}))
+        self.stl_filename = "model.stl"
+        self.stl_download_path = str(model_path)
+        self.stl_base64 = base64.b64encode(stl_bytes).decode("ascii")
+        self.viewer_nonce += 1
+        self.choice_expanded = False
+        self.sculpture_expanded = False
+        self.viewer_expanded = True
+        self.report_expanded = True
+        self.report_public_slug = slug
+        self.report_public_url = f"{public_app_url()}/materialization?shared_report={quote(slug)}"
+        self.report_model_url = generated_public_url(f"{rel_dir}/model.stl")
+        self.report_png_url = generated_public_url(f"{rel_dir}/report.png")
+        self.report_pdf_url = generated_public_url(f"{rel_dir}/report.pdf")
+        self.report_params_url = generated_public_url(f"{rel_dir}/params.json")
+        self.report_character_note = str(artifact.get("character_note", "")).strip()
+        self.report_portrait_error = ""
+        self.generation_error = ""
+        self.generating = False
 
     def apply_shared_report(self):  # type: ignore[return]
         """Decode ?report=1&name=<b64>&cats=<bitmask> and regenerate the same sculpture.
@@ -1224,6 +1760,19 @@ class ComposeState(rx.State):
         return counts
 
     @rx.var
+    def active_compact_gene_names_by_category(self) -> dict[str, list[str]]:
+        """Per-category compact active gene names for the body-map marker labels."""
+        names: dict[str, list[str]] = {c: [] for c in UNIQUE_CATEGORIES}
+        for g in GENE_LIBRARY:
+            if g["category"] not in self.selected_categories:
+                continue
+            if g["gene"] not in self.included_genes:
+                continue
+            cat = g["category"]
+            names.setdefault(cat, []).append(_compact_gene_symbol(g["gene"]))
+        return names
+
+    @rx.var
     def active_category_prices(self) -> dict[str, int]:
         """Per-category sum of included gene prices for selected categories."""
         totals: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
@@ -1246,7 +1795,6 @@ class ComposeState(rx.State):
         spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
         return (
             len(self.selected_categories) > 0
-            and len(self.personal_tag.strip()) > 0
             and spent > 0
         )
 
@@ -1266,6 +1814,10 @@ class ComposeState(rx.State):
     @rx.var
     def has_stl(self) -> bool:
         return len(self.stl_download_path) > 0
+
+    @rx.var
+    def materialization_tab_enabled(self) -> bool:
+        return self.generating or len(self.stl_download_path) > 0 or len(self.shared_report_slug) > 0
 
     @rx.var
     def has_params(self) -> bool:
@@ -1341,7 +1893,7 @@ class ComposeState(rx.State):
 
 
 class JigsawState(rx.State):
-    """State for the Gene Jigsaw tab — animal/organism selection with budget."""
+    """State for the preserved Gene Jigsaw component."""
 
     personal_tag: str = "A new human, to be"
     selected_organisms: list[str] = []
@@ -1452,7 +2004,6 @@ class JigsawState(rx.State):
             self.stl_progress = "Preparing…"
             self._stl_bytes = b""
             self.stl_base64 = ""
-            rle = list(self.jigsaw_grid_rle)
             rows = self.jigsaw_grid_rows
             cols = self.jigsaw_grid_cols
             scale = self.jigsaw_cell_scale
@@ -1747,8 +2298,12 @@ class JigsawState(rx.State):
             if not self._stl_bytes:
                 self.artex_error = "No STL generated yet."
                 return
-            if not self.artex_api_token.strip():
-                self.artex_error = "API token is required."
+            if not _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            ):
+                self.artex_error = "ARTEX API URL, admin token, and display ID are required."
                 return
             self.artex_creating = True
             self.artex_error = ""
@@ -1797,18 +2352,21 @@ class JigsawState(rx.State):
     def can_create_artex(self) -> bool:
         return (
             self.stl_ready
-            and len(self.artex_api_token.strip()) > 0
-            and len(self.artex_display_id.strip()) > 0
+            and _has_artex_integration_settings(
+                self.artex_api_url,
+                self.artex_api_token,
+                self.artex_display_id,
+            )
         )
 
     @rx.var
     def artex_section_visible(self) -> bool:
-        """Show ARTEX UI in dev mode, when ?from=ARTEX is present, or when a token is configured."""
-        if DEV_MODE:
-            return True
-        if self.artex_from_kiosk:
-            return True
-        return len(self.artex_api_token.strip()) > 0
+        """Show ARTEX UI only when wall-publish settings are configured."""
+        return _has_artex_integration_settings(
+            self.artex_api_url,
+            self.artex_api_token,
+            self.artex_display_id,
+        )
 
     @rx.var
     def jigsaw_viewer_iframe_src(self) -> str:
@@ -1910,35 +2468,3 @@ class JigsawState(rx.State):
         return len(self.selected_organisms) > 0 and len(self.personal_tag.strip()) > 0
 
 
-class GeneGridState(LazyFrameGridMixin, rx.State):
-    """DataGrid state for the gene library."""
-
-    grid_loaded: bool = False
-
-    def load_grid(self) -> None:
-        if self.grid_loaded:
-            return
-        for _ in self.set_lazyframe(GENE_LIBRARY_LF, {}, chunk_size=100):
-            pass
-        self.grid_loaded = True
-
-    @rx.var
-    def has_data(self) -> bool:
-        return bool(self.lf_grid_loaded)
-
-
-class AnimalGridState(LazyFrameGridMixin, rx.State):
-    """DataGrid state for the animal library."""
-
-    grid_loaded: bool = False
-
-    def load_grid(self) -> None:
-        if self.grid_loaded:
-            return
-        for _ in self.set_lazyframe(ANIMAL_LIBRARY_LF, {}, chunk_size=100):
-            pass
-        self.grid_loaded = True
-
-    @rx.var
-    def has_data(self) -> bool:
-        return bool(self.lf_grid_loaded)

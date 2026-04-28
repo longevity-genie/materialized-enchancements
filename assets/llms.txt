@@ -1,0 +1,49 @@
+# Materialized Enhancements
+
+> Materialized Enhancements is an art and synthetic-biology web app that turns selected human genetic enhancement ideas into generative, 3D-printable sculpture.
+
+## Canonical Site
+
+- Site: https://materialized-enhancements.longevity-genie.info
+- Repository: https://github.com/winternewt/materialized-enchancements
+- Data source: `data/input/gene_library_extended.csv` loaded by `materialized_enhancements.gene_data`
+
+## Public Pages
+
+- [Character Profile](https://materialized-enhancements.longevity-genie.info/): Interactive genetic enhancement loadout builder: visitors choose real-world genes, source organisms, and enhancement categories that shape a future-human profile.
+- [Materialization](https://materialized-enhancements.longevity-genie.info/materialization): 3D materialization page for the selected gene profile, including the generated sculpture, shareable report, STL export, and ARTEX publishing flow.
+- [About Materialized Enhancements](https://materialized-enhancements.longevity-genie.info/about): Project background for the Materialized Enhancements artwork, started at CODAME Art+Tech and now developed by the joint GlucoseDAO and Longevity Genie team.
+
+## Crawl Guidance
+
+- Crawl the public pages listed above for the same default content visible to visitors.
+- The app is a Reflex site with SSR/prerendering enabled; route HTML contains the default visitor-facing text before websocket hydration.
+- The Character Profile page is the primary entry point: it exposes the RPG-style gene loadout builder and the current gene library.
+- The Materialization page explains the generated 3D sculpture/report flow; visitor-specific report links use `/materialization?report=1&name=<base64-url-name>&cats=<category-bitmask>` and regenerate sculpture state client-side.
+- Internal Reflex websocket paths such as `/_event/` are not document pages and should not be indexed.
+
+## Biological Dataset
+
+- 32 enhancement genes
+- 6 enhancement categories
+- 25 normalized source organisms
+- Example genes: Dsup, HAS2 (nmrHas2), CIRBP, SOD2, FOXO3, Klotho (αKlotho), TP53 (elephant multi-copy), MGMT (P140K)
+
+## Enhancement Categories
+
+- Stress Resistance: 8 genes
+- Longevity & Genome: 7 genes
+- Regeneration: 4 genes
+- Environmental Adaptation: 5 genes
+- Perception: 4 genes
+- Expression: 4 genes
+
+## Project Summary
+
+Visitors assemble a character-like profile from real genes found in humans, animals, microbes, and extremophiles. The app maps those biological choices and a personal tag into deterministic sculpture parameters, then provides a generated 3D model, shareable report, PNG/PDF exports, and optional ARTEX publishing.
+
+## Technology Notes
+
+- Frontend framework: Reflex with prerendering enabled via `REFLEX_SSR=true`.
+- Styling: Fomantic UI with a dark RPG-style public flow.
+- Runtime data: the gene library is loaded from local CSV inputs, then summarized into categories, organisms, and gene cards at import time.

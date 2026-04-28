@@ -1,29 +1,24 @@
 from __future__ import annotations
 
 import reflex as rx
-from reflex_mui_datagrid import lazyframe_grid
 
-from materialized_enhancements.components.layout import fomantic_icon, template, two_column_layout
+from materialized_enhancements.components.layout import fomantic_icon, template
 from materialized_enhancements.artex import artex_publish_button
-from materialized_enhancements.env import DEV_MODE, PUBLIC_APP_URL
+from materialized_enhancements.crawler_assets import PUBLIC_ROUTES
+from materialized_enhancements.env import PUBLIC_APP_URL
 from materialized_enhancements.gene_data import (
-    ANIMAL_LIBRARY,
-    ANIMAL_PRICES,
     CATEGORY_COUNTS,
     CATEGORY_PRICES,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     UNIQUE_CATEGORIES,
 )
-from materialized_enhancements.puzzle import HUMAN_ORGANISM
 from materialized_enhancements.state import (
     CATEGORY_COLORS,
+    CATEGORY_DESCRIPTIONS,
     CATEGORY_ICONS,
-    AnimalGridState,
     AppState,
     ComposeState,
-    GeneGridState,
-    JigsawState,
 )
 
 _CONTENT_STYLE: dict = {
@@ -31,6 +26,29 @@ _CONTENT_STYLE: dict = {
     "margin": "0 auto",
     "padding": "0 1.35rem",
 }
+
+_ROUTE_METADATA = {route.path: route for route in PUBLIC_ROUTES}
+_SITE_TITLE = "Materialized Enhancements"
+_REPORT_PORTRAIT_UPLOAD_ID = "report-portrait-upload"
+_SOCIAL_META: list[dict[str, str]] = [
+    {"name": "robots", "content": "index, follow"},
+    {"property": "og:type", "content": "website"},
+    {"property": "og:site_name", "content": _SITE_TITLE},
+    {"name": "twitter:card", "content": "summary"},
+]
+
+
+def _category_tooltip(category: str) -> str:
+    description = CATEGORY_DESCRIPTIONS.get(category, "Genetic enhancement category.")
+    return f"{category}: {description}"
+
+
+def _page_title(route_path: str) -> str:
+    return f"{_SITE_TITLE} | {_ROUTE_METADATA[route_path].title}"
+
+
+def _page_description(route_path: str) -> str:
+    return _ROUTE_METADATA[route_path].description
 
 
 def _email_send_form(
@@ -101,7 +119,7 @@ def _email_send_form(
                 ),
                 style={
                     "marginTop": "6px",
-                    "fontSize": "0.78rem",
+                    "fontSize": "1.02rem",
                     "color": "#16a085",
                     "fontWeight": "600",
                 },
@@ -143,269 +161,472 @@ def _landing_tab() -> rx.Component:
         "marginBottom": "12px",
     }
     _a = {"color": "#7c3aed", "fontWeight": "600", "textDecoration": "underline"}
+    _sidebar_card = {
+        "padding": "14px",
+        "borderRadius": "14px",
+        "border": "1px solid rgba(148, 163, 184, 0.22)",
+        "background": "rgba(15, 23, 42, 0.54)",
+        "boxShadow": "0 14px 34px rgba(2, 6, 23, 0.18)",
+    }
+    _sidebar_title = {
+        "fontSize": "0.86rem",
+        "fontWeight": "900",
+        "letterSpacing": "0.08em",
+        "textTransform": "uppercase",
+        "color": "#e9d5ff",
+        "margin": "0 0 10px 0",
+    }
+    _qr_card = {
+        "display": "block",
+        "padding": "14px",
+        "background": "rgba(2, 6, 23, 0.42)",
+        "borderRadius": "12px",
+        "border": "1px solid rgba(196, 181, 253, 0.24)",
+        "textDecoration": "none",
+    }
+    _qr_image = {
+        "width": "min(100%, 190px)",
+        "height": "auto",
+        "aspectRatio": "1 / 1",
+        "objectFit": "cover",
+        "display": "block",
+        "borderRadius": "8px",
+        "margin": "0 auto 10px auto",
+        "boxShadow": "0 2px 10px rgba(0,0,0,0.22)",
+    }
+    _team_grid = {
+        "display": "grid",
+        "gridTemplateColumns": "1fr",
+        "gap": "12px",
+    }
+    _team_member_card = {
+        "display": "flex",
+        "alignItems": "flex-start",
+        "gap": "12px",
+    }
+    _team_photo = {
+        "width": "64px",
+        "height": "64px",
+        "objectFit": "cover",
+        "borderRadius": "999px",
+        "border": "1px solid rgba(196, 181, 253, 0.36)",
+        "boxShadow": "0 8px 18px rgba(2, 6, 23, 0.28)",
+        "backgroundColor": "rgba(2, 6, 23, 0.38)",
+    }
+    _team_photo_link = {
+        "display": "block",
+        "width": "64px",
+        "height": "64px",
+        "flex": "0 0 64px",
+        "borderRadius": "999px",
+        "lineHeight": "0",
+    }
+    _team_text = {
+        "color": "#cbd5e1",
+        "fontSize": "1rem",
+        "lineHeight": "1.65",
+        "margin": "0",
+    }
+
+    def _team_member(
+        name: str,
+        role: str,
+        image_src: str,
+        image_alt: str,
+        link_href: str | None = None,
+    ) -> rx.Component:
+        photo: rx.Component = rx.el.img(
+            src=image_src,
+            alt=image_alt,
+            loading="lazy",
+            decoding="async",
+            style=_team_photo,
+        )
+        name_label: rx.Component = rx.el.strong(name)
+        if link_href:
+            photo = rx.el.a(
+                photo,
+                href=link_href,
+                target="_blank",
+                rel="noopener noreferrer",
+                aria_label=f"{name} profile",
+                style=_team_photo_link,
+            )
+            name_label = rx.el.strong(
+                rx.el.a(
+                    name,
+                    href=link_href,
+                    target="_blank",
+                    rel="noopener noreferrer",
+                    style=_a,
+                ),
+            )
+        return rx.el.div(
+            photo,
+            rx.el.p(
+                name_label,
+                f" — {role}",
+                style=_team_text,
+            ),
+            style=_team_member_card,
+        )
+
+    def _contact_link(label: str, href: str) -> rx.Component:
+        external_attrs: dict[str, str] = (
+            {"target": "_blank", "rel": "noopener noreferrer"}
+            if href.startswith("http")
+            else {}
+        )
+        return rx.el.a(
+            label,
+            href=href,
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "padding": "9px 12px",
+                "borderRadius": "999px",
+                "border": "1px solid rgba(196, 181, 253, 0.38)",
+                "background": "rgba(124, 58, 237, 0.14)",
+                "color": "#ddd6fe",
+                "fontSize": "0.86rem",
+                "fontWeight": "800",
+                "textDecoration": "none",
+            },
+            **external_attrs,
+        )
 
     return rx.el.div(
         rx.el.div(
-            rx.el.h1(
-                "Materialized Enhancements",
-                style={
-                    "color": "#1a1a2e",
-                    "fontSize": "2.4rem",
-                    "fontWeight": "800",
-                    "marginBottom": "4px",
-                },
-            ),
-            rx.el.p(
-                "Upgrading human DNA is not science fiction — it is already happening in adults today. "
-                "In alternative jurisdictions like Prospera, medical tourists are actively receiving gene "
-                "therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens "
-                'in ten years as we unlock harder-to-implement targets to shape "The New Human"? Nature '
-                "already has the code for extreme survival: shark longevity, tardigrade radiation shields, "
-                "and axolotl regeneration.",
-                style=_p_body,
-            ),
-            rx.el.p(
-                rx.fragment(
-                    rx.el.strong("Materialized Enhancements", style={"color": "#1a1a2e"}),
-                    " turns this impending synthetic biology into participatory artwork. You select desired "
-                    '"enhancement genes" through the interface. Those selections, combined with a personal '
-                    "digital signature, are the exact inputs to a generative algorithm. The result is a "
-                    "single, unrepeatable 3D form — ready for 3D printing.",
-                ),
-                style=_p_body,
-            ),
-            rx.el.p(
-                "CODAME ART+TECH 『 The New Human 』 · Milano · 2026",
-                style={"color": "#7c3aed", "fontSize": "0.95rem", "fontWeight": "600", "marginBottom": "18px"},
-            ),
             rx.el.div(
-                rx.el.iframe(
-                    src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
-                    title="Materialized Enhancements",
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-                    allow_full_screen=True,
-                    style={
-                        "position": "absolute",
-                        "top": "0",
-                        "left": "0",
-                        "width": "100%",
-                        "height": "100%",
-                        "border": "none",
-                        "borderRadius": "8px",
-                    },
-                ),
-                style={
-                    "width": "100%",
-                    "paddingBottom": "56.25%",
-                    "position": "relative",
-                    "backgroundColor": "#000",
-                    "borderRadius": "8px",
-                    "marginBottom": "28px",
-                    "overflow": "hidden",
-                },
-            ),
-            rx.el.p(
-                "We want you to learn a little genetics in a playful way: browse real enhancement "
-                "genes, see how they are grouped, then take home a souvenir — a unique 3D-printable form "
-                "and a printable enhancement report generated from your choices.",
-                style={**_p_muted, "textAlign": "center", "marginBottom": "16px"},
-            ),
-            rx.el.p(
-                "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
-                style={
-                    "fontSize": "1.35rem",
-                    "lineHeight": "1.55",
-                    "fontWeight": "600",
-                    "color": "#1f2937",
-                    "textAlign": "center",
-                    "marginBottom": "18px",
-                    "maxWidth": "36rem",
-                    "marginLeft": "auto",
-                    "marginRight": "auto",
-                },
-            ),
-            rx.el.div(
-                rx.el.img(
-                    src="/images/HOW_IT_WORKS.jpg",
-                    alt="Materialized Enhancements process: trait input, parametric geometry, STL output, and 3D fabrication.",
-                    loading="lazy",
-                    decoding="async",
-                    style={
-                        "width": "100%",
-                        "maxWidth": "100%",
-                        "height": "auto",
-                        "display": "block",
-                        "borderRadius": "8px",
-                        "marginBottom": "22px",
-                        "boxShadow": "0 4px 18px rgba(0, 0, 0, 0.08)",
-                    },
-                ),
-                style={"width": "100%", "marginTop": "4px"},
-            ),
-            rx.el.div(
-                rx.el.a(
-                    fomantic_icon("atom", size=16),
-                    rx.el.span(
-                        " Materialize genetic enhancement",
-                        style={"marginLeft": "8px", "fontWeight": "600"},
+                rx.el.div(
+                    rx.el.h1(
+                        "Materialized Enhancements",
+                        style={
+                            "color": "#1a1a2e",
+                            "fontSize": "2.4rem",
+                            "fontWeight": "800",
+                            "marginBottom": "4px",
+                        },
                     ),
-                    href="/materialize",
-                    class_name="ui primary button",
-                    style={"fontSize": "1.05rem", "padding": "14px 26px", "margin": "4px"},
-                ),
-                rx.el.a(
-                    fomantic_icon("puzzle piece", size=14),
-                    rx.el.span(" Gene Jigsaw", style={"marginLeft": "6px"}),
-                    href="/jigsaw",
-                    class_name="ui button",
-                    style={"margin": "4px"},
-                ),
-                style={
-                    "display": "flex",
-                    "flexWrap": "wrap",
-                    "justifyContent": "center",
-                    "gap": "8px",
-                    "marginBottom": "22px",
-                },
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "Team",
-                    style={
-                        "fontSize": "1.35rem",
-                        "fontWeight": "700",
-                        "color": "#374151",
-                        "margin": "0 0 12px 0",
-                        "letterSpacing": "-0.02em",
-                    },
-                ),
-                rx.el.ul(
-                    rx.el.li(
-                        rx.el.strong("Newton Winter", style={"color": "#374151"}),
-                        " — web app, jigsaw generation, geometry optimization, devops, biology, UI — ",
-                        rx.el.a("GitHub", href="https://github.com/winternewt", target="_blank", rel="noopener noreferrer", style=_a),
+                    rx.el.p(
+                        "Upgrading human DNA is not science fiction — it is already happening in adults today. "
+                        "In alternative jurisdictions like Prospera, medical tourists are actively receiving gene "
+                        "therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens "
+                        'in ten years as we unlock harder-to-implement targets to shape "The New Human"? Nature '
+                        "already has the code for extreme survival: shark longevity, tardigrade radiation shields, "
+                        "and axolotl regeneration.",
+                        style=_p_body,
                     ),
-                    rx.el.li(
-                        rx.el.strong("Anton Kulaga", style={"color": "#374151"}),
-                        " — concept, biology, UI design, generative video, 3D printing — ",
-                        rx.el.a("GitHub", href="https://github.com/antonkulaga", target="_blank", rel="noopener noreferrer", style=_a),
+                    rx.el.p(
+                        rx.fragment(
+                            rx.el.strong("Materialized Enhancements", style={"color": "#1a1a2e"}),
+                            " turns this impending synthetic biology into participatory artwork. You select desired "
+                            '"enhancement genes" through the interface. Those selections, combined with a personal '
+                            "digital signature, are the exact inputs to a generative algorithm. The result is a "
+                            "single, unrepeatable 3D form — ready for 3D printing.",
+                        ),
+                        style=_p_body,
                     ),
-                    rx.el.li(
-                        rx.el.strong("Livia Zaharia", style={"color": "#374151"}),
-                        " — parametric geometry, personalized enhancement report, 3D printing — ",
+                    rx.el.p(
+                        "Started at CODAME ART+TECH 『 The New Human 』 in Milano, now developed by the joint "
+                        "GlucoseDAO and Longevity Genie team.",
+                        style={"color": "#7c3aed", "fontSize": "0.95rem", "fontWeight": "600", "marginBottom": "18px"},
+                    ),
+                    rx.el.div(
+                        rx.el.iframe(
+                            src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
+                            title="Materialized Enhancements",
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                            allow_full_screen=True,
+                            style={
+                                "position": "absolute",
+                                "top": "0",
+                                "left": "0",
+                                "width": "100%",
+                                "height": "100%",
+                                "border": "none",
+                                "borderRadius": "10px",
+                            },
+                        ),
+                        style={
+                            "width": "100%",
+                            "maxWidth": "1200px",
+                            "aspectRatio": "16 / 9",
+                            "position": "relative",
+                            "backgroundColor": "#000",
+                            "borderRadius": "10px",
+                            "margin": "0 auto 18px auto",
+                            "overflow": "hidden",
+                            "boxShadow": "0 16px 36px rgba(2, 6, 23, 0.28)",
+                        },
+                    ),
+                    rx.el.p(
+                        "We want you to learn a little genetics in a playful way: browse real enhancement "
+                        "genes, see how they are grouped, then take home a souvenir — a unique 3D-printable form "
+                        "and a printable enhancement report generated from your choices.",
+                        style={**_p_muted, "marginBottom": "16px"},
+                    ),
+                    rx.el.p(
+                        "We also do a lot of open-source work across personalized genomics, aging research, "
+                        "bio AI agents, glucose prediction, and parametric art. For parametric art and glucose prediction, see ",
                         rx.el.a(
-                            "livia.glucosedao.org",
+                            "Livia Zaharia's work",
                             href="http://livia.glucosedao.org/",
                             target="_blank",
                             rel="noopener noreferrer",
                             style=_a,
                         ),
+                        ".",
+                        style={**_p_body, "marginBottom": "16px"},
                     ),
-                    rx.el.li(
-                        rx.el.strong("Marko Prakhov-Donets", style={"color": "#374151"}),
-                        " — video editing",
-                    ),
-                    style={
-                        "margin": "0",
-                        "paddingLeft": "1.2rem",
-                        "fontSize": "0.9rem",
-                        "lineHeight": "1.65",
-                        "color": "#4b5563",
-                    },
-                ),
-                style={"marginBottom": "8px"},
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "Support the project",
-                    style={
-                        "fontSize": "1.35rem",
-                        "fontWeight": "700",
-                        "color": "#374151",
-                        "margin": "16px 0 12px 0",
-                        "letterSpacing": "-0.02em",
-                    },
-                ),
-                rx.el.div(
                     rx.el.div(
-                        rx.el.img(
-                            src="/images/kofi.jpg",
-                            alt="Ko-fi QR code — support Materialized Enhancements",
-                            loading="lazy",
-                            decoding="async",
+                        rx.el.h2(
+                            "Want to collaborate, contribute, or report a mistake?",
                             style={
-                                "width": "237px",
-                                "height": "237px",
-                                "display": "block",
-                                "borderRadius": "8px",
-                                "margin": "0 auto 10px auto",
-                                "boxShadow": "0 2px 10px rgba(0,0,0,0.10)",
+                                "color": "#1a1a2e",
+                                "fontSize": "1.35rem",
+                                "fontWeight": "900",
+                                "margin": "0 0 8px 0",
                             },
                         ),
                         rx.el.p(
-                            "Buy us a coffee",
-                            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem", "margin": "0 0 4px 0", "textAlign": "center"},
+                            "The gene list is not complete, and the project is meant to grow. If you found a missing "
+                            "gene, a questionable annotation, a useful paper, or want to collaborate on art, science, "
+                            "education, venues, fabrication, or new generative models, open a GitHub issue or talk to us directly.",
+                            style={**_p_body, "marginBottom": "12px"},
                         ),
-                        rx.el.p(
-                            "Support the artists on Ko-fi",
-                            style={"color": "#6b7280", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                        rx.el.div(
+                            _contact_link(
+                                "Open a GitHub issue",
+                                "https://github.com/winternewt/materialized-enchancements/issues",
+                            ),
+                            _contact_link("Email Livia", "mailto:liviazaharia2020@gmail.com"),
+                            _contact_link("Email Anton", "mailto:antonkulaga@gmail.com"),
+                            _contact_link(
+                                "Livia on LinkedIn",
+                                "https://www.linkedin.com/in/livia-zaharia-4b1425a0/",
+                            ),
+                            _contact_link(
+                                "Anton on LinkedIn",
+                                "https://www.linkedin.com/in/antonkulaga/",
+                            ),
+                            style={
+                                "display": "flex",
+                                "flexWrap": "wrap",
+                                "gap": "8px",
+                            },
                         ),
                         style={
-                            "flex": "1",
-                            "minWidth": "270px",
-                            "maxWidth": "372px",
-                            "padding": "18px 16px",
-                            "background": "#fafafa",
-                            "borderRadius": "12px",
-                            "border": "1px solid #e5e7eb",
+                            "padding": "16px",
+                            "borderRadius": "16px",
+                            "border": "1px solid #d4c5f9",
+                            "background": "#f3f0ff",
+                            "boxShadow": "0 10px 24px rgba(124, 58, 237, 0.12)",
+                            "margin": "0 0 18px 0",
+                        },
+                    ),
+                    rx.el.p(
+                        "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
+                        style={
+                            "fontSize": "1.35rem",
+                            "lineHeight": "1.55",
+                            "fontWeight": "600",
+                            "color": "#1f2937",
+                            "marginBottom": "18px",
+                            "maxWidth": "38rem",
                         },
                     ),
                     rx.el.div(
+                        rx.el.a(
+                            fomantic_icon("atom", size=16),
+                            rx.el.span(
+                                " Materialize genetic enhancement",
+                                style={"marginLeft": "8px", "fontWeight": "600"},
+                            ),
+                            href="/",
+                            class_name="ui primary button",
+                            style={"fontSize": "1.05rem", "padding": "14px 26px", "margin": "4px 0"},
+                        ),
+                        style={
+                            "display": "flex",
+                            "flexWrap": "wrap",
+                            "gap": "8px",
+                            "marginBottom": "4px",
+                        },
+                    ),
+                    class_name="me-about-main",
+                ),
+                rx.el.aside(
+                    rx.el.div(
+                        rx.el.div("How it works", style=_sidebar_title),
                         rx.el.img(
-                            src="/images/product.jpg",
-                            alt="Product QR code — order your 3D-printed sculpture with delivery",
+                            src="/images/HOW_IT_WORKS.jpg",
+                            alt="Materialized Enhancements process: trait input, parametric geometry, STL output, and 3D fabrication.",
                             loading="lazy",
                             decoding="async",
                             style={
-                                "width": "237px",
-                                "height": "237px",
+                                "width": "100%",
+                                "height": "auto",
                                 "display": "block",
                                 "borderRadius": "8px",
-                                "margin": "0 auto 10px auto",
-                                "boxShadow": "0 2px 10px rgba(0,0,0,0.10)",
+                                "boxShadow": "0 4px 18px rgba(0, 0, 0, 0.18)",
                             },
                         ),
-                        rx.el.p(
-                            "Order your sculpture",
-                            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem", "margin": "0 0 4px 0", "textAlign": "center"},
-                        ),
-                        rx.el.p(
-                            "3D-printed sculpture + delivery",
-                            style={"color": "#6b7280", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
-                        ),
-                        style={
-                            "flex": "1",
-                            "minWidth": "270px",
-                            "maxWidth": "372px",
-                            "padding": "18px 16px",
-                            "background": "#fafafa",
-                            "borderRadius": "12px",
-                            "border": "1px solid #e5e7eb",
-                        },
+                        style=_sidebar_card,
                     ),
-                    style={
-                        "display": "flex",
-                        "flexWrap": "wrap",
-                        "gap": "16px",
-                        "justifyContent": "center",
-                        "marginBottom": "20px",
-                    },
+                    rx.el.div(
+                        rx.el.div("Team", style=_sidebar_title),
+                        rx.el.div(
+                            _team_member(
+                                "Newton Winter",
+                                "web app, jigsaw generation, geometry optimization, devops, biology, UI",
+                                "/images/team/newton_winter.webp",
+                                "Newton Winter",
+                                "https://github.com/winternewt",
+                            ),
+                            _team_member(
+                                "Anton Kulaga",
+                                "concept, biology, UI design, generative video, 3D printing",
+                                "/images/team/anton_kulaga.jpg",
+                                "Anton Kulaga",
+                                "https://github.com/antonkulaga",
+                            ),
+                            _team_member(
+                                "Livia Zaharia",
+                                "parametric geometry, personalized enhancement report, 3D printing",
+                                "/images/team/livia_zaharia.jpg",
+                                "Livia Zaharia",
+                                "http://livia.glucosedao.org/",
+                            ),
+                            _team_member(
+                                "Marko Prakhov-Donets",
+                                "video editing",
+                                "/images/team/markel.webp",
+                                "Marko Prakhov-Donets",
+                                "https://linktr.ee/markelkori",
+                            ),
+                            style=_team_grid,
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    rx.el.div(
+                        rx.el.div("Collaborate or report a mistake", style=_sidebar_title),
+                        rx.el.p(
+                            "This project is open source and the gene library is a living research artifact. "
+                            "If you know a missing enhancement gene, spot an annotation mistake, want to plug in "
+                            "a new generative model, or want to collaborate on an exhibition, please reach out.",
+                            style={
+                                "color": "#cbd5e1",
+                                "fontSize": "0.93rem",
+                                "lineHeight": "1.55",
+                                "margin": "0 0 12px 0",
+                            },
+                        ),
+                        rx.el.div(
+                            _contact_link(
+                                "Open a GitHub issue",
+                                "https://github.com/winternewt/materialized-enchancements/issues",
+                            ),
+                            _contact_link("Email Livia", "mailto:liviazaharia2020@gmail.com"),
+                            _contact_link(
+                                "Livia on LinkedIn",
+                                "https://www.linkedin.com/in/livia-zaharia-4b1425a0/",
+                            ),
+                            _contact_link("Email Anton", "mailto:antonkulaga@gmail.com"),
+                            _contact_link(
+                                "Anton on LinkedIn",
+                                "https://www.linkedin.com/in/antonkulaga/",
+                            ),
+                            style={
+                                "display": "flex",
+                                "flexWrap": "wrap",
+                                "gap": "8px",
+                            },
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    rx.el.div(
+                        rx.el.div("Support the project", style=_sidebar_title),
+                        rx.el.div(
+                            rx.el.a(
+                                rx.el.img(
+                                    src="/images/kofi.jpg",
+                                    alt="Ko-fi QR code — support Materialized Enhancements",
+                                    loading="lazy",
+                                    decoding="async",
+                                    style=_qr_image,
+                                ),
+                                rx.el.strong(
+                                    "Buy us a coffee",
+                                    style={
+                                        "display": "block",
+                                        "fontWeight": "700",
+                                        "color": "#f8fafc",
+                                        "fontSize": "0.95rem",
+                                        "margin": "0 0 4px 0",
+                                        "textAlign": "center",
+                                    },
+                                ),
+                                rx.el.div(
+                                    "Support the artists on Ko-fi",
+                                    style={"color": "#cbd5e1", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                                ),
+                                rx.el.div(
+                                    "https://ko-fi.com/liviazaharia",
+                                    style={
+                                        "color": "#c4b5fd",
+                                        "fontSize": "0.78rem",
+                                        "margin": "6px 0 0 0",
+                                        "textAlign": "center",
+                                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                                        "wordBreak": "break-all",
+                                    },
+                                ),
+                                href="https://ko-fi.com/liviazaharia",
+                                target="_blank",
+                                rel="noopener noreferrer",
+                                style=_qr_card,
+                            ),
+                            rx.el.div(
+                                rx.el.img(
+                                    src="/images/product.jpg",
+                                    alt="Product QR code — order your 3D-printed sculpture with delivery",
+                                    loading="lazy",
+                                    decoding="async",
+                                    style=_qr_image,
+                                ),
+                                rx.el.strong(
+                                    "Order your sculpture",
+                                    style={
+                                        "display": "block",
+                                        "fontWeight": "700",
+                                        "color": "#f8fafc",
+                                        "fontSize": "0.95rem",
+                                        "margin": "0 0 4px 0",
+                                        "textAlign": "center",
+                                    },
+                                ),
+                                rx.el.div(
+                                    "3D-printed sculpture + delivery",
+                                    style={"color": "#cbd5e1", "fontSize": "0.82rem", "margin": "0", "textAlign": "center"},
+                                ),
+                                style=_qr_card,
+                            ),
+                            class_name="me-about-support-grid",
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    class_name="me-about-sidebar",
                 ),
+                class_name="me-about-layout",
             ),
             rx.el.p(
                 "The stack is open source and meant to be extended: we invite other artists to plug their "
                 "own generative models into the same biological input engine, and we welcome scientists to "
-                "contribute to the gene list—new papers, new targets, or clearer annotations. ",
+                "contribute to the gene list with new papers, new targets, or clearer annotations. "
+                "The current list is not meant to be complete, so corrections and missing genes are welcome as "
+                "GitHub issues. ",
                 rx.el.a(
                     "Browse the repository on GitHub",
                     href="https://github.com/winternewt/materialized-enchancements",
@@ -413,10 +634,18 @@ def _landing_tab() -> rx.Component:
                     rel="noopener noreferrer",
                     style=_a,
                 ),
+                " or ",
+                rx.el.a(
+                    "open an issue",
+                    href="https://github.com/winternewt/materialized-enchancements/issues",
+                    target="_blank",
+                    rel="noopener noreferrer",
+                    style=_a,
+                ),
                 ".",
                 style={**_p_body, "marginTop": "8px", "marginBottom": "0"},
             ),
-            style=_CONTENT_STYLE,
+            style={**_CONTENT_STYLE, "width": "100%", "maxWidth": "100%", "padding": "0 0.75rem"},
         ),
     )
 
@@ -427,6 +656,7 @@ def _landing_tab() -> rx.Component:
 def _category_button(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
     total_count = CATEGORY_COUNTS.get(category, 0)
     total_price = CATEGORY_PRICES.get(category, 0)
     active_count = ComposeState.active_gene_counts[category]
@@ -478,7 +708,9 @@ def _category_button(category: str) -> rx.Component:
             ),
             style={"display": "flex", "alignItems": "center", "width": "100%"},
         ),
-        on_click=ComposeState.toggle_category(category),
+        on_click=ComposeState.select_category(category),
+        title=tooltip,
+        aria_label=tooltip,
         style={
             "marginBottom": "6px",
             "textAlign": "left",
@@ -653,20 +885,21 @@ def _gene_selection_text_block(title: str, body: rx.Var) -> rx.Component:
             rx.el.div(
                 title,
                 style={
-                    "fontSize": "0.92rem",
-                    "fontWeight": "600",
-                    "color": "#475569",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "900",
+                    "color": "#a5b4fc",
                     "marginBottom": "4px",
-                    "letterSpacing": "0.02em",
+                    "letterSpacing": "0.08em",
+                    "textTransform": "uppercase",
                 },
             ),
             rx.el.p(
                 body,
                 style={
-                    "fontSize": "0.88rem",
-                    "color": "#4b5563",
-                    "margin": "0 0 10px 0",
-                    "lineHeight": "1.55",
+                    "fontSize": "0.96rem",
+                    "color": "#dbeafe",
+                    "margin": "0 0 12px 0",
+                    "lineHeight": "1.6",
                     "whiteSpace": "pre-wrap",
                 },
             ),
@@ -695,46 +928,46 @@ def _gene_selection_prop_row(label: str, value: rx.Var) -> rx.Component:
 
 def _gene_confidence_badge(bucket: rx.Var, confidence: rx.Var) -> rx.Component:
     pill_high = {
-        "fontSize": "0.84rem",
+        "fontSize": "0.92rem",
         "fontWeight": "600",
         "padding": "3px 12px",
-        "borderRadius": "999px",
+        "borderRadius": "6px",
         "backgroundColor": "#d1fae7",
         "color": "#047857",
         "border": "1px solid #6ee7b7",
     }
     pill_mh = {
-        "fontSize": "0.84rem",
+        "fontSize": "0.92rem",
         "fontWeight": "600",
         "padding": "3px 12px",
-        "borderRadius": "999px",
+        "borderRadius": "6px",
         "backgroundColor": "#cffafe",
         "color": "#0e7490",
         "border": "1px solid #67e8f9",
     }
     pill_med = {
-        "fontSize": "0.84rem",
+        "fontSize": "0.92rem",
         "fontWeight": "600",
         "padding": "3px 12px",
-        "borderRadius": "999px",
+        "borderRadius": "6px",
         "backgroundColor": "#fef3c7",
         "color": "#b45309",
         "border": "1px solid #fcd34d",
     }
     pill_low = {
-        "fontSize": "0.84rem",
+        "fontSize": "0.92rem",
         "fontWeight": "600",
         "padding": "3px 12px",
-        "borderRadius": "999px",
+        "borderRadius": "6px",
         "backgroundColor": "#fee2e2",
         "color": "#b91c1c",
         "border": "1px solid #fecaca",
     }
     pill_unk = {
-        "fontSize": "0.84rem",
+        "fontSize": "0.92rem",
         "fontWeight": "600",
         "padding": "3px 12px",
-        "borderRadius": "999px",
+        "borderRadius": "6px",
         "backgroundColor": "#f3f4f6",
         "color": "#4b5563",
         "border": "1px solid #e5e7eb",
@@ -745,9 +978,9 @@ def _gene_confidence_badge(bucket: rx.Var, confidence: rx.Var) -> rx.Component:
             rx.el.span(
                 "Confidence",
                 style={
-                    "fontSize": "0.8rem",
-                    "fontWeight": "600",
-                    "color": "#6b7280",
+                    "fontSize": "0.95rem",
+                    "fontWeight": "900",
+                    "color": "#94a3b8",
                     "marginRight": "8px",
                     "textTransform": "uppercase",
                     "letterSpacing": "0.06em",
@@ -774,9 +1007,9 @@ def _gene_tested_on_row(host_text: rx.Var) -> rx.Component:
             rx.el.span(
                 "Tested on",
                 style={
-                    "fontSize": "0.8rem",
-                    "fontWeight": "600",
-                    "color": "#6b7280",
+                    "fontSize": "0.95rem",
+                    "fontWeight": "900",
+                    "color": "#94a3b8",
                     "marginRight": "8px",
                     "textTransform": "uppercase",
                     "letterSpacing": "0.06em",
@@ -785,7 +1018,7 @@ def _gene_tested_on_row(host_text: rx.Var) -> rx.Component:
             ),
             rx.el.span(
                 host_text,
-                style={"fontSize": "0.88rem", "color": "#374151", "lineHeight": "1.45"},
+                style={"fontSize": "0.86rem", "color": "#cbd5e1", "lineHeight": "1.45"},
             ),
             style={"display": "flex", "alignItems": "baseline", "gap": "4px", "flexWrap": "wrap"},
         ),
@@ -802,14 +1035,14 @@ def _gene_key_reference_segment(seg: rx.Var) -> rx.Component:
             target="_blank",
             rel="noopener noreferrer",
             style={
-                "color": "#2563eb",
+                "color": "#93c5fd",
                 "textDecoration": "underline",
                 "textUnderlineOffset": "2px",
-                "fontSize": "0.8rem",
+                "fontSize": "0.78rem",
                 "wordBreak": "break-all",
             },
         ),
-        rx.el.span(seg["v"], style={"fontSize": "0.8rem", "color": "#4b5563"}),
+        rx.el.span(seg["v"], style={"fontSize": "0.78rem", "color": "#cbd5e1"}),
     )
 
 
@@ -841,15 +1074,12 @@ def _gene_category_border_left(category: rx.Var) -> rx.Var:
     """Thin left accent matching sidebar category color (parent `category` key)."""
     return rx.match(
         category,
-        ("Radiation & Extremophile", "2px solid #e67e22"),
-        ("Longevity & Cancer Resistance", "2px solid #27ae60"),
-        ("Immunity & Physiology", "2px solid #2980b9"),
-        ("Biological Immortality & Regeneration", "2px solid #16a085"),
-        ("Sleep & Consciousness", "2px solid #8e44ad"),
-        ("New Senses", "2px solid #e84393"),
-        ("Display & Expression", "2px solid #d63031"),
-        ("Energy", "2px solid #f39c12"),
-        ("Materials", "2px solid #00b894"),
+        ("Stress Resistance", "2px solid #e67e22"),
+        ("Longevity & Genome", "2px solid #27ae60"),
+        ("Regeneration", "2px solid #16a085"),
+        ("Environmental Adaptation", "2px solid #2980b9"),
+        ("Perception", "2px solid #e84393"),
+        ("Expression", "2px solid #8e44ad"),
         "2px solid #cbd5e1",
     )
 
@@ -858,15 +1088,12 @@ def _gene_category_accent_color(category: rx.Var) -> rx.Var:
     """Same hue as CATEGORY_COLORS / left border — for trait line in reports."""
     return rx.match(
         category,
-        ("Radiation & Extremophile", "#e67e22"),
-        ("Longevity & Cancer Resistance", "#27ae60"),
-        ("Immunity & Physiology", "#2980b9"),
-        ("Biological Immortality & Regeneration", "#16a085"),
-        ("Sleep & Consciousness", "#8e44ad"),
-        ("New Senses", "#e84393"),
-        ("Display & Expression", "#d63031"),
-        ("Energy", "#f39c12"),
-        ("Materials", "#00b894"),
+        ("Stress Resistance", "#e67e22"),
+        ("Longevity & Genome", "#27ae60"),
+        ("Regeneration", "#16a085"),
+        ("Environmental Adaptation", "#2980b9"),
+        ("Perception", "#e84393"),
+        ("Expression", "#8e44ad"),
         "#7c3aed",
     )
 
@@ -986,7 +1213,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             style={"display": "flex", "alignItems": "center"},
         ),
         rx.el.p(
-            gene_item["narrative"],
+            gene_item["short_description"],
             style={
                 "fontSize": "0.83rem",
                 "color": "#374151",
@@ -1008,6 +1235,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
         rx.cond(
             is_expanded,
             rx.el.div(
+                _gene_selection_text_block("Full description", gene_item["narrative"]),
                 _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                 _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
                 _gene_selection_text_block("Highest evidence tier", gene_item["evidence_tier"]),
@@ -1082,17 +1310,2304 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             "transition": "all 0.15s ease",
             "overflow": "hidden",
         },
+        on_mouse_enter=ComposeState.set_hovered_gene_category(gene_item["category"]),
+        on_mouse_leave=ComposeState.clear_hovered_gene_category,
     )
+
+
+_RPG_PANEL_STYLE: dict = {
+    "background": "linear-gradient(180deg, #111827 0%, #0b1020 100%)",
+    "border": "1px solid rgba(124, 58, 237, 0.42)",
+    "borderRadius": "14px",
+    "boxShadow": "0 18px 45px rgba(15, 23, 42, 0.22)",
+    "color": "#e5e7eb",
+}
+
+
+def _rpg_panel_title(icon_name: str, title: str, subtitle: str = "") -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            fomantic_icon(icon_name, size=15, color="#a78bfa"),
+            rx.el.span(
+                title,
+                style={
+                    "marginLeft": "8px",
+                    "fontSize": "1.08rem",
+                    "fontWeight": "900",
+                    "letterSpacing": "0.08em",
+                    "textTransform": "uppercase",
+                    "color": "#f8fafc",
+                },
+            ),
+            style={"display": "flex", "alignItems": "center"},
+        ),
+        rx.cond(
+            subtitle != "",
+            rx.el.div(
+                subtitle,
+                style={
+                    "fontSize": "0.98rem",
+                    "fontWeight": "800",
+                    "color": "#c4b5fd",
+                    "marginTop": "2px",
+                    "lineHeight": "1.35",
+                },
+            ),
+            rx.fragment(),
+        ),
+        style={"marginBottom": "12px"},
+    )
+
+
+def _rpg_stat_bar(label: str, value: rx.Var | int, color: str, total: int = DEFAULT_BUDGET) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(label, style={"fontSize": "0.9rem", "color": "#cbd5e1", "fontWeight": "800"}),
+            rx.el.span(
+                value,
+                f" / {total} cr",
+                style={"fontSize": "0.86rem", "color": "#f8fafc", "fontWeight": "900"},
+            ),
+            style={"display": "flex", "justifyContent": "space-between", "marginBottom": "4px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                style={
+                    "height": "100%",
+                    "borderRadius": "999px",
+                    "background": color,
+                    "boxShadow": f"0 0 12px {color}",
+                    "width": rx.cond(value > 0, f"calc({value} * 100% / {total})", "0%"),
+                    "transition": "width 0.25s ease",
+                },
+            ),
+            style={
+                "height": "7px",
+                "borderRadius": "999px",
+                "backgroundColor": "rgba(148, 163, 184, 0.2)",
+                "overflow": "hidden",
+            },
+        ),
+        style={"marginBottom": "9px"},
+    )
+
+
+def _rpg_gene_count_text(count: rx.Var, total_count: int) -> rx.Component:
+    return rx.el.span(
+        count,
+        f" / {total_count} genes",
+        style={
+            "display": "block",
+            "fontSize": "0.78rem",
+            "fontWeight": "900",
+            "letterSpacing": "0.04em",
+            "opacity": "0.86",
+            "marginTop": "4px",
+            "textTransform": "uppercase",
+        },
+    )
+
+
+def _category_anchor_id(category: str) -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in category)
+    compact_slug = "-".join(part for part in slug.split("-") if part)
+    return f"gene-library-{compact_slug}"
+
+
+def _category_css_slug(category: str) -> str:
+    return _category_anchor_id(category).removeprefix("gene-library-")
+
+
+def _rpg_category_stat_row(category: str) -> rx.Component:
+    color = CATEGORY_COLORS.get(category, "#7c3aed")
+    icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
+    count = ComposeState.active_gene_counts[category]
+    spent = ComposeState.active_category_prices[category]
+    total_count = CATEGORY_COUNTS.get(category, 0)
+    return rx.el.a(
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon(icon_name, size=14, color=color),
+                rx.el.span(
+                    category,
+                    style={
+                        "fontSize": "0.92rem",
+                        "fontWeight": "800",
+                        "color": "#e5e7eb",
+                        "overflow": "hidden",
+                        "textOverflow": "ellipsis",
+                        "whiteSpace": "nowrap",
+                        "marginLeft": "7px",
+                    },
+                ),
+                style={"display": "flex", "alignItems": "center", "minWidth": "0"},
+            ),
+            rx.el.span(
+                count,
+                f"/{total_count}",
+                " · ",
+                spent,
+                " cr",
+                style={"fontSize": "0.88rem", "fontWeight": "900", "color": color, "whiteSpace": "nowrap"},
+            ),
+            style={"display": "flex", "justifyContent": "space-between", "gap": "10px", "marginBottom": "5px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                style={
+                    "height": "100%",
+                    "borderRadius": "999px",
+                    "backgroundColor": color,
+                    "boxShadow": f"0 0 10px {color}",
+                    "width": rx.cond(count > 0, f"calc({count} * 100% / {total_count})", "0%"),
+                    "transition": "width 0.25s ease",
+                },
+            ),
+            style={
+                "height": "5px",
+                "borderRadius": "999px",
+                "backgroundColor": "rgba(148, 163, 184, 0.18)",
+                "overflow": "hidden",
+            },
+        ),
+        href=f"#{_category_anchor_id(category)}",
+        class_name="me-rpg-category-anchor",
+        title=tooltip,
+        aria_label=tooltip,
+        style={"display": "block", "marginBottom": "8px", "textDecoration": "none"},
+    )
+
+
+def _rpg_gene_puzzle_icon(gene_item: rx.Var) -> rx.Component:
+    return rx.cond(
+        gene_item["puzzle_src"] != "",
+        rx.el.span(
+            rx.el.img(
+                src=gene_item["puzzle_src"],
+                alt=gene_item["source_organism"],
+                loading="lazy",
+                decoding="async",
+                style={
+                    "display": "block",
+                    "maxWidth": "25px",
+                    "maxHeight": "25px",
+                    "width": "auto",
+                    "height": "auto",
+                    "objectFit": "contain",
+                    "filter": "invert(1) brightness(1.35) drop-shadow(0 0 5px rgba(196, 181, 253, 0.28))",
+                },
+            ),
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "30px",
+                "height": "30px",
+                "borderRadius": "9px",
+                "background": "rgba(248, 250, 252, 0.08)",
+                "border": "1px solid rgba(196, 181, 253, 0.24)",
+                "flex": "0 0 30px",
+            },
+        ),
+        rx.el.span(
+            fomantic_icon("user circle", size=18, color="#c4b5fd"),
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "30px",
+                "height": "30px",
+                "borderRadius": "9px",
+                "background": "rgba(248, 250, 252, 0.08)",
+                "border": "1px solid rgba(196, 181, 253, 0.18)",
+                "flex": "0 0 30px",
+            },
+        ),
+    )
+
+
+def _rpg_gene_species_label(gene_item: rx.Var) -> rx.Component:
+    return rx.el.div(
+        _rpg_gene_puzzle_icon(gene_item),
+        rx.el.span(
+            gene_item["source_organism"],
+            style={"minWidth": "0", "overflow": "hidden", "textOverflow": "ellipsis"},
+        ),
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "8px",
+            "fontSize": "0.82rem",
+            "color": "#94a3b8",
+            "marginTop": "6px",
+            "minWidth": "0",
+        },
+    )
+
+
+def _rpg_selected_gene_chip(gene_item: rx.Var) -> rx.Component:
+    return rx.el.button(
+        rx.el.span(
+            gene_item["gene"],
+            style={"fontWeight": "800", "color": "#f8fafc", "fontSize": "0.88rem"},
+        ),
+        rx.el.span(
+            gene_item["category"],
+            style={
+                "fontSize": "0.74rem",
+                "color": _gene_category_accent_color(gene_item["category"]),
+                "display": "block",
+                "marginTop": "1px",
+                "lineHeight": "1.1",
+            },
+        ),
+        rx.el.span(
+            "×",
+            style={
+                "position": "absolute",
+                "top": "2px",
+                "right": "7px",
+                "fontSize": "0.8rem",
+                "color": "#94a3b8",
+            },
+        ),
+        on_click=ComposeState.toggle_gene_from_library(gene_item["gene"], gene_item["category"]),
+        title="Remove gene",
+        style={
+            "position": "relative",
+            "boxSizing": "border-box",
+            "textAlign": "left",
+            "padding": "9px 24px 9px 11px",
+            "borderRadius": "10px",
+            "borderTop": "1px solid rgba(148, 163, 184, 0.32)",
+            "borderRight": "1px solid rgba(148, 163, 184, 0.32)",
+            "borderBottom": "1px solid rgba(148, 163, 184, 0.32)",
+            "borderLeft": _gene_category_border_left(gene_item["category"]),
+            "background": "rgba(15, 23, 42, 0.72)",
+            "cursor": "pointer",
+            "minWidth": "108px",
+            "maxWidth": "100%",
+        },
+    )
+
+
+def _rpg_schema_hint_panel() -> rx.Component:
+    return rx.el.details(
+        rx.el.summary(
+            fomantic_icon("map outline", size=12, color="#22d3ee"),
+            rx.el.span(" How it works", style={"marginLeft": "7px"}),
+            style={
+                "cursor": "pointer",
+                "listStyle": "none",
+                "display": "flex",
+                "alignItems": "center",
+                "fontSize": "0.8rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#cffafe",
+            },
+        ),
+        rx.el.div(
+            "Trait choices become parametric geometry, then a unique STL and physical artifact.",
+            style={
+                "marginTop": "8px",
+                "color": "#cbd5e1",
+                "fontSize": "0.82rem",
+                "lineHeight": "1.45",
+            },
+        ),
+        rx.el.img(
+            src="/images/HOW_IT_WORKS.jpg",
+            alt="Materialized Enhancements process flow and instructions",
+            loading="lazy",
+            decoding="async",
+            style={
+                "width": "100%",
+                "height": "auto",
+                "display": "block",
+                "marginTop": "10px",
+                "borderRadius": "8px",
+                "border": "1px solid rgba(148, 163, 184, 0.26)",
+                "boxShadow": "0 8px 24px rgba(2, 6, 23, 0.32)",
+            },
+        ),
+        style={
+            "marginTop": "14px",
+            "padding": "11px 12px",
+            "borderRadius": "10px",
+            "border": "1px solid rgba(34, 211, 238, 0.24)",
+            "background": "rgba(8, 47, 73, 0.28)",
+        },
+    )
+
+
+def _rpg_intro_video_panel() -> rx.Component:
+    return rx.el.details(
+        rx.el.summary(
+            fomantic_icon("video", size=12, color="#c4b5fd"),
+            rx.el.span(" Project video", style={"marginLeft": "7px"}),
+            style={
+                "cursor": "pointer",
+                "listStyle": "none",
+                "display": "flex",
+                "alignItems": "center",
+                "fontSize": "0.8rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#ddd6fe",
+            },
+        ),
+        rx.el.div(
+            rx.el.iframe(
+                src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
+                title="Materialized Enhancements project video",
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                allow_full_screen=True,
+                loading="lazy",
+                style={
+                    "position": "absolute",
+                    "top": "0",
+                    "left": "0",
+                    "width": "100%",
+                    "height": "100%",
+                    "border": "none",
+                    "borderRadius": "8px",
+                },
+            ),
+            style={
+                "width": "100%",
+                "aspectRatio": "16 / 9",
+                "position": "relative",
+                "backgroundColor": "#000",
+                "borderRadius": "8px",
+                "marginTop": "10px",
+                "overflow": "hidden",
+                "boxShadow": "0 8px 24px rgba(2, 6, 23, 0.32)",
+            },
+        ),
+        style={
+            "marginTop": "12px",
+            "padding": "11px 12px",
+            "borderRadius": "10px",
+            "border": "1px solid rgba(167, 139, 250, 0.24)",
+            "background": "rgba(46, 16, 101, 0.2)",
+        },
+        open=True,
+    )
+
+
+def _rpg_selected_gene_loadout() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            _rpg_panel_title("dna", "Active genes", "Selected genes are the actual input to materialization."),
+            style={
+                "marginBottom": "2px",
+            },
+        ),
+        rx.cond(
+            ComposeState.budget_spent > 0,
+            rx.el.div(
+                rx.foreach(ComposeState.included_composition_genes, _rpg_selected_gene_chip),
+                rx.el.button(
+                    fomantic_icon("times", size=12),
+                    rx.el.span(" Deselect all", style={"marginLeft": "5px"}),
+                    on_click=ComposeState.deselect_all_genes,
+                    class_name="ui button",
+                    style={
+                        "padding": "7px 10px",
+                        "fontSize": "0.76rem",
+                        "fontWeight": "800",
+                        "whiteSpace": "nowrap",
+                    },
+                ),
+                style={
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                    "gap": "8px",
+                    "alignItems": "stretch",
+                },
+            ),
+            rx.el.div(
+                rx.el.div(
+                    "Add genes from the Gene library below.",
+                    style={
+                        "padding": "12px",
+                        "borderRadius": "10px",
+                        "border": "1px dashed rgba(148, 163, 184, 0.35)",
+                        "color": "#94a3b8",
+                        "fontSize": "0.84rem",
+                        "lineHeight": "1.45",
+                    },
+                ),
+                style={"display": "flex", "flexDirection": "column", "gap": "10px"},
+            ),
+        ),
+        style={**_RPG_PANEL_STYLE, "padding": "14px", "marginBottom": "12px"},
+    )
+
+
+def _rpg_materialization_leg_cta() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(ComposeState.budget_spent, style={"fontWeight": "950", "color": "#ffffff"}),
+            f" out of {DEFAULT_BUDGET} cr",
+            class_name="me-rpg-materialize-credit-line",
+        ),
+        rx.el.button(
+            rx.cond(
+                ComposeState.generating,
+                fomantic_icon("sync", size=20, style={"animation": "me-spin 1s linear infinite"}),
+                fomantic_icon("atom", size=20),
+            ),
+            rx.el.span(
+                rx.cond(ComposeState.generating, " Generating...", " Materialize"),
+                style={"marginLeft": "8px"},
+            ),
+            on_click=ComposeState.materialize,
+            disabled=rx.cond(
+                ComposeState.generating,
+                True,
+                rx.cond(ComposeState.can_materialize, False, True),
+            ),
+            class_name=rx.cond(
+                ComposeState.generating,
+                "me-rpg-materialize-leg-button is-disabled",
+                rx.cond(
+                    ComposeState.can_materialize,
+                    "me-rpg-materialize-leg-button",
+                    "me-rpg-materialize-leg-button is-disabled",
+                ),
+            ),
+            title=rx.cond(
+                ComposeState.can_materialize,
+                "Generate the 3D sculpture and report.",
+                "Select at least one gene within budget to materialize. Character name is optional.",
+            ),
+        ),
+        rx.el.div(
+            rx.cond(
+                ComposeState.generation_error != "",
+                rx.el.div(
+                    fomantic_icon("circle-alert", size=12, color="#fca5a5"),
+                    rx.el.span(ComposeState.generation_error, style={"marginLeft": "6px"}),
+                    class_name="me-rpg-materialize-alert me-rpg-materialize-error",
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                ComposeState.materialize_totem_diversity_notice != "",
+                rx.el.div(
+                    fomantic_icon("circle-alert", size=12, color="#fbbf24"),
+                    rx.el.span(ComposeState.materialize_totem_diversity_notice, style={"marginLeft": "6px"}),
+                    class_name="me-rpg-materialize-alert me-rpg-materialize-warning",
+                ),
+                rx.fragment(),
+            ),
+            class_name="me-rpg-materialize-alert-stack",
+        ),
+        class_name="me-rpg-materialize-leg-cta",
+    )
+
+
+def _rpg_marker_gene_chip(gene_name: rx.Var, color: str) -> rx.Component:
+    return rx.el.span(
+        gene_name,
+        class_name="me-rpg-marker-gene-chip",
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "position": "relative",
+            "zIndex": "2",
+            "width": "72px",
+            "minHeight": "24px",
+            "padding": "2px 6px",
+            "borderRadius": "6px",
+            "border": f"1px solid {color}99",
+            "background": "rgba(15, 23, 42, 0.96)",
+            "boxShadow": f"0 0 12px {color}55",
+            "color": "#f8fafc",
+            "fontSize": "0.72rem",
+            "fontWeight": "950",
+            "lineHeight": "1.15",
+            "letterSpacing": "0.02em",
+            "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
+            "whiteSpace": "nowrap",
+            "overflow": "hidden",
+            "textOverflow": "ellipsis",
+        },
+    )
+
+
+def _rpg_marker_gene_orbit_item(gene_name: rx.Var, color: str) -> rx.Component:
+    return rx.el.div(
+        rx.el.span(
+            class_name="me-rpg-marker-gene-line",
+            style={
+                "position": "absolute",
+                "right": "50%",
+                "top": "50%",
+                "height": "2px",
+                "borderRadius": "999px",
+                "background": f"linear-gradient(90deg, {color}cc, {color}11)",
+                "boxShadow": f"0 0 8px {color}88",
+                "pointerEvents": "none",
+                "transformOrigin": "right center",
+                "zIndex": "0",
+            },
+        ),
+        _rpg_marker_gene_chip(gene_name, color),
+        class_name="me-rpg-marker-gene-orbit-item",
+        style={
+            "position": "absolute",
+            "left": "50%",
+            "top": "50%",
+            "pointerEvents": "none",
+            "zIndex": "1",
+        },
+    )
+
+
+def _rpg_silhouette_marker(
+    category: str,
+    top: str,
+    left: str,
+) -> rx.Component:
+    color = CATEGORY_COLORS.get(category, "#7c3aed")
+    icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
+    count = ComposeState.active_gene_counts[category]
+    total_count = CATEGORY_COUNTS.get(category, 0)
+    is_selected = ComposeState.selected_categories.contains(category)
+    is_affordable = ComposeState.affordable_categories.contains(category)
+    is_enabled = is_selected | is_affordable
+    is_hovered = ComposeState.hovered_gene_category == category
+    visual_active = is_selected | (count > 0) | is_hovered
+    return rx.el.a(
+        rx.el.div(
+            rx.cond(
+                count > 0,
+                rx.el.div(
+                    rx.foreach(
+                        ComposeState.active_compact_gene_names_by_category[category],
+                        lambda gene_name: _rpg_marker_gene_orbit_item(gene_name, color),
+                    ),
+                    class_name="me-rpg-marker-gene-orbit",
+                    style={
+                        "position": "absolute",
+                        "left": "50%",
+                        "top": "50%",
+                        "width": "188px",
+                        "height": "156px",
+                        "transform": "translate(-50%, -50%)",
+                        "pointerEvents": "none",
+                        "zIndex": "1",
+                    },
+                ),
+                rx.fragment(),
+            ),
+            rx.el.div(
+                fomantic_icon(
+                    icon_name,
+                    size=50,
+                    color=color,
+                    style={
+                        "transform": "scale(0.86)",
+                        "transformOrigin": "center",
+                    },
+                ),
+                rx.cond(
+                    count > 0,
+                    rx.el.span(
+                        count,
+                        class_name="me-rpg-marker-count-badge",
+                        style={
+                            "position": "absolute",
+                            "right": "-6px",
+                            "top": "-6px",
+                            "minWidth": "24px",
+                            "height": "24px",
+                            "padding": "0 5px",
+                            "display": "inline-flex",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "borderRadius": "999px",
+                            "border": "2px solid rgba(15, 23, 42, 0.96)",
+                            "background": color,
+                            "color": "#ffffff",
+                            "fontSize": "0.74rem",
+                            "fontWeight": "950",
+                            "lineHeight": "1",
+                            "boxShadow": f"0 0 16px {color}aa",
+                        },
+                    ),
+                    rx.fragment(),
+                ),
+                class_name="me-rpg-marker-icon-node",
+                style={
+                    "position": "relative",
+                    "width": "65px",
+                    "height": "65px",
+                    "borderRadius": "999px",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "background": rx.cond(visual_active, f"linear-gradient(135deg, {color}44, #111827)", f"linear-gradient(135deg, {color}22, rgba(15, 23, 42, 0.9))"),
+                    "border": rx.cond(visual_active, f"2px solid {color}", f"1px solid {color}88"),
+                    "boxShadow": rx.cond(visual_active, f"0 0 38px {color}", f"0 0 16px {color}33"),
+                    "opacity": rx.cond(is_hovered, "1", rx.cond(is_enabled, rx.cond(visual_active, "1", "0.7"), "0.42")),
+                    "zIndex": "2",
+                },
+            ),
+            class_name="me-rpg-marker-orbit-shell",
+            style={
+                "position": "relative",
+                "width": "188px",
+                "height": "156px",
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+            },
+        ),
+        rx.el.div(
+            rx.el.span(
+                category,
+                style={
+                    "display": "block",
+                    "fontSize": "0.98rem",
+                    "fontWeight": "950",
+                    "letterSpacing": "0.02em",
+                    "textTransform": "none",
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            class_name="me-rpg-marker-label",
+            style={
+                "position": "absolute",
+                "left": "50%",
+                "top": "calc(50% + 46px)",
+                "transform": "translateX(-50%)",
+                "marginTop": "0",
+                "padding": "5px 10px",
+                "boxSizing": "border-box",
+                "width": "max-content",
+                "borderRadius": "6px",
+                "background": "rgba(15, 23, 42, 0.72)",
+                "border": f"1px solid {color}55",
+                "fontSize": "0.98rem",
+                "fontWeight": "900",
+                "color": rx.cond(visual_active, "#e0f2fe", "#94a3b8"),
+                "textShadow": "0 1px 8px rgba(0, 0, 0, 0.85)",
+                "lineHeight": "1.2",
+                "maxWidth": "280px",
+                "textAlign": "center",
+                "boxShadow": "0 8px 20px rgba(2, 6, 23, 0.26)",
+            },
+        ),
+        on_click=ComposeState.select_category(category),
+        href=f"#{_category_anchor_id(category)}",
+        role="button",
+        aria_disabled=rx.cond(is_enabled, "false", "true"),
+        title=tooltip,
+        aria_label=tooltip,
+        class_name=f"me-rpg-body-marker me-rpg-body-marker--{_category_css_slug(category)}",
+        style={
+            "position": "absolute",
+            "top": top,
+            "left": left,
+            "transform": "translate(-50%, -50%)",
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "background": "transparent",
+            "border": "none",
+            "padding": "0",
+            "cursor": "pointer",
+            "zIndex": "2",
+            "textDecoration": "none",
+            "width": "188px",
+            "height": "156px",
+        },
+    )
+
+
+def _rpg_body_map_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.div(
+                rx.el.div(
+                    rx.el.input(
+                        id="compose-personal-tag",
+                        placeholder="Enter your name here",
+                        value=ComposeState.personal_tag,
+                        on_change=ComposeState.set_personal_tag,
+                        style={
+                            "flex": "1",
+                            "minWidth": "0",
+                            "padding": "15px 18px",
+                            "borderRadius": "14px",
+                            "border": "1px solid rgba(167, 139, 250, 0.45)",
+                            "fontSize": "1.18rem",
+                            "fontWeight": "800",
+                            "outline": "none",
+                            "backgroundColor": "rgba(15, 23, 42, 0.88)",
+                            "color": "#f8fafc",
+                            "boxSizing": "border-box",
+                            "boxShadow": "0 0 24px rgba(124, 58, 237, 0.45), 0 0 52px rgba(56, 189, 248, 0.20)",
+                        },
+                    ),
+                    style={
+                        "display": "flex",
+                        "alignItems": "center",
+                        "gap": "10px",
+                        "marginBottom": "7px",
+                    },
+                ),
+                class_name="me-rpg-body-map-title",
+            ),
+            style={
+                "marginBottom": "2px",
+            },
+        ),
+        rx.el.div(
+            _rpg_silhouette_marker("Expression", "12%", "20%"),
+            _rpg_silhouette_marker("Perception", "12%", "80%"),
+            _rpg_silhouette_marker("Longevity & Genome", "48%", "25%"),
+            _rpg_silhouette_marker("Stress Resistance", "48%", "75%"),
+            _rpg_silhouette_marker("Environmental Adaptation", "76%", "22%"),
+            _rpg_silhouette_marker("Regeneration", "76%", "78%"),
+            rx.el.img(
+                src="/images/body_only.webp",
+                alt="Transparent human body centered in the enhancement map",
+                class_name="me-rpg-body-image",
+            ),
+            _rpg_materialization_leg_cta(),
+            class_name="me-rpg-body-stage",
+        ),
+        class_name="me-rpg-body-map-panel",
+    )
+
+
+def _rpg_gene_side_text(title: str, body: rx.Var) -> rx.Component:
+    return rx.cond(
+        body != "",
+        rx.el.div(
+            rx.el.div(
+                title,
+                style={
+                    "fontSize": "0.95rem",
+                    "fontWeight": "900",
+                    "letterSpacing": "0.08em",
+                    "textTransform": "uppercase",
+                    "color": "#94a3b8",
+                    "marginBottom": "4px",
+                },
+            ),
+            rx.el.div(
+                body,
+                style={
+                    "fontSize": "0.86rem",
+                    "lineHeight": "1.45",
+                    "color": "#cbd5e1",
+                    "whiteSpace": "pre-wrap",
+                },
+            ),
+            style={
+                "padding": "10px 11px",
+                "borderRadius": "7px",
+                "backgroundColor": "rgba(15, 23, 42, 0.42)",
+                "border": "1px solid rgba(148, 163, 184, 0.18)",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _rpg_gene_side_references(segments: rx.Var) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            "Key references",
+            style={
+                "fontSize": "0.95rem",
+                "fontWeight": "900",
+                "letterSpacing": "0.08em",
+                "textTransform": "uppercase",
+                "color": "#94a3b8",
+                "marginBottom": "4px",
+            },
+        ),
+        rx.el.p(
+            rx.foreach(segments, _gene_key_reference_segment),
+            style={
+                "fontSize": "0.82rem",
+                "lineHeight": "1.42",
+                "margin": "0",
+                "whiteSpace": "pre-wrap",
+            },
+        ),
+        style={
+            "padding": "10px 11px",
+            "borderRadius": "7px",
+            "backgroundColor": "rgba(15, 23, 42, 0.42)",
+            "border": "1px solid rgba(148, 163, 184, 0.18)",
+        },
+    )
+
+
+def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
+    included = gene_item["included"]
+    gene_sym = gene_item["gene"]
+    gene_category = gene_item["category"]
+    is_expanded = ComposeState.expanded_genes.contains(gene_sym)
+    gene_price = gene_item["price"].to(int)
+    cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
+
+    return rx.el.div(
+        rx.el.div(
+            rx.cond(
+                included,
+                rx.el.button(
+                    "REMOVE",
+                    on_click=ComposeState.toggle_gene_from_library(gene_sym, gene_category),
+                    title="Remove gene",
+                    style={
+                        "width": "92px",
+                        "minHeight": "40px",
+                        "padding": "9px 12px",
+                        "borderRadius": "8px",
+                        "border": "1px solid rgba(248, 113, 113, 0.48)",
+                        "background": "rgba(127, 29, 29, 0.34)",
+                        "color": "#fecaca",
+                        "fontSize": "0.78rem",
+                        "fontWeight": "900",
+                        "letterSpacing": "0.08em",
+                        "cursor": "pointer",
+                        "flexShrink": "0",
+                    },
+                ),
+                rx.el.button(
+                    "ADD",
+                    disabled=cannot_afford,
+                    on_click=ComposeState.toggle_gene_from_library(gene_sym, gene_category),
+                    title=rx.cond(cannot_afford, "Not enough enhancement credits", "Add gene"),
+                    style={
+                        "width": "92px",
+                        "minHeight": "40px",
+                        "padding": "9px 12px",
+                        "borderRadius": "8px",
+                        "border": rx.cond(cannot_afford, "1px solid rgba(248, 113, 113, 0.42)", "1px solid rgba(167, 139, 250, 0.58)"),
+                        "background": rx.cond(cannot_afford, "rgba(127, 29, 29, 0.22)", "linear-gradient(135deg, #7c3aed, #6d28d9)"),
+                        "color": rx.cond(cannot_afford, "#fca5a5", "#ffffff"),
+                        "fontSize": "0.82rem",
+                        "fontWeight": "900",
+                        "letterSpacing": "0.1em",
+                        "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
+                        "opacity": rx.cond(cannot_afford, "0.72", "1"),
+                        "flexShrink": "0",
+                    },
+                ),
+            ),
+            rx.el.div(
+                rx.el.div(
+                    rx.el.div(
+                        rx.el.span(
+                            gene_sym,
+                            style={
+                                "fontSize": "1.08rem",
+                                "fontWeight": "900",
+                                "color": rx.cond(included, "#f8fafc", "#cbd5e1"),
+                            },
+                        ),
+                        rx.el.span(
+                            gene_item["price"],
+                            " cr",
+                            style={
+                                "fontSize": "0.9rem",
+                                "fontWeight": "900",
+                                "padding": "4px 10px",
+                                "borderRadius": "6px",
+                                "backgroundColor": rx.cond(included, "rgba(124, 58, 237, 0.24)", "rgba(148, 163, 184, 0.12)"),
+                                "color": rx.cond(cannot_afford, "#fca5a5", "#c4b5fd"),
+                                "whiteSpace": "nowrap",
+                            },
+                        ),
+                        style={"display": "flex", "alignItems": "center", "justifyContent": "space-between", "gap": "10px"},
+                    ),
+                    rx.el.div(
+                        gene_item["category_detail"],
+                        style={
+                            "fontSize": "0.82rem",
+                            "fontWeight": "700",
+                            "color": _gene_category_accent_color(gene_category),
+                            "marginTop": "2px",
+                        },
+                    ),
+                    _rpg_gene_species_label(gene_item),
+                    style={"flex": "1", "minWidth": "0"},
+                ),
+                style={
+                    "flex": "1",
+                    "minWidth": "0",
+                },
+            ),
+            rx.el.button(
+                rx.cond(
+                    is_expanded,
+                    fomantic_icon("chevron-up", size=12, color="#94a3b8"),
+                    fomantic_icon("chevron-down", size=12, color="#94a3b8"),
+                ),
+                on_click=ComposeState.toggle_gene_details(gene_sym),
+                style={
+                    "background": "transparent",
+                    "border": "none",
+                    "cursor": "pointer",
+                    "padding": "2px 4px",
+                    "marginLeft": "6px",
+                    "flexShrink": "0",
+                },
+            ),
+            style={"display": "flex", "alignItems": "flex-start", "gap": "6px"},
+        ),
+        rx.el.div(
+            rx.el.div(
+                rx.el.p(
+                    gene_item["short_description"],
+                    style={
+                        "fontSize": "0.98rem",
+                        "color": rx.cond(included, "#e0f2fe", "#dbeafe"),
+                        "margin": "0",
+                        "lineHeight": "1.62",
+                        "whiteSpace": "pre-wrap",
+                    },
+                ),
+                rx.cond(
+                    is_expanded,
+                    rx.el.div(
+                        _gene_selection_text_block("Full description", gene_item["narrative"]),
+                        _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
+                        _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                        style={
+                            "marginTop": "14px",
+                            "paddingTop": "12px",
+                            "borderTop": "1px solid rgba(148, 163, 184, 0.18)",
+                        },
+                    ),
+                    rx.fragment(),
+                ),
+                style={"minWidth": "0"},
+            ),
+            rx.el.div(
+                _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
+                _gene_tested_on_row(gene_item["best_host_tested"]),
+                rx.cond(
+                    is_expanded,
+                    rx.el.div(
+                        _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
+                        _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
+                        _rpg_gene_side_text("Notes", gene_item["notes"]),
+                        rx.cond(
+                            gene_item["key_references"] != "",
+                            _rpg_gene_side_references(gene_item["key_reference_segments"]),
+                            rx.fragment(),
+                        ),
+                        style={"display": "flex", "flexDirection": "column", "gap": "8px", "marginTop": "8px"},
+                    ),
+                    rx.fragment(),
+                ),
+                style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "8px",
+                    "minWidth": "0",
+                },
+            ),
+            class_name="me-rpg-gene-body-grid",
+            style={"margin": "10px 0 0 26px"},
+        ),
+        style={
+            "padding": "12px 14px",
+            "borderRadius": "8px",
+            "borderTop": "1px solid rgba(148, 163, 184, 0.22)",
+            "borderRight": "1px solid rgba(148, 163, 184, 0.22)",
+            "borderBottom": "1px solid rgba(148, 163, 184, 0.22)",
+            "borderLeft": rx.cond(included, _gene_category_border_left(gene_category), "2px solid rgba(148, 163, 184, 0.18)"),
+            "background": rx.cond(
+                included,
+                "linear-gradient(135deg, rgba(30, 41, 59, 0.94), rgba(30, 27, 75, 0.92))",
+                "rgba(15, 23, 42, 0.72)",
+            ),
+            "boxShadow": rx.cond(included, "0 0 22px rgba(124, 58, 237, 0.26)", "none"),
+            "opacity": rx.cond(cannot_afford, "0.55", "1"),
+            "overflow": "hidden",
+        },
+        on_mouse_enter=ComposeState.set_hovered_gene_category(gene_category),
+        on_mouse_leave=ComposeState.clear_hovered_gene_category,
+    )
+
+
+def _rpg_gene_card_for_category(gene_item: rx.Var, category: str) -> rx.Component:
+    return rx.cond(
+        gene_item["category"] == category,
+        _rpg_gene_card(gene_item),
+        rx.fragment(),
+    )
+
+
+def _rpg_category_gene_accordion(category: str) -> rx.Component:
+    color = CATEGORY_COLORS.get(category, "#7c3aed")
+    icon_name = CATEGORY_ICONS.get(category, "star")
+    tooltip = _category_tooltip(category)
+    count = ComposeState.active_gene_counts[category]
+    spent = ComposeState.active_category_prices[category]
+    is_selected = ComposeState.selected_categories.contains(category)
+    total_count = CATEGORY_COUNTS.get(category, 0)
+
+    return rx.el.details(
+        rx.el.summary(
+            rx.el.div(
+                rx.el.span(
+                    fomantic_icon(icon_name, size=17, color=color),
+                    style={
+                        "display": "inline-flex",
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                        "width": "32px",
+                        "height": "32px",
+                        "borderRadius": "10px",
+                        "backgroundColor": f"{color}22",
+                        "border": f"1px solid {color}55",
+                        "boxShadow": f"0 0 14px {color}22",
+                    },
+                ),
+                rx.el.div(
+                    rx.el.div(
+                        category,
+                        style={"fontSize": "1.12rem", "fontWeight": "900", "color": "#f8fafc"},
+                    ),
+                    rx.el.div(
+                        count,
+                        f"/{total_count} genes selected · ",
+                        spent,
+                        " cr",
+                        style={"fontSize": "0.86rem", "color": "#94a3b8", "marginTop": "1px"},
+                    ),
+                    style={"flex": "1", "minWidth": "0", "marginLeft": "10px"},
+                ),
+                rx.el.span(
+                    rx.cond(is_selected, "Active", "Expand"),
+                    style={
+                        "fontSize": "0.82rem",
+                        "fontWeight": "900",
+                        "letterSpacing": "0.08em",
+                        "textTransform": "uppercase",
+                        "padding": "3px 8px",
+                        "borderRadius": "6px",
+                        "backgroundColor": rx.cond(is_selected, f"{color}22", "rgba(148, 163, 184, 0.12)"),
+                        "color": rx.cond(is_selected, color, "#cbd5e1"),
+                        "whiteSpace": "nowrap",
+                    },
+                ),
+                rx.el.span(
+                    fomantic_icon("chevron-right", size=13, color="#cbd5e1"),
+                    class_name="me-rpg-accordion-chevron",
+                    style={
+                        "display": "inline-flex",
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                        "width": "26px",
+                        "height": "26px",
+                        "borderRadius": "999px",
+                        "backgroundColor": "rgba(15, 23, 42, 0.42)",
+                        "border": "1px solid rgba(148, 163, 184, 0.28)",
+                        "transition": "transform 0.16s ease, background-color 0.16s ease",
+                        "marginLeft": "4px",
+                        "flexShrink": "0",
+                    },
+                ),
+                style={"display": "flex", "alignItems": "center", "gap": "8px", "width": "100%"},
+            ),
+            style={
+                "cursor": "pointer",
+                "listStyle": "none",
+                "padding": "14px 16px",
+                "borderRadius": "8px",
+                "background": f"linear-gradient(135deg, {color}22, rgba(15, 23, 42, 0.9))",
+                "border": f"1px solid {color}55",
+                "boxShadow": f"0 0 18px {color}18",
+                "outline": "none",
+            },
+            title=tooltip,
+            aria_label=tooltip,
+        ),
+        rx.el.div(
+            rx.foreach(
+                ComposeState.all_composition_genes,
+                lambda gene_item: _rpg_gene_card_for_category(gene_item, category),
+            ),
+            class_name="me-rpg-category-gene-grid",
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "minmax(0, 1fr)",
+                "gap": "10px",
+                "padding": "10px 0 2px 16px",
+                "marginLeft": "10px",
+                "borderLeft": f"1px solid {color}44",
+            },
+        ),
+        class_name="me-rpg-category-accordion",
+        id=_category_anchor_id(category),
+        style={
+            "background": "transparent",
+            "border": "none",
+            "borderRadius": "8px",
+            "boxShadow": "none",
+            "color": "#e5e7eb",
+            "marginBottom": "0",
+            "padding": "0",
+        },
+    )
+
+
+def _rpg_gene_library_anchor_script() -> rx.Component:
+    return rx.script(
+        """
+        (() => {
+            if (window.__meGeneLibraryAnchorsInstalled) return;
+            window.__meGeneLibraryAnchorsInstalled = true;
+
+            const geneLibraryHash = (href) => {
+                if (!href) return "";
+                const index = href.indexOf("#gene-library-");
+                return index >= 0 ? href.slice(index) : "";
+            };
+
+            const openCategory = (href) => {
+                const hash = geneLibraryHash(href);
+                if (!hash) return;
+                const target = document.getElementById(hash.slice(1));
+                if (!target) return;
+                if (target.tagName.toLowerCase() === "details") {
+                    target.open = true;
+                }
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            };
+
+            document.addEventListener("click", (event) => {
+                const link = event.target.closest('a[href*="#gene-library-"]');
+                if (!link) return;
+                window.setTimeout(() => openCategory(link.getAttribute("href")), 0);
+            });
+            window.addEventListener("hashchange", () => openCategory(window.location.hash));
+            window.setTimeout(() => openCategory(window.location.hash), 0);
+        })();
+        """
+    )
+
+
+def _rpg_gene_library_title() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            fomantic_icon("book open", size=15, color="#a78bfa"),
+            rx.el.span(
+                "Gene library",
+                style={
+                    "marginLeft": "8px",
+                    "fontSize": "1.08rem",
+                    "fontWeight": "900",
+                    "letterSpacing": "0.08em",
+                    "textTransform": "uppercase",
+                    "color": "#f8fafc",
+                },
+            ),
+            style={"display": "flex", "alignItems": "center"},
+        ),
+        rx.el.div(
+            "Pick individual genes after choosing functional systems on the body map. ",
+            rx.el.span(
+                ComposeState.budget_spent,
+                " out of ",
+                ComposeState.budget_total,
+                " cr used",
+                style={"fontWeight": "950", "color": "#f8fafc"},
+            ),
+            style={
+                "fontSize": "0.98rem",
+                "fontWeight": "800",
+                "color": "#c4b5fd",
+                "marginTop": "2px",
+                "lineHeight": "1.35",
+            },
+        ),
+        style={"marginBottom": "12px"},
+    )
+
+
+def _rpg_gene_library_panel() -> rx.Component:
+    return rx.el.div(
+        _rpg_gene_library_anchor_script(),
+        _rpg_gene_library_title(),
+        rx.el.div(
+            *[_rpg_category_gene_accordion(cat) for cat in UNIQUE_CATEGORIES],
+            class_name="me-rpg-library-grid",
+        ),
+        _rpg_schema_hint_panel(),
+        _rpg_intro_video_panel(),
+        class_name="me-rpg-library-panel",
+        style={**_RPG_PANEL_STYLE, "padding": "14px"},
+    )
+
+
+def _materialization_info_item(icon_name: str, title: str, body: str) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            fomantic_icon(icon_name, size=16, color="#a78bfa"),
+            rx.el.strong(title, style={"marginLeft": "8px", "fontSize": "0.98rem"}),
+            style={"display": "flex", "alignItems": "center", "marginBottom": "6px"},
+        ),
+        rx.el.p(
+            body,
+            style={"color": "#cbd5e1", "fontSize": "0.9rem", "lineHeight": "1.55", "margin": "0"},
+        ),
+        style={
+            "padding": "12px",
+            "borderRadius": "10px",
+            "backgroundColor": "rgba(15, 23, 42, 0.56)",
+            "border": "1px solid rgba(148, 163, 184, 0.22)",
+        },
+    )
+
+
+def _materialization_support_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.h3(
+            fomantic_icon("print", size=18, color="#a78bfa"),
+            rx.el.span(" Printing Support and Partners", style={"marginLeft": "8px"}),
+            style={"color": "#f8fafc", "display": "flex", "alignItems": "center", "margin": "0 0 12px"},
+        ),
+        rx.el.div(
+            _materialization_info_item(
+                "cube",
+                "How to 3D print your sculpture",
+                "Download the STL, open it in a slicer such as PrusaSlicer, Bambu Studio, Cura, or Lychee, "
+                "check the scale in millimeters, choose your material, add supports if your printer needs them, "
+                "then slice and print. The model is designed as a printable art object, but every printer and "
+                "material has its own tolerances.",
+            ),
+            _materialization_info_item(
+                "heart",
+                "Support the project",
+                "If you like the sculpture and report you generated, donations help us keep improving the gene "
+                "library, fabrication pipeline, and public installation.",
+            ),
+            _materialization_info_item(
+                "shipping fast",
+                "Need us to print it?",
+                "We can 3D print your generated sculpture and ship it inside the EU. Other countries are not "
+                "supported yet, but we are working on expanding fulfilment.",
+            ),
+            _materialization_info_item(
+                "industry",
+                "Printing-company partnerships",
+                "If you run a 3D printing company, partner with us so visitors can choose you as a local print "
+                "option in their country.",
+            ),
+            style={
+                "display": "grid",
+                "gridTemplateColumns": "repeat(auto-fit, minmax(240px, 1fr))",
+                "gap": "12px",
+                "marginBottom": "14px",
+            },
+        ),
+        rx.el.div(
+            rx.el.a(
+                rx.el.img(
+                    src="/images/kofi.jpg",
+                    alt="Ko-fi QR code - support Materialized Enhancements",
+                    loading="lazy",
+                    decoding="async",
+                    style={
+                        "width": "170px",
+                        "height": "170px",
+                        "display": "block",
+                        "borderRadius": "8px",
+                        "margin": "0 auto 8px auto",
+                        "boxShadow": "0 2px 10px rgba(0,0,0,0.18)",
+                    },
+                ),
+                rx.el.strong("Donate on Ko-fi", style={"display": "block", "textAlign": "center"}),
+                rx.el.span(
+                    "https://ko-fi.com/liviazaharia",
+                    style={
+                        "display": "block",
+                        "color": "#c4b5fd",
+                        "fontSize": "0.78rem",
+                        "textAlign": "center",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                        "wordBreak": "break-all",
+                        "marginTop": "4px",
+                    },
+                ),
+                href="https://ko-fi.com/liviazaharia",
+                target="_blank",
+                rel="noopener noreferrer",
+                style={
+                    "flex": "1 1 220px",
+                    "padding": "14px",
+                    "borderRadius": "12px",
+                    "backgroundColor": "rgba(124, 58, 237, 0.18)",
+                    "border": "1px solid rgba(167, 139, 250, 0.34)",
+                    "textDecoration": "none",
+                },
+            ),
+            rx.el.div(
+                rx.el.img(
+                    src="/images/product.jpg",
+                    alt="Product QR code - request a 3D-printed sculpture with EU delivery",
+                    loading="lazy",
+                    decoding="async",
+                    style={
+                        "width": "170px",
+                        "height": "170px",
+                        "display": "block",
+                        "borderRadius": "8px",
+                        "margin": "0 auto 8px auto",
+                        "boxShadow": "0 2px 10px rgba(0,0,0,0.18)",
+                    },
+                ),
+                rx.el.strong("Request print + delivery", style={"display": "block", "textAlign": "center"}),
+                rx.el.span(
+                    "Scan to request a finished sculpture shipped inside the EU.",
+                    style={"display": "block", "color": "#cbd5e1", "fontSize": "0.82rem", "textAlign": "center", "marginTop": "4px"},
+                ),
+                rx.el.a(
+                    "https://ko-fi.com/liviazaharia/shop",
+                    href="https://ko-fi.com/liviazaharia/shop",
+                    target="_blank",
+                    rel="noopener noreferrer",
+                    style={
+                        "display": "block",
+                        "color": "#c4b5fd",
+                        "fontSize": "0.78rem",
+                        "textAlign": "center",
+                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                        "wordBreak": "break-all",
+                        "marginTop": "4px",
+                    },
+                ),
+                style={
+                    "flex": "1 1 220px",
+                    "padding": "14px",
+                    "borderRadius": "12px",
+                    "backgroundColor": "rgba(20, 83, 45, 0.22)",
+                    "border": "1px solid rgba(34, 197, 94, 0.30)",
+                },
+            ),
+            style={"display": "flex", "flexWrap": "wrap", "gap": "12px"},
+        ),
+        style={
+            **_RPG_PANEL_STYLE,
+            "padding": "14px",
+            "marginTop": "0",
+        },
+    )
+
+
+def _materialization_edit_character_cta() -> rx.Component:
+    return rx.el.a(
+        fomantic_icon("user edit", size=16, color="#ffffff"),
+        rx.el.span(
+            "To edit genes or identity, return to Character profile",
+            style={"marginLeft": "8px"},
+        ),
+        href="/",
+        class_name="ui primary button",
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "marginBottom": "0",
+            "padding": "11px 14px",
+            "fontWeight": "700",
+            "textDecoration": "none",
+        },
+    )
+
+
+def _shared_report_banner() -> rx.Component:
+    return rx.cond(
+        ComposeState.has_loaded_shared_report,
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("share alternate", size=18, color="#c4b5fd"),
+                rx.el.div(
+                    rx.el.strong("This materialization was shared with you.", style={"color": "#f8fafc"}),
+                    rx.el.div(
+                        "Explore the model and report below, then create your own character profile.",
+                        style={"color": "#cbd5e1", "fontSize": "0.92rem", "marginTop": "2px"},
+                    ),
+                    style={"flex": "1", "minWidth": "220px"},
+                ),
+                rx.el.a(
+                    "Create your own",
+                    href="/",
+                    class_name="ui primary button",
+                    style={"textDecoration": "none", "fontWeight": "800"},
+                ),
+                style={"display": "flex", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"},
+            ),
+            style={
+                "padding": "14px",
+                "border": "1px solid rgba(167, 139, 250, 0.38)",
+                "borderRadius": "12px",
+                "background": "linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(15, 23, 42, 0.78))",
+            },
+        ),
+        rx.cond(
+            ComposeState.shared_report_error != "",
+            rx.el.div(
+                fomantic_icon("warning sign", size=16, color="#fecaca"),
+                rx.el.span(ComposeState.shared_report_error, style={"marginLeft": "8px"}),
+                class_name="ui red message",
+                style={"margin": "0"},
+            ),
+            rx.fragment(),
+        ),
+    )
+
+
+def _rpg_materialization_output() -> rx.Component:
+    return rx.el.div(
+        rx.el.textarea(
+            value=ComposeState.stl_base64,
+            id="stl-b64-data",
+            style={"display": "none"},
+        ),
+        _report_capture_iframe(),
+        _shared_report_banner(),
+        _materialization_edit_character_cta(),
+        _sculpture_section(),
+        _report_section(),
+        _materialization_support_panel(),
+        class_name="me-rpg-output-panel",
+        style={"display": "flex", "flexDirection": "column", "gap": "14px"},
+    )
+
+
+def _rpg_flow_css() -> rx.Component:
+    return rx.el.style(
+        """
+        .me-rpg-shell {
+            font-size: 16px;
+        }
+        @keyframes me-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        details.me-rpg-category-accordion > summary::-webkit-details-marker {
+            display: none;
+        }
+        details.me-rpg-category-accordion > summary::marker {
+            content: "";
+        }
+        details.me-rpg-category-accordion[open] .me-rpg-accordion-chevron {
+            transform: rotate(90deg);
+        }
+        .me-rpg-output-panel .ui.segment,
+        .me-rpg-output-panel .ui.message {
+            background: rgba(15, 23, 42, 0.72) !important;
+            border-color: rgba(148, 163, 184, 0.26) !important;
+            color: #e5e7eb !important;
+        }
+        .me-rpg-output-panel h3,
+        .me-rpg-output-panel h4,
+        .me-rpg-output-panel strong {
+            color: #f8fafc !important;
+        }
+        .me-rpg-output-panel p,
+        .me-rpg-output-panel span,
+        .me-rpg-output-panel label,
+        .me-rpg-output-panel div {
+            border-color: rgba(148, 163, 184, 0.24);
+        }
+        .me-rpg-dashboard {
+            display: grid;
+            gap: 16px;
+            align-items: start;
+            width: 100%;
+        }
+        .me-rpg-gene-body-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+        }
+        .me-rpg-hero-grid {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: flex-start;
+            min-height: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
+        }
+        .me-rpg-hero-grid > .me-rpg-left-panel {
+            flex: 1.36 1 520px;
+            min-width: min(100%, 420px);
+        }
+        .me-rpg-hero-grid > .me-rpg-center-panel {
+            flex: 1.3 1 460px;
+            min-width: min(100%, 320px);
+            max-height: calc(100dvh - 7rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-gutter: stable;
+        }
+        .me-rpg-hero-grid > .me-rpg-right-panel {
+            flex: 0.46 1 220px;
+            min-width: min(100%, 220px);
+        }
+        .me-rpg-profile-grid {
+            grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.35fr);
+        }
+        .me-rpg-active-grid {
+            grid-template-columns: minmax(320px, 0.68fr) minmax(0, 1.55fr);
+        }
+        .me-rpg-center-panel {
+            min-width: 0;
+        }
+        .me-rpg-body-map-panel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            padding: 4px 0 0;
+            color: #e5e7eb;
+        }
+        .me-rpg-body-map-title {
+            max-width: 520px;
+            margin: 0 auto 2px;
+            padding: 10px 14px;
+            border-radius: 14px;
+            background: transparent;
+            box-shadow: none;
+            text-align: left;
+        }
+        .me-rpg-body-map-title > div {
+            margin-bottom: 0 !important;
+        }
+        .me-rpg-body-stage {
+            position: relative;
+            width: 100%;
+            min-height: clamp(620px, min(80dvh, 66vw), 900px);
+            padding: 10px 26px 82px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+            isolation: isolate;
+        }
+        .me-rpg-body-stage::before {
+            content: "";
+            position: absolute;
+            inset: 3% 10% 2%;
+            border-radius: 999px;
+            background:
+                radial-gradient(circle at 50% 38%, rgba(56, 189, 248, 0.32), rgba(56, 189, 248, 0.07) 33%, rgba(2, 6, 23, 0) 64%),
+                radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.28), rgba(2, 6, 23, 0) 68%);
+            filter: blur(18px);
+            opacity: 0.94;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .me-rpg-body-stage::after {
+            content: "";
+            position: absolute;
+            inset: 18% 31% 8%;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(248, 113, 113, 0.16), rgba(56, 189, 248, 0.13));
+            filter: blur(30px);
+            opacity: 0.75;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .me-rpg-body-image {
+            position: relative;
+            z-index: 1;
+            height: clamp(540px, min(74dvh, 60vw), 840px);
+            max-width: min(100%, 760px);
+            object-fit: contain;
+            filter:
+                blur(0.28px)
+                drop-shadow(0 0 20px rgba(56, 189, 248, 0.48))
+                drop-shadow(0 0 52px rgba(124, 58, 237, 0.34))
+                drop-shadow(0 22px 42px rgba(2, 6, 23, 0.56));
+            transform: translateZ(0);
+            opacity: 0.96;
+        }
+        .me-rpg-body-marker {
+            transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+        }
+        .me-rpg-body-marker:hover {
+            transform: translate(-50%, -50%) scale(1.06) !important;
+            filter: brightness(1.12);
+        }
+        .me-rpg-marker-icon-node i.icon {
+            font-size: 60px !important;
+            width: 1em !important;
+            height: 1em !important;
+            line-height: 1 !important;
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(1) {
+            transform: translate(-50%, -50%) translate(0, -74px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(2) {
+            transform: translate(-50%, -50%) translate(-64px, -58px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(3) {
+            transform: translate(-50%, -50%) translate(64px, -58px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(4) {
+            transform: translate(-50%, -50%) translate(-84px, -10px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(5) {
+            transform: translate(-50%, -50%) translate(84px, -10px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(6) {
+            transform: translate(-50%, -50%) translate(-36px, -86px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(7) {
+            transform: translate(-50%, -50%) translate(36px, -86px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(8) {
+            transform: translate(-50%, -50%) translate(0, -42px);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(1) .me-rpg-marker-gene-line {
+            width: 52px;
+            transform: rotate(-90deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(2) .me-rpg-marker-gene-line {
+            width: 62px;
+            transform: rotate(-138deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(3) .me-rpg-marker-gene-line {
+            width: 62px;
+            transform: rotate(-42deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(4) .me-rpg-marker-gene-line {
+            width: 60px;
+            transform: rotate(-173deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(5) .me-rpg-marker-gene-line {
+            width: 60px;
+            transform: rotate(-7deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(6) .me-rpg-marker-gene-line {
+            width: 66px;
+            transform: rotate(-113deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(7) .me-rpg-marker-gene-line {
+            width: 66px;
+            transform: rotate(-67deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(8) .me-rpg-marker-gene-line {
+            width: 26px;
+            transform: rotate(-90deg);
+        }
+        .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(n+9) {
+            display: none;
+        }
+        .me-rpg-materialize-leg-cta {
+            position: absolute;
+            left: 50%;
+            bottom: 12px;
+            transform: translateX(-50%);
+            z-index: 4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 7px;
+            pointer-events: auto;
+        }
+        .me-rpg-materialize-alert-stack {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .me-rpg-materialize-credit-line {
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.82);
+            border: 1px solid rgba(167, 139, 250, 0.42);
+            color: #c4b5fd;
+            font-size: 0.82rem;
+            font-weight: 900;
+            line-height: 1.1;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            box-shadow: 0 8px 22px rgba(2, 6, 23, 0.32);
+        }
+        .me-rpg-materialize-leg-button {
+            appearance: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: min(82vw, 260px) !important;
+            min-height: 58px !important;
+            padding: 15px 26px !important;
+            border: 0 !important;
+            border-radius: 999px !important;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 48%, #4c1d95 100%) !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 0 28px rgba(124, 58, 237, 0.62),
+                0 12px 30px rgba(2, 6, 23, 0.38) !important;
+            cursor: pointer !important;
+            font-size: clamp(1.2rem, 2.3vw, 1.75rem) !important;
+            font-weight: 950 !important;
+            letter-spacing: 0.04em !important;
+            line-height: 1 !important;
+            text-transform: uppercase !important;
+            white-space: nowrap !important;
+            transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease !important;
+        }
+        .me-rpg-materialize-leg-button:hover:not(.is-disabled) {
+            transform: translateY(-2px) scale(1.03);
+            filter: brightness(1.08);
+            box-shadow:
+                0 0 38px rgba(124, 58, 237, 0.78),
+                0 16px 38px rgba(2, 6, 23, 0.44) !important;
+        }
+        .me-rpg-materialize-leg-button.is-disabled {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.34) !important;
+            cursor: not-allowed !important;
+            opacity: 0.68 !important;
+        }
+        .me-rpg-materialize-alert {
+            width: min(460px, 82vw);
+            box-sizing: border-box;
+            padding: 9px 12px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.84);
+            color: #f8fafc;
+            font-size: 0.78rem;
+            font-weight: 800;
+            line-height: 1.35;
+            text-align: left;
+            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.36);
+        }
+        .me-rpg-materialize-error {
+            border: 1px solid rgba(248, 113, 113, 0.48);
+            color: #fecaca;
+        }
+        .me-rpg-materialize-warning {
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            color: #fde68a;
+        }
+        .me-rpg-category-anchor:hover {
+            filter: brightness(1.12);
+        }
+        .me-rpg-trailer-link:hover {
+            filter: brightness(1.12);
+        }
+        @media (min-width: 1500px) and (min-height: 900px) {
+            .me-rpg-body-stage {
+                min-height: clamp(720px, 82vh, 1040px);
+            }
+            .me-rpg-body-image {
+                height: clamp(660px, 78vh, 980px);
+                max-width: min(100%, 900px);
+            }
+        }
+        @media (min-width: 1800px) and (min-height: 1050px) {
+            .me-rpg-body-stage {
+                min-height: clamp(820px, 84vh, 1160px);
+            }
+            .me-rpg-body-image {
+                height: clamp(760px, 80vh, 1100px);
+                max-width: min(100%, 1020px);
+            }
+        }
+        .me-rpg-library-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .me-rpg-library-section {
+            height: calc(100vh - 7rem);
+            max-height: calc(100vh - 7rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            padding-right: 4px;
+            scrollbar-width: thin;
+            scrollbar-gutter: stable;
+        }
+        .me-rpg-left-panel,
+        .me-rpg-right-panel {
+            position: sticky;
+            top: 16px;
+            align-self: start;
+        }
+        @media (max-width: 1320px) {
+            .me-rpg-hero-grid {
+                align-items: stretch;
+            }
+            .me-rpg-right-panel {
+                position: static !important;
+            }
+        }
+        @media (max-width: 1100px) {
+            .me-rpg-profile-grid,
+            .me-rpg-active-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+            .me-rpg-hero-grid {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                align-items: stretch;
+            }
+            .me-rpg-hero-grid > .me-rpg-left-panel,
+            .me-rpg-hero-grid > .me-rpg-center-panel,
+            .me-rpg-hero-grid > .me-rpg-right-panel {
+                flex-basis: auto;
+            }
+            .me-rpg-hero-grid > .me-rpg-left-panel {
+                flex: 0 0 clamp(340px, 46vw, 420px);
+                min-width: clamp(340px, 46vw, 420px);
+            }
+            .me-rpg-hero-grid > .me-rpg-center-panel {
+                flex: 1 0 clamp(420px, 54vw, 620px);
+                min-width: clamp(420px, 54vw, 620px);
+                max-height: calc(100dvh - 6rem);
+            }
+            .me-rpg-library-section {
+                height: calc(100dvh - 6rem);
+                max-height: calc(100dvh - 6rem);
+                overflow-y: auto;
+                overflow-x: hidden;
+                overscroll-behavior: contain;
+                padding-right: 4px;
+            }
+            .me-rpg-gene-body-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .me-rpg-category-gene-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
+                padding-left: 0 !important;
+                margin-left: 0 !important;
+                border-left: none !important;
+            }
+            .me-rpg-body-map-panel {
+                padding-top: 0;
+            }
+            .me-rpg-body-map-title {
+                max-width: none;
+            }
+            .me-rpg-body-stage {
+                min-height: clamp(600px, 92vw, 760px) !important;
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                padding-bottom: 72px !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(520px, 88vw, 670px) !important;
+                max-width: min(100%, 560px) !important;
+            }
+            .me-rpg-body-marker {
+                transform: translate(-50%, -50%) scale(0.78) !important;
+            }
+            .me-rpg-body-marker:hover {
+                transform: translate(-50%, -50%) scale(0.86) !important;
+            }
+            .me-rpg-materialize-leg-cta {
+                bottom: 10px;
+            }
+            .me-rpg-materialize-leg-button {
+                min-width: min(78vw, 230px) !important;
+                min-height: 52px !important;
+                padding: 13px 22px !important;
+                font-size: clamp(1.05rem, 5.8vw, 1.45rem) !important;
+            }
+            .me-rpg-left-panel,
+            .me-rpg-right-panel,
+            .me-rpg-output-panel > div {
+                position: static !important;
+            }
+        }
+        @media (max-height: 820px) {
+            .me-rpg-shell {
+                min-height: calc(100dvh - 5.25rem) !important;
+            }
+            .me-rpg-hero-grid {
+                align-items: stretch;
+                max-height: calc(100dvh - 5.25rem);
+            }
+            .me-rpg-hero-grid > .me-rpg-center-panel {
+                max-height: calc(100dvh - 5.25rem);
+                padding-right: 4px;
+            }
+            .me-rpg-library-section {
+                height: calc(100dvh - 5.25rem);
+                max-height: calc(100dvh - 5.25rem);
+            }
+            .me-rpg-body-stage {
+                min-height: clamp(620px, 82dvh, 760px) !important;
+                padding: 4px 14px 96px !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(540px, 76dvh, 700px) !important;
+                max-width: min(100%, 680px) !important;
+            }
+            .me-rpg-materialize-leg-cta {
+                position: sticky;
+                left: auto;
+                bottom: 16px;
+                transform: none;
+                align-self: center;
+                width: max-content;
+                max-width: calc(100% - 24px);
+                margin-top: 12px;
+                margin-bottom: 10px;
+            }
+            .me-rpg-materialize-alert-stack {
+                max-width: min(460px, 88vw);
+            }
+        }
+        @media (min-aspect-ratio: 13 / 9) and (max-height: 900px) {
+            .me-rpg-body-stage {
+                min-height: clamp(780px, 108dvh, 980px) !important;
+                padding-bottom: 104px !important;
+                justify-content: flex-start !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(700px, 96dvh, 900px) !important;
+                max-width: min(100%, 860px) !important;
+            }
+            .me-rpg-materialize-leg-button {
+                min-height: 54px !important;
+                padding-top: 13px !important;
+                padding-bottom: 13px !important;
+            }
+        }
+        @media (min-width: 1800px) and (min-height: 1100px) {
+            .me-rpg-body-stage {
+                min-height: clamp(980px, 74dvh, 1160px) !important;
+                padding-bottom: 112px !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(900px, 69dvh, 1080px) !important;
+                max-width: min(100%, 1040px) !important;
+            }
+            .me-rpg-materialize-leg-button {
+                min-width: 300px !important;
+                min-height: 68px !important;
+                font-size: clamp(1.6rem, 1.4vw, 2.05rem) !important;
+            }
+        }
+        @media (max-width: 560px) {
+            .me-rpg-shell {
+                padding: 10px !important;
+            }
+            .me-rpg-dashboard {
+                gap: 12px;
+            }
+            .me-rpg-body-map-title {
+                padding: 9px 11px;
+            }
+            .me-rpg-body-stage {
+                min-height: clamp(540px, 138vw, 680px) !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                padding-bottom: 62px !important;
+            }
+            .me-rpg-body-stage::before {
+                inset: 8% 0 3%;
+            }
+            .me-rpg-body-stage::after {
+                inset: 20% 20% 9%;
+            }
+            .me-rpg-body-image {
+                height: clamp(430px, 116vw, 560px) !important;
+                max-width: min(100%, 440px) !important;
+                filter:
+                    blur(0.22px)
+                    drop-shadow(0 0 16px rgba(56, 189, 248, 0.42))
+                    drop-shadow(0 0 38px rgba(124, 58, 237, 0.32))
+                    drop-shadow(0 18px 34px rgba(2, 6, 23, 0.54));
+            }
+            .me-rpg-body-marker {
+                transform: translate(-50%, -50%) scale(0.72) !important;
+                width: 150px !important;
+                height: 126px !important;
+            }
+            .me-rpg-body-marker:hover {
+                transform: translate(-50%, -50%) scale(0.78) !important;
+            }
+            .me-rpg-body-marker--expression {
+                top: 29% !important;
+                left: 39% !important;
+            }
+            .me-rpg-body-marker--perception {
+                top: 29% !important;
+                left: 61% !important;
+            }
+            .me-rpg-body-marker--longevity-genome {
+                top: 52% !important;
+                left: 30% !important;
+            }
+            .me-rpg-body-marker--stress-resistance {
+                top: 52% !important;
+                left: 70% !important;
+            }
+            .me-rpg-body-marker--environmental-adaptation {
+                top: 77% !important;
+                left: 35% !important;
+            }
+            .me-rpg-body-marker--regeneration {
+                top: 77% !important;
+                left: 65% !important;
+            }
+            .me-rpg-marker-icon-node {
+                width: 53px !important;
+                height: 53px !important;
+            }
+            .me-rpg-marker-icon-node i.icon {
+                font-size: 52px !important;
+            }
+            .me-rpg-marker-count-badge {
+                min-width: 20px !important;
+                height: 20px !important;
+                font-size: 0.65rem !important;
+            }
+            .me-rpg-marker-gene-orbit {
+                width: 150px !important;
+                height: 126px !important;
+            }
+            .me-rpg-marker-gene-chip {
+                width: 58px !important;
+                min-height: 18px !important;
+                font-size: 0.62rem !important;
+                padding: 1px 4px !important;
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(1) {
+                transform: translate(-50%, -50%) translate(0, -62px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(2) {
+                transform: translate(-50%, -50%) translate(-54px, -46px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(3) {
+                transform: translate(-50%, -50%) translate(54px, -46px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(4) {
+                transform: translate(-50%, -50%) translate(-68px, -8px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(5) {
+                transform: translate(-50%, -50%) translate(68px, -8px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(6) {
+                transform: translate(-50%, -50%) translate(-28px, -72px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(7) {
+                transform: translate(-50%, -50%) translate(28px, -72px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(8) {
+                transform: translate(-50%, -50%) translate(0, -36px);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(1) .me-rpg-marker-gene-line {
+                width: 42px;
+                transform: rotate(-90deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(2) .me-rpg-marker-gene-line {
+                width: 52px;
+                transform: rotate(-140deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(3) .me-rpg-marker-gene-line {
+                width: 52px;
+                transform: rotate(-40deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(4) .me-rpg-marker-gene-line {
+                width: 48px;
+                transform: rotate(-173deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(5) .me-rpg-marker-gene-line {
+                width: 48px;
+                transform: rotate(-7deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(6) .me-rpg-marker-gene-line {
+                width: 56px;
+                transform: rotate(-111deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(7) .me-rpg-marker-gene-line {
+                width: 56px;
+                transform: rotate(-69deg);
+            }
+            .me-rpg-marker-gene-orbit .me-rpg-marker-gene-orbit-item:nth-child(8) .me-rpg-marker-gene-line {
+                width: 22px;
+                transform: rotate(-90deg);
+            }
+            .me-rpg-marker-label {
+                top: calc(50% + 36px) !important;
+                max-width: 230px !important;
+                font-size: 0.98rem !important;
+            }
+            .me-rpg-marker-label span:first-child {
+                font-size: 1.02rem !important;
+            }
+            .me-rpg-marker-category-full {
+                font-size: 0.52rem !important;
+            }
+            .me-rpg-trailer-link {
+                width: 58px !important;
+                height: 58px !important;
+            }
+        }
+        """
+    )
+
+
+def _rpg_shell(content: rx.Component) -> rx.Component:
+    return rx.el.div(
+        _rpg_flow_css(),
+        content,
+        class_name="me-rpg-shell",
+        style={
+            "width": "100%",
+            "padding": "16px",
+            "borderRadius": "18px",
+            "background": "linear-gradient(135deg, #020617 0%, #111827 48%, #1e1b4b 100%)",
+            "boxSizing": "border-box",
+            "minHeight": "calc(100vh - 7rem)",
+        },
+    )
+
+
+def _rpg_character_profile_layout() -> rx.Component:
+    return _rpg_shell(
+        rx.el.div(
+            rx.el.div(
+                _rpg_body_map_panel(),
+                class_name="me-rpg-center-panel",
+            ),
+            class_name="me-rpg-dashboard me-rpg-hero-grid",
+        )
+    )
+
+
+def _rpg_active_genes_layout() -> rx.Component:
+    return _rpg_shell(
+        rx.el.div(
+            rx.el.div(
+                _rpg_gene_library_panel(),
+                id="gene-library",
+                class_name="me-rpg-left-panel me-rpg-library-section",
+            ),
+            rx.el.div(
+                _rpg_body_map_panel(),
+                class_name="me-rpg-center-panel",
+            ),
+            class_name="me-rpg-dashboard me-rpg-hero-grid",
+        )
+    )
+
+
+def _rpg_materialization_layout() -> rx.Component:
+    return _rpg_shell(_rpg_materialization_output())
+
+
+def _rpg_about_layout() -> rx.Component:
+    return _rpg_shell(
+        rx.el.div(
+            rx.el.style(
+                """
+                #me-about-page h1,
+                #me-about-page h2,
+                #me-about-page h3,
+                #me-about-page strong {
+                    color: #f8fafc !important;
+                }
+                #me-about-page p,
+                #me-about-page li {
+                    color: #cbd5e1 !important;
+                }
+                #me-about-page a {
+                    color: #c4b5fd !important;
+                }
+                #me-about-page .ui.primary.button {
+                    color: #ffffff !important;
+                }
+                #me-about-page .me-about-layout {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 18px;
+                    align-items: start;
+                    margin-bottom: 24px;
+                }
+                #me-about-page .me-about-main,
+                #me-about-page .me-about-sidebar {
+                    min-width: 0;
+                }
+                #me-about-page .me-about-sidebar {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                #me-about-page .me-about-support-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 12px;
+                }
+                @media (min-width: 1100px) {
+                    #me-about-page .me-about-layout {
+                        grid-template-columns: minmax(0, 1fr) minmax(440px, 600px);
+                        gap: 24px;
+                    }
+                    #me-about-page .me-about-sidebar {
+                        position: sticky;
+                        top: 18px;
+                    }
+                }
+                """
+            ),
+            _landing_tab(),
+            id="me-about-page",
+            style={**_RPG_PANEL_STYLE, "padding": "24px 18px"},
+        )
+    )
+
+
+def _rpg_materialize_layout() -> rx.Component:
+    return _rpg_active_genes_layout()
 
 
 def _param_row(label: str, value: rx.Var, unit: str = "") -> rx.Component:
     """A single row in the sculpture parameters panel."""
     return rx.el.div(
-        rx.el.span(label, style={"fontSize": "0.92rem", "color": "#6b7280", "flex": "0 0 100px"}),
+        rx.el.span(label, style={"fontSize": "0.92rem", "color": "#94a3b8", "flex": "0 0 100px"}),
         rx.el.span(
             value,
-            rx.el.span(f" {unit}" if unit else "", style={"color": "#9ca3af", "fontSize": "0.8rem"}),
-            style={"fontSize": "0.98rem", "fontWeight": "600", "color": "#1a1a2e"},
+            rx.el.span(f" {unit}" if unit else "", style={"color": "#64748b", "fontSize": "0.8rem"}),
+            style={"fontSize": "0.98rem", "fontWeight": "600", "color": "#f8fafc"},
         ),
         style={"display": "flex", "alignItems": "center", "gap": "8px", "padding": "4px 0"},
     )
@@ -1101,11 +3616,11 @@ def _param_row(label: str, value: rx.Var, unit: str = "") -> rx.Component:
 def _input_row(label: str, value: rx.Var, unit: str, arrow: bool = False) -> rx.Component:
     """Compact row: label + value + optional arrow connector."""
     return rx.el.div(
-        rx.el.span(label, style={"fontSize": "0.92rem", "color": "#6b7280", "flex": "0 0 100px"}),
+        rx.el.span(label, style={"fontSize": "0.92rem", "color": "#94a3b8", "flex": "0 0 100px"}),
         rx.el.span(
             value,
-            rx.el.span(f" {unit}" if unit else "", style={"color": "#9ca3af", "fontSize": "0.8rem"}),
-            style={"fontSize": "0.98rem", "fontWeight": "600", "color": "#1a1a2e"},
+            rx.el.span(f" {unit}" if unit else "", style={"color": "#64748b", "fontSize": "0.8rem"}),
+            style={"fontSize": "0.98rem", "fontWeight": "600", "color": "#f8fafc"},
         ),
         *(
             [rx.el.span(
@@ -1121,7 +3636,7 @@ def _explanation_item(term: str, desc: str, maps_to: str = "") -> rx.Component:
     """A single glossary entry in the explanations panel."""
     return rx.el.div(
         rx.el.div(
-            rx.el.span(term, style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.95rem"}),
+            rx.el.span(term, style={"fontWeight": "700", "color": "#f8fafc", "fontSize": "0.95rem"}),
             *(
                 [rx.el.span(
                     f"  {maps_to}",
@@ -1129,8 +3644,8 @@ def _explanation_item(term: str, desc: str, maps_to: str = "") -> rx.Component:
                 )] if maps_to else []
             ),
         ),
-        rx.el.p(desc, style={"color": "#4b5563", "margin": "2px 0 0 0", "lineHeight": "1.5", "fontSize": "0.9rem"}),
-        style={"padding": "6px 0", "borderBottom": "1px solid #f3f4f6"},
+        rx.el.p(desc, style={"color": "#cbd5e1", "margin": "2px 0 0 0", "lineHeight": "1.5", "fontSize": "0.9rem"}),
+        style={"padding": "6px 0", "borderBottom": "1px solid rgba(148, 163, 184, 0.18)"},
     )
 
 
@@ -1144,18 +3659,18 @@ def _explanations_panel() -> rx.Component:
                     fomantic_icon("dna", size=14, color="#27ae60"),
                     rx.el.span(
                         " Name: ",
-                        style={"fontWeight": "600", "color": "#6b7280"},
+                        style={"fontWeight": "600", "color": "#94a3b8"},
                     ),
                     rx.el.span(
                         ComposeState.input_personal_tag,
-                        style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "1.05rem"},
+                        style={"fontWeight": "700", "color": "#f8fafc", "fontSize": "1.05rem"},
                     ),
                     style={"display": "flex", "alignItems": "center", "gap": "4px"},
                 ),
                 rx.el.p(
                     "Your name is hashed (CRC32) and XORed with your category bitmask "
                     "to produce a unique seed — the number that makes every 3D model unrepeatable.",
-                    style={"color": "#4b5563", "margin": "2px 0 0 0", "lineHeight": "1.5", "fontSize": "0.92rem"},
+                    style={"color": "#cbd5e1", "margin": "2px 0 0 0", "lineHeight": "1.5", "fontSize": "0.92rem"},
                 ),
                 rx.el.div(
                     rx.el.span("CRC32 ", style={"color": "#9ca3af"}),
@@ -1164,9 +3679,9 @@ def _explanations_panel() -> rx.Component:
                     rx.el.span(ComposeState.input_bitmask, style={"fontWeight": "600"}),
                     rx.el.span(" = seed ", style={"color": "#7c3aed"}),
                     rx.el.span(ComposeState.param_seed, style={"fontWeight": "700", "color": "#7c3aed"}),
-                    style={"fontSize": "0.93rem", "color": "#1a1a2e", "marginTop": "4px"},
+                    style={"fontSize": "0.93rem", "color": "#e5e7eb", "marginTop": "4px"},
                 ),
-                style={"padding": "6px 0", "borderBottom": "1px solid #f3f4f6"},
+                style={"padding": "6px 0", "borderBottom": "1px solid rgba(148, 163, 184, 0.18)"},
             ),
             _explanation_item(
                 "Gene pool",
@@ -1217,8 +3732,8 @@ def _explanations_panel() -> rx.Component:
             style={
                 "padding": "12px 16px",
                 "borderRadius": "6px",
-                "backgroundColor": "#f9fafb",
-                "border": "1px solid #e5e7eb",
+                "backgroundColor": "rgba(15, 23, 42, 0.72)",
+                "border": "1px solid rgba(148, 163, 184, 0.24)",
                 "marginBottom": "12px",
                 "fontSize": "0.95rem",
             },
@@ -1232,7 +3747,7 @@ def _gene_inputs_panel() -> rx.Component:
     return rx.el.div(
         rx.el.label(
             "Gene inputs",
-            style={"fontSize": "0.92rem", "fontWeight": "600", "color": "#4b5563", "marginBottom": "6px", "display": "block"},
+            style={"fontSize": "0.92rem", "fontWeight": "600", "color": "#cbd5e1", "marginBottom": "6px", "display": "block"},
         ),
         rx.el.div(
             _input_row("Gene pool", ComposeState.param_pool_size, "genes", arrow=True),
@@ -1245,8 +3760,8 @@ def _gene_inputs_panel() -> rx.Component:
             style={
                 "padding": "10px 14px",
                 "borderRadius": "6px",
-                "backgroundColor": "#f0fdf4",
-                "border": "1px solid #bbf7d0",
+                "backgroundColor": "rgba(20, 83, 45, 0.24)",
+                "border": "1px solid rgba(34, 197, 94, 0.32)",
             },
         ),
         style={"flex": "1", "minWidth": "0"},
@@ -1258,7 +3773,7 @@ def _sculpture_params_panel() -> rx.Component:
     return rx.el.div(
         rx.el.label(
             "3D model parameters",
-            style={"fontSize": "0.92rem", "fontWeight": "600", "color": "#4b5563", "marginBottom": "6px", "display": "block"},
+            style={"fontSize": "0.92rem", "fontWeight": "600", "color": "#cbd5e1", "marginBottom": "6px", "display": "block"},
         ),
         rx.el.div(
             _param_row("Seed", ComposeState.param_seed),
@@ -1271,8 +3786,8 @@ def _sculpture_params_panel() -> rx.Component:
             style={
                 "padding": "10px 14px",
                 "borderRadius": "6px",
-                "backgroundColor": "#f9f5ff",
-                "border": "1px solid #d4c5f9",
+                "backgroundColor": "rgba(76, 29, 149, 0.25)",
+                "border": "1px solid rgba(167, 139, 250, 0.32)",
             },
         ),
         style={"flex": "1", "minWidth": "0"},
@@ -1309,9 +3824,10 @@ def _section_header(
             "alignItems": "center",
             "cursor": "pointer",
             "padding": "10px",
-            "backgroundColor": "#f9fafb",
+            "backgroundColor": "rgba(15, 23, 42, 0.72)",
             "borderRadius": "6px",
             "marginBottom": rx.cond(expanded, "10px", "0"),
+            "color": "#f8fafc",
         },
     )
 
@@ -1328,7 +3844,7 @@ def _choice_section() -> rx.Component:
             ),
             rx.el.input(
                 id="compose-personal-tag",
-                placeholder="A new human, to be",
+                placeholder="Enter your name here",
                 value=ComposeState.personal_tag,
                 on_change=ComposeState.set_personal_tag,
                 style={
@@ -1453,8 +3969,8 @@ def _choice_section() -> rx.Component:
     )
 
 
-def _sculpture_section() -> rx.Component:
-    """Collapsible: parameters panel, download button."""
+def _model_parameters_accordion() -> rx.Component:
+    """Nested accordion with reproducible sculpture inputs and geometry parameters."""
     body = rx.cond(
         ComposeState.sculpture_expanded,
         rx.el.div(
@@ -1471,36 +3987,6 @@ def _sculpture_section() -> rx.Component:
                             "marginBottom": "12px",
                         },
                     ),
-                    rx.cond(
-                        ComposeState.has_stl,
-                        rx.el.div(
-                            rx.el.div(
-                                rx.el.span(
-                                    ComposeState.stl_filename,
-                                    style={"fontSize": "0.8rem", "color": "#6b7280", "wordBreak": "break-all"},
-                                ),
-                                style={"marginBottom": "8px"},
-                            ),
-                            rx.el.button(
-                                fomantic_icon("download", size=14),
-                                rx.el.span(" Download STL + Params", style={"marginLeft": "6px"}),
-                                on_click=ComposeState.download_artifacts,
-                                class_name="ui primary button",
-                                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
-                            ),
-                            _email_send_form(ComposeState, button_label="Send STL + report"),
-                            rx.cond(
-                                ComposeState.artex_section_visible,
-                                rx.el.div(
-                                    artex_publish_button(ComposeState, ComposeState.create_artex_project),
-                                    style={"marginTop": "8px"},
-                                ),
-                                rx.fragment(),
-                            ),
-                            style={"marginTop": "10px"},
-                        ),
-                        rx.fragment(),
-                    ),
                 ),
                 rx.el.p(
                     "Parameters will appear after selecting categories.",
@@ -1515,8 +4001,93 @@ def _sculpture_section() -> rx.Component:
         _section_header(
             expanded=ComposeState.sculpture_expanded,
             icon_name="sparkles",
-            title="Printable 3D model",
+            title="Model parameters",
             on_toggle=ComposeState.toggle_sculpture_expanded,
+        ),
+        body,
+        style={**_COLLAPSIBLE_STYLE, "backgroundColor": "rgba(15, 23, 42, 0.38)"},
+    )
+
+
+def _model_action_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(
+                ComposeState.stl_filename,
+                style={"fontSize": "0.82rem", "color": "#cbd5e1", "wordBreak": "break-all"},
+            ),
+            style={"marginBottom": "8px"},
+        ),
+        rx.el.button(
+            fomantic_icon("download", size=14),
+            rx.el.span(" Download STL + Params", style={"marginLeft": "6px"}),
+            on_click=ComposeState.download_artifacts,
+            class_name="ui primary button",
+            style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
+        ),
+        _email_send_form(ComposeState, button_label="Send STL + report"),
+        rx.cond(
+            ComposeState.artex_section_visible,
+            rx.el.div(
+                artex_publish_button(ComposeState, ComposeState.create_artex_project),
+                style={"marginTop": "8px"},
+            ),
+            rx.fragment(),
+        ),
+        style={
+            "padding": "12px",
+            "borderRadius": "8px",
+            "backgroundColor": "rgba(15, 23, 42, 0.46)",
+            "border": "1px solid rgba(148, 163, 184, 0.22)",
+            "marginTop": "10px",
+            "marginBottom": "10px",
+        },
+    )
+
+
+def _sculpture_section() -> rx.Component:
+    """Collapsible printable model section, with the viewer first."""
+    body = rx.cond(
+        ComposeState.viewer_expanded,
+        rx.cond(
+            ComposeState.has_stl,
+            rx.el.div(
+                rx.el.iframe(
+                    src=ComposeState.viewer_iframe_src,
+                    id="sculpture-viewer-iframe",
+                    style={
+                        "width": "100%",
+                        "height": "840px",
+                        "border": "1px solid #e5e7eb",
+                        "borderRadius": "8px",
+                        "backgroundColor": "#1a1a2e",
+                    },
+                ),
+                rx.el.p(
+                    "Drag to rotate · Scroll to zoom · Right-drag to pan",
+                    style={"fontSize": "0.82rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "6px"},
+                ),
+                _model_action_panel(),
+                _model_parameters_accordion(),
+            ),
+            rx.el.p(
+                rx.cond(
+                    ComposeState.generating,
+                    "Building your printable 3D model. The viewer will appear here as soon as it is ready.",
+                    "Click Materialize from Character profile to build a printable 3D model.",
+                ),
+                style={"color": "#9ca3af", "fontSize": "0.9rem", "textAlign": "center", "padding": "24px 12px"},
+            ),
+        ),
+        rx.fragment(),
+    )
+
+    return rx.el.div(
+        _section_header(
+            expanded=ComposeState.viewer_expanded,
+            icon_name="cube",
+            title="Printable 3D model",
+            on_toggle=ComposeState.toggle_viewer_expanded,
             right_badge=rx.cond(
                 ComposeState.generating,
                 rx.el.div(
@@ -1540,29 +4111,32 @@ def _sculpture_section() -> rx.Component:
 
 
 _REPORT_CARD_STYLE: dict = {
-    "backgroundColor": "#ffffff",
-    "border": "1px solid #1a1a2e",
-    "borderRadius": "8px",
+    "background": "linear-gradient(180deg, #111827 0%, #0b1020 100%)",
+    "border": "1px solid rgba(124, 58, 237, 0.48)",
+    "borderRadius": "14px",
     "padding": "24px",
     "marginBottom": "16px",
     "position": "relative",
     "overflow": "hidden",
     "fontFamily": "'Lato', 'Helvetica Neue', Arial, sans-serif",
+    "boxShadow": "0 18px 45px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+    "color": "#e5e7eb",
 }
 
 
 _VIEW_TILE_STYLE: dict = {
     "flex": "1 1 0",
     "aspectRatio": "1 / 1",
-    "backgroundColor": "#0b0b14",
-    "border": "1px solid #7c3aed",
-    "borderRadius": "6px",
+    "background": "radial-gradient(circle at 50% 38%, rgba(56, 189, 248, 0.14), rgba(11, 11, 20, 0.98) 64%)",
+    "border": "1px solid rgba(124, 58, 237, 0.72)",
+    "borderRadius": "10px",
     "display": "flex",
     "flexDirection": "column",
     "alignItems": "center",
     "justifyContent": "center",
     "position": "relative",
     "overflow": "hidden",
+    "boxShadow": "0 0 18px rgba(124, 58, 237, 0.18)",
 }
 
 
@@ -1589,8 +4163,8 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
             rx.el.span(
                 gene_item["gene"],
                 style={
-                    "fontWeight": "700",
-                    "color": "#1a1a2e",
+                    "fontWeight": "900",
+                    "color": "#f8fafc",
                     "marginRight": "10px",
                     "minWidth": "80px",
                     "display": "inline-block",
@@ -1616,8 +4190,8 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
                         "Evidence tier",
                         style={
                             "fontSize": "0.8rem",
-                            "fontWeight": "600",
-                            "color": "#6b7280",
+                            "fontWeight": "800",
+                            "color": "#94a3b8",
                             "marginRight": "8px",
                             "textTransform": "uppercase",
                             "letterSpacing": "0.06em",
@@ -1625,7 +4199,7 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
                     ),
                     rx.el.span(
                         gene_item["evidence_tier"],
-                        style={"fontSize": "0.88rem", "color": "#374151", "lineHeight": "1.45"},
+                        style={"fontSize": "0.88rem", "color": "#cbd5e1", "lineHeight": "1.45"},
                     ),
                     style={"display": "flex", "alignItems": "baseline", "flexWrap": "wrap", "gap": "4px"},
                 ),
@@ -1639,19 +4213,20 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
             },
         ),
         rx.el.p(
-            gene_item["description"],
+            gene_item["short_description"],
             class_name="me-report-desc",
-            style={"fontSize": "0.86rem", "color": "#374151", "margin": "2px 0 0 0", "lineHeight": "1.5"},
+            style={"fontSize": "0.86rem", "color": "#dbeafe", "margin": "2px 0 0 0", "lineHeight": "1.5"},
         ),
         style={
             "padding": "8px 12px",
-            "borderRadius": "4px",
-            "borderTop": "1px solid #e5e7eb",
-            "borderRight": "1px solid #e5e7eb",
-            "borderBottom": "1px solid #e5e7eb",
+            "borderRadius": "8px",
+            "borderTop": "1px solid rgba(148, 163, 184, 0.22)",
+            "borderRight": "1px solid rgba(148, 163, 184, 0.22)",
+            "borderBottom": "1px solid rgba(148, 163, 184, 0.22)",
             "borderLeft": _gene_category_border_left(gene_item["category"]),
-            "backgroundColor": "#ffffff",
+            "background": "linear-gradient(135deg, rgba(30, 41, 59, 0.86), rgba(30, 27, 75, 0.68))",
             "marginBottom": "8px",
+            "boxShadow": "0 0 18px rgba(124, 58, 237, 0.10)",
         },
     )
 
@@ -1661,13 +4236,13 @@ def _report_animal_row(animal_item: rx.Var) -> rx.Component:
     text_block = rx.el.div(
         rx.el.div(
             animal_item["organism"],
-            style={"fontWeight": "700", "color": "#1a1a2e", "fontSize": "0.85rem", "lineHeight": "1.3"},
+            style={"fontWeight": "900", "color": "#f8fafc", "fontSize": "0.85rem", "lineHeight": "1.3"},
         ),
         rx.el.div(
-            rx.el.span("Traits: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.72rem"}),
+            rx.el.span("Traits: ", style={"color": "#94a3b8", "fontWeight": "800", "fontSize": "0.72rem"}),
             rx.el.span(
                 animal_item["traits_csv"],
-                style={"color": "#4b5563", "fontSize": "0.78rem", "lineHeight": "1.4"},
+                style={"color": "#cbd5e1", "fontSize": "0.78rem", "lineHeight": "1.4"},
             ),
         ),
         style={"overflow": "hidden"},
@@ -1694,7 +4269,7 @@ def _report_animal_row(animal_item: rx.Var) -> rx.Component:
             style={
                 "overflow": "hidden",
                 "padding": "6px 0",
-                "borderBottom": "1px solid #f3f4f6",
+                "borderBottom": "1px solid rgba(148, 163, 184, 0.18)",
                 "breakInside": "avoid",
                 "WebkitColumnBreakInside": "avoid",
                 "pageBreakInside": "avoid",
@@ -1703,16 +4278,16 @@ def _report_animal_row(animal_item: rx.Var) -> rx.Component:
         rx.el.div(
             rx.el.div(
                 fomantic_icon("paw", size=12, color="#16a085", style={"marginRight": "6px", "verticalAlign": "middle"}),
-                rx.el.span(animal_item["organism"], style={"fontWeight": "700", "color": "#1a1a2e"}),
+                rx.el.span(animal_item["organism"], style={"fontWeight": "900", "color": "#f8fafc"}),
                 style={"display": "block", "lineHeight": "1.4", "marginBottom": "2px"},
             ),
             rx.el.div(
                 animal_item["traits_csv"],
-                style={"fontSize": "0.86rem", "color": "#4b5563", "lineHeight": "1.5", "paddingLeft": "18px"},
+                style={"fontSize": "0.86rem", "color": "#cbd5e1", "lineHeight": "1.5", "paddingLeft": "18px"},
             ),
             style={
                 "padding": "8px 0",
-                "borderBottom": "1px solid #f3f4f6",
+                "borderBottom": "1px solid rgba(148, 163, 184, 0.18)",
                 "breakInside": "avoid",
                 "WebkitColumnBreakInside": "avoid",
                 "pageBreakInside": "avoid",
@@ -1728,12 +4303,12 @@ def _report_category_chip(cat_item: rx.Var) -> rx.Component:
             "display": "inline-block",
             "padding": "4px 10px",
             "borderRadius": "12px",
-            "backgroundColor": "#f3f0ff",
-            "color": "#7c3aed",
+            "backgroundColor": "rgba(124, 58, 237, 0.18)",
+            "color": "#c4b5fd",
             "fontSize": "0.82rem",
-            "fontWeight": "600",
+            "fontWeight": "800",
             "margin": "3px",
-            "border": "1px solid #d4c5f9",
+            "border": "1px solid rgba(167, 139, 250, 0.42)",
         },
     )
 
@@ -1754,9 +4329,9 @@ def _report_view_tile(label: str, img_id: str) -> rx.Component:
                 "left": "8px",
                 "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                 "fontSize": "0.72rem",
-                "fontWeight": "700",
+                "fontWeight": "900",
                 "letterSpacing": "0.15em",
-                "color": "#c4b5fd",
+                "color": "#ddd6fe",
                 "textShadow": "0 1px 2px rgba(0,0,0,0.7)",
             },
         ),
@@ -1764,29 +4339,88 @@ def _report_view_tile(label: str, img_id: str) -> rx.Component:
     )
 
 
+def _report_portrait(size_px: int = 84) -> rx.Component:
+    return rx.cond(
+        ComposeState.has_report_portrait,
+        rx.el.img(
+            src=ComposeState.report_portrait_data_url,
+            alt="Uploaded report portrait",
+            style={
+                "width": f"{size_px}px",
+                "height": f"{size_px}px",
+                "objectFit": "cover",
+                "borderRadius": "999px",
+                "border": "2px solid rgba(167, 139, 250, 0.62)",
+                "boxShadow": "0 0 22px rgba(124, 58, 237, 0.28)",
+                "backgroundColor": "rgba(15, 23, 42, 0.72)",
+                "flexShrink": "0",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _report_character_note_block(font_size: str = "0.86rem") -> rx.Component:
+    return rx.cond(
+        ComposeState.has_report_character_note,
+        rx.el.div(
+            rx.el.div(
+                "CHARACTER NOTE",
+                style={
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "fontSize": "0.72rem",
+                    "letterSpacing": "0.14em",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
+                    "marginBottom": "4px",
+                },
+            ),
+            rx.el.p(
+                ComposeState.report_character_note,
+                style={
+                    "fontSize": font_size,
+                    "color": "#dbeafe",
+                    "lineHeight": "1.45",
+                    "margin": "0",
+                    "fontStyle": "italic",
+                },
+            ),
+            style={
+                "padding": "9px 11px",
+                "border": "1px solid rgba(167, 139, 250, 0.28)",
+                "borderRadius": "8px",
+                "backgroundColor": "rgba(124, 58, 237, 0.12)",
+                "marginBottom": "14px",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
 def _report_card() -> rx.Component:
-    """The rasterizable police-report card — this DOM node is turned into PNG/PDF."""
+    """The rasterizable RPG loadout report card used for on-screen sharing."""
     return rx.el.div(
         rx.el.div(
             rx.el.span(
-                "SPECIMEN #",
-                style={"fontSize": "0.82rem", "fontWeight": "400"},
+                "LOADOUT #",
+                style={"fontSize": "0.74rem", "fontWeight": "800"},
             ),
             rx.el.span(
                 ComposeState.param_seed,
-                style={"fontSize": "1.2rem", "fontWeight": "700"},
+                style={"fontSize": "1.05rem", "fontWeight": "950"},
             ),
             style={
                 "position": "absolute",
                 "top": "18px",
-                "right": "-6px",
-                "padding": "4px 14px",
-                "border": "2px solid #b91c1c",
-                "color": "#b91c1c",
+                "right": "18px",
+                "padding": "6px 12px",
+                "border": "1px solid rgba(167, 139, 250, 0.52)",
+                "borderRadius": "10px",
+                "color": "#c4b5fd",
+                "background": "rgba(15, 23, 42, 0.82)",
                 "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                 "letterSpacing": "0.1em",
-                "transform": "rotate(-6deg)",
-                "opacity": "0.78",
+                "boxShadow": "0 0 18px rgba(124, 58, 237, 0.24)",
                 "pointerEvents": "none",
                 "userSelect": "none",
             },
@@ -1798,33 +4432,49 @@ def _report_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.78rem",
                     "letterSpacing": "0.18em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                 },
             ),
             rx.el.h2(
-                "Personal enhancement report",
+                "Character enhancement report",
                 style={
                     "fontSize": "1.6rem",
-                    "fontWeight": "800",
-                    "color": "#1a1a2e",
+                    "fontWeight": "950",
+                    "color": "#f8fafc",
                     "margin": "2px 0 0 0",
                     "letterSpacing": "0.02em",
                 },
             ),
-            style={"borderBottom": "2px solid #1a1a2e", "paddingBottom": "10px", "marginBottom": "14px"},
+            rx.el.p(
+                "A shareable loadout generated from your selected enhancement genes.",
+                style={
+                    "fontSize": "0.94rem",
+                    "fontWeight": "700",
+                    "color": "#c4b5fd",
+                    "margin": "4px 0 0 0",
+                    "lineHeight": "1.35",
+                },
+            ),
+            style={
+                "borderBottom": "1px solid rgba(167, 139, 250, 0.36)",
+                "paddingBottom": "12px",
+                "paddingRight": "150px",
+                "marginBottom": "14px",
+            },
         ),
         rx.el.div(
+            _report_portrait(86),
             rx.el.div(
-                rx.el.span("NAME", style={"fontSize": "0.82rem", "color": "#9ca3af", "letterSpacing": "0.12em"}),
+                rx.el.span("CHARACTER", style={"fontSize": "0.78rem", "color": "#94a3b8", "letterSpacing": "0.12em", "fontWeight": "800"}),
                 rx.el.div(
                     ComposeState.input_personal_tag,
-                    style={"fontSize": "1.4rem", "fontWeight": "700", "color": "#1a1a2e"},
+                    style={"fontSize": "1.4rem", "fontWeight": "900", "color": "#f8fafc"},
                 ),
                 style={"flex": "2 1 200px", "minWidth": "160px"},
             ),
             rx.el.div(
-                rx.el.span("SEED", style={"fontSize": "0.82rem", "color": "#9ca3af", "letterSpacing": "0.12em"}),
+                rx.el.span("SEED", style={"fontSize": "0.78rem", "color": "#94a3b8", "letterSpacing": "0.12em", "fontWeight": "800"}),
                 rx.el.div(
                     ComposeState.param_seed,
                     style={
@@ -1837,13 +4487,13 @@ def _report_card() -> rx.Component:
                 style={"flex": "1 1 80px", "minWidth": "80px"},
             ),
             rx.el.div(
-                rx.el.span("POINTS", style={"fontSize": "0.82rem", "color": "#9ca3af", "letterSpacing": "0.12em"}),
+                rx.el.span("POINTS", style={"fontSize": "0.78rem", "color": "#94a3b8", "letterSpacing": "0.12em", "fontWeight": "800"}),
                 rx.el.div(
                     ComposeState.param_points,
                     style={
                         "fontSize": "1.2rem",
-                        "fontWeight": "700",
-                        "color": "#1a1a2e",
+                        "fontWeight": "900",
+                        "color": "#f8fafc",
                         "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     },
                 ),
@@ -1851,6 +4501,7 @@ def _report_card() -> rx.Component:
             ),
             style={"display": "flex", "gap": "16px", "flexWrap": "wrap", "marginBottom": "14px"},
         ),
+        _report_character_note_block(),
         rx.el.div(
             _report_view_tile("FRONT", "report-view-front"),
             _report_view_tile("SIDE", "report-view-side"),
@@ -1865,7 +4516,7 @@ def _report_card() -> rx.Component:
                 style={
                     "textAlign": "center",
                     "fontSize": "0.82rem",
-                    "color": "#9ca3af",
+                    "color": "#94a3b8",
                     "margin": "-10px 0 12px 0",
                     "fontStyle": "italic",
                 },
@@ -1878,8 +4529,8 @@ def _report_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.72rem",
                     "letterSpacing": "0.14em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                     "marginBottom": "6px",
                 },
             ),
@@ -1896,8 +4547,8 @@ def _report_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.72rem",
                     "letterSpacing": "0.14em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                     "marginBottom": "6px",
                 },
             ),
@@ -1918,8 +4569,8 @@ def _report_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.85rem",
                     "letterSpacing": "0.12em",
-                    "color": "#374151",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                     "marginBottom": "6px",
                 },
             ),
@@ -1928,58 +4579,16 @@ def _report_card() -> rx.Component:
         ),
         rx.el.div(
             rx.el.div(
-                rx.el.div(
-                    "SCAN TO RECREATE",
-                    style={
-                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
-                        "fontSize": "0.8rem",
-                        "letterSpacing": "0.12em",
-                        "color": "#6b7280",
-                        "fontWeight": "600",
-                        "marginBottom": "4px",
-                    },
-                ),
-                rx.el.div(
-                    id="report-qr",
-                    style={
-                        "width": "5.75rem",
-                        "height": "5.75rem",
-                        "backgroundColor": "#ffffff",
-                        "border": "1px solid #e5e7eb",
-                        "padding": "4px",
-                        "display": "flex",
-                        "alignItems": "center",
-                        "justifyContent": "center",
-                    },
-                ),
+                "materialized-enhancements",
+                style={"fontSize": "0.9rem", "fontWeight": "900", "color": "#c4b5fd"},
             ),
             rx.el.div(
-                rx.el.div(
-                    "materialized-enhancements",
-                    style={"fontSize": "0.9rem", "fontWeight": "700", "color": "#7c3aed"},
-                ),
-                rx.el.div(
-                    "CODAME \u00b7 The New Human \u00b7 Milano 2026",
-                    style={"fontSize": "0.75rem", "color": "#9ca3af", "marginTop": "2px"},
-                ),
-                rx.el.div(
-                    id="report-share-url",
-                    style={
-                        "fontSize": "0.78rem",
-                        "color": "#6b7280",
-                        "marginTop": "6px",
-                        "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
-                        "wordBreak": "break-all",
-                        "maxWidth": "100%",
-                    },
-                ),
-                style={"flex": "1", "marginLeft": "16px", "overflow": "hidden"},
+                "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+                style={"fontSize": "0.75rem", "color": "#94a3b8", "marginTop": "2px"},
             ),
             style={
-                "display": "flex",
-                "alignItems": "flex-start",
                 "paddingTop": "12px",
-                "borderTop": "1px solid #e5e7eb",
+                "borderTop": "1px solid rgba(167, 139, 250, 0.28)",
             },
         ),
         id="me-report-card",
@@ -1993,8 +4602,8 @@ def _png_animal_row(animal_item: rx.Var) -> rx.Component:
         rx.el.div(
             animal_item["organism"],
             style={
-                "fontWeight": "700",
-                "color": "#1a1a2e",
+                "fontWeight": "900",
+                "color": "#f8fafc",
                 "fontSize": "0.58rem",
                 "lineHeight": "1.15",
                 "marginBottom": "2px",
@@ -2004,11 +4613,11 @@ def _png_animal_row(animal_item: rx.Var) -> rx.Component:
             },
         ),
         rx.el.div(
-            rx.el.span("Trait: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.5rem"}),
+            rx.el.span("Trait: ", style={"color": "#94a3b8", "fontWeight": "800", "fontSize": "0.5rem"}),
             rx.el.span(
                 animal_item["primary_trait"],
                 style={
-                    "color": "#4b5563",
+                    "color": "#cbd5e1",
                     "fontSize": "0.5rem",
                     "lineHeight": "1.15",
                     "overflowWrap": "anywhere",
@@ -2049,7 +4658,7 @@ def _png_animal_row(animal_item: rx.Var) -> rx.Component:
                 "clear": "both",
                 "paddingBottom": "4px",
                 "marginBottom": "3px",
-                "borderBottom": "1px solid #f3f4f6",
+                "borderBottom": "1px solid rgba(148, 163, 184, 0.18)",
                 "breakInside": "avoid",
                 "WebkitColumnBreakInside": "avoid",
                 "pageBreakInside": "avoid",
@@ -2057,9 +4666,9 @@ def _png_animal_row(animal_item: rx.Var) -> rx.Component:
         ),
         rx.el.div(
             rx.el.span("\u2022 ", style={"color": "#16a085", "fontWeight": "700"}),
-            rx.el.span(animal_item["organism"], style={"fontWeight": "700", "color": "#1a1a2e"}),
-            rx.el.span(" \u2014 ", style={"color": "#9ca3af"}),
-            rx.el.span(animal_item["primary_trait"], style={"color": "#4b5563", "fontSize": "0.6rem"}),
+            rx.el.span(animal_item["organism"], style={"fontWeight": "900", "color": "#f8fafc"}),
+            rx.el.span(" \u2014 ", style={"color": "#94a3b8"}),
+            rx.el.span(animal_item["primary_trait"], style={"color": "#cbd5e1", "fontSize": "0.6rem"}),
             style={
                 "fontSize": "0.65rem",
                 "lineHeight": "1.35",
@@ -2080,12 +4689,12 @@ def _png_category_chip(cat_item: rx.Var) -> rx.Component:
             "display": "inline-block",
             "padding": "5px 12px",
             "borderRadius": "14px",
-            "backgroundColor": "#f3f0ff",
-            "color": "#7c3aed",
+            "backgroundColor": "rgba(124, 58, 237, 0.18)",
+            "color": "#c4b5fd",
             "fontSize": "0.78rem",
-            "fontWeight": "600",
+            "fontWeight": "800",
             "margin": "3px",
-            "border": "1px solid #d4c5f9",
+            "border": "1px solid rgba(167, 139, 250, 0.42)",
         },
     )
 
@@ -2096,13 +4705,13 @@ def _png_gene_row(gene_item: rx.Var) -> rx.Component:
         rx.el.span(
             gene_item["gene"],
             style={
-                "fontWeight": "700",
-                "color": "#1a1a2e",
+                "fontWeight": "900",
+                "color": "#f8fafc",
                 "fontSize": "0.56rem",
                 "marginRight": "4px",
             },
         ),
-        rx.el.span("\u2014 ", style={"color": "#9ca3af", "fontSize": "0.52rem"}),
+        rx.el.span("\u2014 ", style={"color": "#94a3b8", "fontSize": "0.52rem"}),
         rx.el.span(
             gene_item["category_detail"],
             style={
@@ -2111,16 +4720,16 @@ def _png_gene_row(gene_item: rx.Var) -> rx.Component:
                 "fontWeight": "600",
             },
         ),
-        rx.el.span(" (", style={"color": "#9ca3af", "fontSize": "0.52rem"}),
+        rx.el.span(" (", style={"color": "#94a3b8", "fontSize": "0.52rem"}),
         rx.el.span(
             gene_item["source_organism"],
-            style={"color": "#0d9488", "fontWeight": "600", "fontSize": "0.52rem"},
+            style={"color": "#5eead4", "fontWeight": "800", "fontSize": "0.52rem"},
         ),
-        rx.el.span(")", style={"color": "#9ca3af", "fontSize": "0.52rem"}),
+        rx.el.span(")", style={"color": "#94a3b8", "fontSize": "0.52rem"}),
         style={
             "lineHeight": "1.2",
             "padding": "3px 0",
-            "borderBottom": "1px solid #f3f4f6",
+            "borderBottom": "1px solid rgba(148, 163, 184, 0.18)",
             "breakInside": "avoid",
             "WebkitColumnBreakInside": "avoid",
         },
@@ -2155,11 +4764,12 @@ def _png_view_tile(label: str, img_id: str) -> rx.Component:
             "minWidth": "0",
             "minHeight": "0",
             "height": "100%",
-            "backgroundColor": "#0b0b14",
-            "border": "1px solid #7c3aed",
-            "borderRadius": "8px",
+            "background": "radial-gradient(circle at 50% 38%, rgba(56, 189, 248, 0.14), rgba(11, 11, 20, 0.98) 64%)",
+            "border": "1px solid rgba(124, 58, 237, 0.72)",
+            "borderRadius": "10px",
             "position": "relative",
             "overflow": "hidden",
+            "boxShadow": "0 0 18px rgba(124, 58, 237, 0.18)",
         },
     )
 
@@ -2179,38 +4789,39 @@ def _report_png_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.82rem",
                     "letterSpacing": "0.2em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                 },
             ),
             rx.el.h2(
-                "Personal enhancement report",
+                "Character enhancement report",
                 style={
                     "fontSize": "2rem",
-                    "fontWeight": "800",
-                    "color": "#1a1a2e",
+                    "fontWeight": "950",
+                    "color": "#f8fafc",
                     "margin": "4px 0 0 0",
                     "letterSpacing": "0.02em",
                 },
             ),
             style={
-                "borderBottom": "2px solid #1a1a2e",
+                "borderBottom": "1px solid rgba(167, 139, 250, 0.36)",
                 "paddingBottom": "12px",
                 "marginBottom": "18px",
             },
         ),
         # NAME / SEED / POINTS row
         rx.el.div(
+            _report_portrait(96),
             rx.el.div(
-                rx.el.div("NAME", style={"fontSize": "0.82rem", "color": "#9ca3af", "letterSpacing": "0.14em", "marginBottom": "2px"}),
+                rx.el.div("CHARACTER", style={"fontSize": "0.82rem", "color": "#94a3b8", "letterSpacing": "0.14em", "marginBottom": "2px", "fontWeight": "800"}),
                 rx.el.div(
                     ComposeState.input_personal_tag,
-                    style={"fontSize": "1.55rem", "fontWeight": "700", "color": "#1a1a2e"},
+                    style={"fontSize": "1.55rem", "fontWeight": "900", "color": "#f8fafc"},
                 ),
                 style={"flex": "2 1 300px", "minWidth": "200px"},
             ),
             rx.el.div(
-                rx.el.div("SEED", style={"fontSize": "0.82rem", "color": "#9ca3af", "letterSpacing": "0.14em", "marginBottom": "2px"}),
+                rx.el.div("SEED", style={"fontSize": "0.82rem", "color": "#94a3b8", "letterSpacing": "0.14em", "marginBottom": "2px", "fontWeight": "800"}),
                 rx.el.div(
                     ComposeState.param_seed,
                     style={
@@ -2223,13 +4834,13 @@ def _report_png_card() -> rx.Component:
                 style={"flex": "0 0 110px"},
             ),
             rx.el.div(
-                rx.el.div("POINTS", style={"fontSize": "0.82rem", "color": "#9ca3af", "letterSpacing": "0.14em", "marginBottom": "2px"}),
+                rx.el.div("POINTS", style={"fontSize": "0.82rem", "color": "#94a3b8", "letterSpacing": "0.14em", "marginBottom": "2px", "fontWeight": "800"}),
                 rx.el.div(
                     ComposeState.param_points,
                     style={
                         "fontSize": "1.4rem",
-                        "fontWeight": "700",
-                        "color": "#1a1a2e",
+                        "fontWeight": "900",
+                        "color": "#f8fafc",
                         "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     },
                 ),
@@ -2237,6 +4848,7 @@ def _report_png_card() -> rx.Component:
             ),
             style={"display": "flex", "gap": "20px", "marginBottom": "16px"},
         ),
+        _report_character_note_block("0.78rem"),
         # Categories on top
         rx.el.div(
             rx.el.div(
@@ -2245,8 +4857,8 @@ def _report_png_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.72rem",
                     "letterSpacing": "0.14em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                     "marginBottom": "6px",
                 },
             ),
@@ -2277,8 +4889,8 @@ def _report_png_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.72rem",
                     "letterSpacing": "0.14em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                     "marginBottom": "6px",
                     "flexShrink": "0",
                 },
@@ -2310,8 +4922,8 @@ def _report_png_card() -> rx.Component:
                     "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                     "fontSize": "0.72rem",
                     "letterSpacing": "0.14em",
-                    "color": "#6b7280",
-                    "fontWeight": "600",
+                    "color": "#a78bfa",
+                    "fontWeight": "900",
                     "marginBottom": "6px",
                     "flexShrink": "0",
                 },
@@ -2341,35 +4953,36 @@ def _report_png_card() -> rx.Component:
     footer = rx.el.div(
         rx.el.div(
             "materialized-enhancements",
-            style={"fontSize": "0.95rem", "fontWeight": "700", "color": "#7c3aed"},
+            style={"fontSize": "0.95rem", "fontWeight": "900", "color": "#c4b5fd"},
         ),
         rx.el.div(
             "CODAME \u00b7 The New Human \u00b7 Milano 2026",
-            style={"fontSize": "0.8rem", "color": "#6b7280", "marginTop": "4px"},
+            style={"fontSize": "0.8rem", "color": "#94a3b8", "marginTop": "4px"},
         ),
         style={
             "paddingTop": "10px",
             "paddingBottom": "6px",
-            "borderTop": "1px solid #e5e7eb",
+            "borderTop": "1px solid rgba(167, 139, 250, 0.28)",
             "textAlign": "center",
             "flexShrink": "0",
         },
     )
     return rx.el.div(
         rx.el.div(
-            rx.el.span("SPECIMEN #", style={"fontSize": "0.9rem", "fontWeight": "400"}),
-            rx.el.span(ComposeState.param_seed, style={"fontSize": "1.3rem", "fontWeight": "700"}),
+            rx.el.span("LOADOUT #", style={"fontSize": "0.9rem", "fontWeight": "800"}),
+            rx.el.span(ComposeState.param_seed, style={"fontSize": "1.3rem", "fontWeight": "950"}),
             style={
                 "position": "absolute",
                 "top": "24px",
-                "right": "-8px",
+                "right": "24px",
                 "padding": "6px 16px",
-                "border": "2px solid #b91c1c",
-                "color": "#b91c1c",
+                "border": "1px solid rgba(167, 139, 250, 0.52)",
+                "borderRadius": "10px",
+                "color": "#c4b5fd",
+                "background": "rgba(15, 23, 42, 0.82)",
                 "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
                 "letterSpacing": "0.1em",
-                "transform": "rotate(-6deg)",
-                "opacity": "0.8",
+                "boxShadow": "0 0 18px rgba(124, 58, 237, 0.24)",
                 "zIndex": "2",
             },
         ),
@@ -2383,14 +4996,14 @@ def _report_png_card() -> rx.Component:
             "width": "1080px",
             "height": "1080px",
             "padding": "40px",
-            "backgroundColor": "#ffffff",
-            "border": "2px solid #1a1a2e",
+            "background": "linear-gradient(180deg, #111827 0%, #0b1020 100%)",
+            "border": "2px solid rgba(124, 58, 237, 0.62)",
             "boxSizing": "border-box",
             "overflow": "hidden",
             "display": "flex",
             "flexDirection": "column",
             "fontFamily": "'Lato', 'Helvetica Neue', Arial, sans-serif",
-            "color": "#1a1a2e",
+            "color": "#e5e7eb",
         },
     )
 
@@ -2512,15 +5125,256 @@ def _report_capture_iframe() -> rx.Component:
     )
 
 
-def _report_action_bar() -> rx.Component:
+def _published_report_link(label: str, href: rx.Var, icon_name: str) -> rx.Component:
+    return rx.el.a(
+        fomantic_icon(icon_name, size=14),
+        rx.el.span(label, style={"marginLeft": "6px"}),
+        href=href,
+        target="_blank",
+        rel="noopener noreferrer",
+        class_name="ui button",
+        style={**_SOCIAL_BUTTON_STYLE, "fontSize": "0.82rem"},
+    )
+
+
+def _published_report_links() -> rx.Component:
+    return rx.cond(
+        ComposeState.has_published_report,
+        rx.el.div(
+            rx.el.div(
+                "Generated download links",
+                style={
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                    "marginBottom": "8px",
+                },
+            ),
+            rx.el.div(
+                _published_report_link("Landing page", ComposeState.report_public_url, "external alternate"),
+                _published_report_link("STL model", ComposeState.report_model_url, "cube"),
+                _published_report_link("PNG", ComposeState.report_png_url, "image outline"),
+                _published_report_link("PDF", ComposeState.report_pdf_url, "file pdf outline"),
+                _published_report_link("Params", ComposeState.report_params_url, "code"),
+                style={"display": "flex", "gap": "8px", "flexWrap": "wrap"},
+            ),
+            rx.el.div(
+                ComposeState.report_public_url,
+                style={
+                    "fontSize": "0.76rem",
+                    "color": "#9ca3af",
+                    "marginTop": "8px",
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "wordBreak": "break-all",
+                },
+            ),
+            style={
+                "marginTop": "10px",
+                "padding": "10px",
+                "border": "1px solid rgba(148, 163, 184, 0.24)",
+                "borderRadius": "8px",
+                "backgroundColor": "rgba(15, 23, 42, 0.35)",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _report_portrait_upload_panel() -> rx.Component:
     return rx.el.div(
         rx.el.div(
+            "Customize report",
+            style={
+                "width": "100%",
+                "fontSize": "0.78rem",
+                "fontWeight": "700",
+                "color": "#cbd5e1",
+                "textTransform": "uppercase",
+                "letterSpacing": "0.08em",
+            },
+        ),
+        rx.el.p(
+            "Optional: choose a portrait or user picture. It is applied immediately to the report card, PNG, PDF, and sharable folder.",
+            style={"width": "100%", "margin": "0", "fontSize": "0.82rem", "color": "#9ca3af"},
+        ),
+        rx.el.label(
+            "Character note",
+            style={"fontSize": "0.82rem", "fontWeight": "700", "color": "#cbd5e1"},
+        ),
+        rx.el.textarea(
+            value=ComposeState.report_character_note,
+            on_change=ComposeState.set_report_character_note,
+            placeholder="Optional: explain this profile, dedication, prompt, or story.",
+            max_length=420,
+            rows=3,
+            style={
+                "width": "min(100%, 420px)",
+                "resize": "vertical",
+                "border": "1px solid rgba(167, 139, 250, 0.42)",
+                "borderRadius": "8px",
+                "backgroundColor": "rgba(15, 23, 42, 0.72)",
+                "color": "#e5e7eb",
+                "padding": "9px 10px",
+                "fontSize": "0.86rem",
+                "lineHeight": "1.4",
+            },
+        ),
+        rx.el.div(
+            "Optional short note shown on the report. Editing it clears old share links so the sharable folder can be regenerated.",
+            style={"fontSize": "0.74rem", "color": "#9ca3af", "maxWidth": "420px"},
+        ),
+        rx.upload(
+            rx.el.div(
+                fomantic_icon("image outline", size=16),
+                rx.el.span(" Drop image here or click to select", style={"marginLeft": "6px"}),
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "width": "100%",
+                    "minHeight": "44px",
+                    "color": "#cbd5e1",
+                },
+            ),
+            id=_REPORT_PORTRAIT_UPLOAD_ID,
+            on_drop=ComposeState.upload_report_portrait(
+                rx.upload_files(upload_id=_REPORT_PORTRAIT_UPLOAD_ID)
+            ),
+            border="1px dashed rgba(167, 139, 250, 0.52)",
+            border_radius="8px",
+            padding="6px",
+            width="min(100%, 420px)",
+        ),
+        rx.el.div(
+            rx.foreach(rx.selected_files(_REPORT_PORTRAIT_UPLOAD_ID), lambda name: rx.el.span(name)),
+            style={"fontSize": "0.76rem", "color": "#9ca3af", "wordBreak": "break-all"},
+        ),
+        rx.cond(
+            ComposeState.has_report_portrait,
             rx.el.button(
-                fomantic_icon("copy", size=16),
-                rx.el.span(" Copy share link", style={"marginLeft": "2px"}),
-                on_click=rx.call_script("window.__meCopyShareLink && window.__meCopyShareLink()"),
+                fomantic_icon("trash", size=14),
+                rx.el.span(" Remove image", style={"marginLeft": "6px"}),
+                on_click=ComposeState.clear_report_portrait,
                 class_name="ui button",
-                style=_SOCIAL_BUTTON_STYLE,
+                style={**_SOCIAL_BUTTON_STYLE, "fontSize": "0.82rem"},
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            ComposeState.has_report_portrait,
+            rx.el.div(
+                _report_portrait(54),
+                rx.el.span(
+                    ComposeState.report_portrait_filename,
+                    style={"fontSize": "0.78rem", "color": "#cbd5e1", "wordBreak": "break-all"},
+                ),
+                style={"display": "flex", "alignItems": "center", "gap": "10px"},
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            ComposeState.report_portrait_error != "",
+            rx.el.div(
+                ComposeState.report_portrait_error,
+                class_name="ui red message",
+                style={"fontSize": "0.82rem", "padding": "8px 10px", "margin": "0"},
+            ),
+            rx.fragment(),
+        ),
+        style={
+            "display": "flex",
+            "gap": "8px",
+            "flexDirection": "column",
+            "alignItems": "flex-start",
+            "padding": "10px",
+            "border": "1px solid rgba(148, 163, 184, 0.24)",
+            "borderRadius": "8px",
+            "backgroundColor": "rgba(15, 23, 42, 0.35)",
+            "marginBottom": "10px",
+        },
+    )
+
+
+def _share_qr_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            rx.el.div(
+                "SHARE QR",
+                style={
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                id="report-qr",
+                style={
+                    "width": "5.75rem",
+                    "height": "5.75rem",
+                    "backgroundColor": "#ffffff",
+                    "border": "1px solid rgba(167, 139, 250, 0.42)",
+                    "borderRadius": "8px",
+                    "padding": "4px",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                },
+            ),
+        ),
+        rx.el.div(
+            rx.el.div(
+                rx.cond(
+                    ComposeState.has_published_report,
+                    "Public share folder",
+                    "Share link will appear here",
+                ),
+                style={"fontSize": "0.82rem", "fontWeight": "700", "color": "#c4b5fd"},
+            ),
+            rx.el.div(
+                id="report-share-url",
+                style={
+                    "fontSize": "0.78rem",
+                    "color": "#cbd5e1",
+                    "marginTop": "6px",
+                    "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+                    "wordBreak": "break-all",
+                    "maxWidth": "100%",
+                },
+            ),
+            style={"flex": "1", "minWidth": "180px", "overflow": "hidden"},
+        ),
+        style={
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "14px",
+            "width": "100%",
+            "padding": "10px",
+            "border": "1px solid rgba(148, 163, 184, 0.24)",
+            "borderRadius": "8px",
+            "backgroundColor": "rgba(15, 23, 42, 0.35)",
+        },
+    )
+
+
+def _report_action_bar() -> rx.Component:
+    return rx.el.div(
+        _report_portrait_upload_panel(),
+        rx.el.div(
+            rx.el.div(
+                "Report exports",
+                style={
+                    "width": "100%",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                },
             ),
             rx.el.button(
                 fomantic_icon("download", size=16),
@@ -2536,31 +5390,84 @@ def _report_action_bar() -> rx.Component:
                 class_name="ui button",
                 style={**_SOCIAL_BUTTON_STYLE, "backgroundColor": "#1a1a2e !important", "color": "#ffffff !important", "border": "none !important"},
             ),
+            rx.el.button(
+                fomantic_icon("cloud upload", size=16),
+                rx.el.span(
+                    rx.cond(
+                        ComposeState.report_publishing,
+                        " Generating sharable folder…",
+                        rx.cond(
+                            ComposeState.has_published_report,
+                            " Regenerate sharable folder",
+                            " Generate sharable folder",
+                        ),
+                    ),
+                    style={"marginLeft": "2px"},
+                ),
+                on_click=ComposeState.start_report_publish,
+                class_name=rx.cond(
+                    ComposeState.can_publish_report,
+                    "ui button",
+                    "ui disabled button",
+                ),
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
             style={"display": "flex", "gap": "10px", "flexWrap": "wrap", "marginBottom": "10px"},
         ),
         rx.el.div(
+            rx.el.div(
+                "Sharing",
+                style={
+                    "width": "100%",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#cbd5e1",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.08em",
+                },
+            ),
+            rx.el.p(
+                rx.cond(
+                    ComposeState.has_published_report,
+                    "Your model and report are saved. QR, copy, and social buttons now use the public folder.",
+                    "To share, first generate a sharable folder. This saves the model and report, then creates the QR and social link.",
+                ),
+                style={"width": "100%", "margin": "0", "fontSize": "0.82rem", "color": "#9ca3af"},
+            ),
+            _share_qr_panel(),
+            rx.el.button(
+                fomantic_icon("copy", size=16),
+                rx.el.span(" Copy public link", style={"marginLeft": "2px"}),
+                on_click=rx.call_script("window.__meCopyShareLink && window.__meCopyShareLink()"),
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
+                style=_SOCIAL_BUTTON_STYLE,
+            ),
             rx.el.button(
                 fomantic_icon("twitter", size=16),
                 rx.el.span(" Share on X", style={"marginLeft": "2px"}),
                 on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('twitter')"),
-                class_name="ui button",
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
                 style=_SOCIAL_BUTTON_STYLE,
             ),
             rx.el.button(
                 fomantic_icon("facebook", size=16),
                 rx.el.span(" Share on Facebook", style={"marginLeft": "2px"}),
                 on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('facebook')"),
-                class_name="ui button",
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
                 style=_SOCIAL_BUTTON_STYLE,
             ),
             rx.el.button(
                 fomantic_icon("linkedin", size=16),
                 rx.el.span(" Share on LinkedIn", style={"marginLeft": "2px"}),
                 on_click=rx.call_script("window.__meShareIntent && window.__meShareIntent('linkedin')"),
-                class_name="ui button",
+                disabled=rx.cond(ComposeState.has_published_report, False, True),
+                class_name=rx.cond(ComposeState.has_published_report, "ui button", "ui disabled button"),
                 style=_SOCIAL_BUTTON_STYLE,
             ),
-            style={"display": "flex", "gap": "10px", "flexWrap": "wrap"},
+            style={"display": "flex", "gap": "10px", "flexWrap": "wrap", "marginTop": "12px"},
         ),
         rx.el.div(
             id="report-copy-feedback",
@@ -2573,12 +5480,22 @@ def _report_action_bar() -> rx.Component:
                 "fontWeight": "600",
             },
         ),
+        rx.cond(
+            ComposeState.report_publish_error != "",
+            rx.el.div(
+                ComposeState.report_publish_error,
+                class_name="ui red message",
+                style={"fontSize": "0.82rem", "padding": "8px 10px", "marginTop": "8px"},
+            ),
+            rx.fragment(),
+        ),
+        _published_report_links(),
         style={"marginTop": "6px"},
     )
 
 
 def _report_section() -> rx.Component:
-    """Collapsible 'Share & Report' section — police-report card + export buttons."""
+    """Collapsible 'Share & Report' section with the RPG loadout card and export buttons."""
     body = rx.cond(
         ComposeState.report_expanded,
         rx.el.div(
@@ -2598,6 +5515,12 @@ def _report_section() -> rx.Component:
                         style={"display": "none"},
                     ),
                     rx.el.input(
+                        id="report-published-url",
+                        value=ComposeState.report_public_url,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
                         id="report-share-name",
                         value=ComposeState.input_personal_tag,
                         read_only=True,
@@ -2612,6 +5535,18 @@ def _report_section() -> rx.Component:
                     rx.el.input(
                         id="report-share-points",
                         value=ComposeState.param_points,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.input(
+                        id="report-userpic-data-url",
+                        value=ComposeState.report_portrait_data_url,
+                        read_only=True,
+                        style={"display": "none"},
+                    ),
+                    rx.el.textarea(
+                        id="report-character-note",
+                        value=ComposeState.report_character_note,
                         read_only=True,
                         style={"display": "none"},
                     ),
@@ -2676,54 +5611,11 @@ def _report_section() -> rx.Component:
     )
 
 
-def _viewer_section() -> rx.Component:
-    """Collapsible 3D viewer — auto-expands after generation."""
-    body = rx.cond(
-        ComposeState.viewer_expanded,
-        rx.cond(
-            ComposeState.has_stl,
-            rx.el.div(
-                rx.el.iframe(
-                    src=ComposeState.viewer_iframe_src,
-                    id="sculpture-viewer-iframe",
-                    style={
-                        "width": "100%",
-                        "height": "840px",
-                        "border": "1px solid #e5e7eb",
-                        "borderRadius": "8px",
-                        "backgroundColor": "#1a1a2e",
-                    },
-                ),
-                rx.el.p(
-                    "Drag to rotate \u00b7 Scroll to zoom \u00b7 Right-drag to pan",
-                    style={"fontSize": "0.82rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "6px"},
-                ),
-            ),
-            rx.el.p(
-                "Click Materialize to build a printable 3D model.",
-                style={"color": "#9ca3af", "fontSize": "0.85rem", "textAlign": "center", "padding": "24px 12px"},
-            ),
-        ),
-        rx.fragment(),
-    )
-
-    return rx.el.div(
-        _section_header(
-            expanded=ComposeState.viewer_expanded,
-            icon_name="cube",
-            title="3D Viewer",
-            on_toggle=ComposeState.toggle_viewer_expanded,
-        ),
-        body,
-        style=_COLLAPSIBLE_STYLE,
-    )
-
-
 _COLLAPSIBLE_STYLE: dict = {
     "borderRadius": "8px",
-    "border": "1px solid #e5e7eb",
+    "border": "1px solid rgba(148, 163, 184, 0.24)",
     "padding": "4px 10px 10px",
-    "backgroundColor": "#ffffff",
+    "backgroundColor": "rgba(15, 23, 42, 0.58)",
     "marginBottom": "10px",
 }
 
@@ -2740,18 +5632,13 @@ def _sculpture_right_pane() -> rx.Component:
         _report_capture_iframe(),
         _choice_section(),
         _sculpture_section(),
-        _viewer_section(),
         _report_section(),
     )
 
 
 def _sculpture_tab() -> rx.Component:
     return rx.el.div(
-        _sculpture_how_it_works_callout(),
-        two_column_layout(
-            left=_sculpture_left_pane(),
-            right=_sculpture_right_pane(),
-        ),
+        _rpg_materialize_layout(),
         style={
             "width": "100%",
             "display": "flex",
@@ -2761,1103 +5648,237 @@ def _sculpture_tab() -> rx.Component:
     )
 
 
-# ── Tab 2: Gene Jigsaw ────────────────────────────────────────────────────────
-
-_JIGSAW_ACCENT = "#16a085"
-
-
-def _organism_display_parts(organism: str) -> tuple[str, str]:
-    """Split 'Common Name (Latin details)' into (common, latin_with_parens)."""
-    idx = organism.find("(")
-    if idx > 0:
-        return organism[:idx].rstrip(), organism[idx:]
-    return organism, ""
-
-
-def _primary_category_color(animal: dict) -> str:
-    """Return the CATEGORY_COLORS hex for the animal's first trait/category."""
-    traits: list = animal.get("traits") or []
-    if traits:
-        return CATEGORY_COLORS.get(traits[0], "#9ca3af")
-    return "#9ca3af"
-
-
-# Build legend items at module load: only categories present in ANIMAL_LIBRARY.
-_JIGSAW_LEGEND_ITEMS: list[tuple[str, str]] = [
-    (cat, color)
-    for cat, color in CATEGORY_COLORS.items()
-    if any(cat in (a.get("traits") or []) for a in ANIMAL_LIBRARY)
-]
-
-
-def _organism_button(animal: dict) -> rx.Component:
-    organism = str(animal["organism"])
-    gene_count = len(animal["genes"])
-    price = ANIMAL_PRICES.get(organism, 0)
-    is_selected = JigsawState.selected_organisms.contains(organism)
-    is_affordable = JigsawState.affordable_organisms.contains(organism)
-    is_enabled = is_selected | is_affordable
-    is_human = organism == HUMAN_ORGANISM
-    icon_name = "user" if is_human else "paw"
-    cat_color = _primary_category_color(animal)
-
-    common_name, latin_detail = _organism_display_parts(organism)
-
-    return rx.el.div(
-        rx.el.div(
-            fomantic_icon(
-                icon_name,
-                size=14,
-                color=rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, cat_color, "#d1d5db")),
-            ),
-            rx.el.span(
-                common_name,
-                rx.el.span(
-                    f" {latin_detail}",
-                    style={
-                        "fontSize": "0.72rem",
-                        "opacity": "0.7",
-                        "fontStyle": "italic",
-                        "fontWeight": "400",
-                    },
-                ) if latin_detail else "",
-                style={"fontSize": "0.85rem", "flex": "1", "marginLeft": "8px", "lineHeight": "1.3"},
-            ),
-            rx.el.span(
-                f"{price} cr",
-                style={
-                    "fontSize": "0.72rem",
-                    "fontWeight": "700",
-                    "padding": "2px 6px",
-                    "borderRadius": "10px",
-                    "backgroundColor": rx.cond(is_selected, "rgba(255,255,255,0.25)", "#f3f4f6"),
-                    "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, _JIGSAW_ACCENT, "#d1d5db")),
-                    "marginRight": "4px",
-                },
-            ),
-            rx.el.span(
-                str(gene_count),
-                style={
-                    "fontSize": "0.72rem",
-                    "fontWeight": "600",
-                    "padding": "2px 7px",
-                    "borderRadius": "10px",
-                    "backgroundColor": rx.cond(is_selected, "rgba(255,255,255,0.25)", "#f3f4f6"),
-                    "color": rx.cond(is_selected, "#ffffff", "#6b7280"),
-                    "flexShrink": "0",
-                },
-            ),
-            style={"display": "flex", "alignItems": "center", "width": "100%"},
-        ),
-        on_click=JigsawState.toggle_organism(organism),
-        style={
-            "marginBottom": "4px",
-            "textAlign": "left",
-            "cursor": rx.cond(is_enabled, "pointer", "not-allowed"),
-            "padding": "8px 10px 8px 10px",
-            "borderRadius": "6px",
-            "border": "1px solid",
-            "borderLeft": f"3px solid {cat_color}",
-            "borderColor": rx.cond(is_selected, _JIGSAW_ACCENT, rx.cond(is_enabled, "#e5e7eb", "#f3f4f6")),
-            "backgroundColor": rx.cond(is_selected, _JIGSAW_ACCENT, "#ffffff"),
-            "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
-            "opacity": rx.cond(is_enabled, "1", "0.5"),
-            "transition": "all 0.15s ease",
-        },
-    )
-
-
-def _jigsaw_category_legend() -> rx.Component:
-    """Compact category → color legend for the right pane."""
-    items = [
-        rx.el.span(
-            rx.el.span(
-                style={
-                    "display": "inline-block",
-                    "width": "8px",
-                    "height": "8px",
-                    "borderRadius": "50%",
-                    "backgroundColor": color,
-                    "marginRight": "4px",
-                    "flexShrink": "0",
-                },
-            ),
-            rx.el.span(cat, style={"whiteSpace": "nowrap"}),
-            style={
-                "display": "inline-flex",
-                "alignItems": "center",
-                "fontSize": "0.70rem",
-                "color": "#6b7280",
-                "marginRight": "10px",
-                "marginBottom": "4px",
-            },
-        )
-        for cat, color in _JIGSAW_LEGEND_ITEMS
-    ]
-    return rx.el.div(
-        rx.el.span(
-            "Category key",
-            style={"fontSize": "0.70rem", "fontWeight": "600", "color": "#9ca3af", "marginRight": "8px", "whiteSpace": "nowrap"},
-        ),
-        *items,
-        style={
-            "display": "flex",
-            "flexWrap": "wrap",
-            "alignItems": "center",
-            "padding": "8px 12px",
-            "borderRadius": "6px",
-            "backgroundColor": "#f9fafb",
-            "border": "1px solid #e5e7eb",
-            "marginBottom": "12px",
-        },
-    )
-
-
-def _jigsaw_budget_bar() -> rx.Component:
-    return rx.el.div(
-        rx.el.div(
-            rx.el.span("Budget", style={"fontSize": "0.78rem", "fontWeight": "600", "color": "#6b7280"}),
-            rx.el.span(
-                rx.el.span(JigsawState.budget_spent, style={"fontWeight": "700", "color": _JIGSAW_ACCENT}),
-                f" / {DEFAULT_BUDGET} cr",
-                style={"fontSize": "0.82rem", "color": "#6b7280"},
-            ),
-            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "4px"},
-        ),
-        rx.el.div(
-            rx.el.div(
-                style={
-                    "height": "100%",
-                    "borderRadius": "4px",
-                    "backgroundColor": rx.cond(JigsawState.budget_remaining > 20, _JIGSAW_ACCENT, "#e74c3c"),
-                    "width": rx.cond(
-                        JigsawState.budget_spent > 0,
-                        f"calc({JigsawState.budget_spent} * 100% / {DEFAULT_BUDGET})",
-                        "0%",
-                    ),
-                    "transition": "width 0.3s ease, background-color 0.3s ease",
-                },
-            ),
-            style={"height": "6px", "borderRadius": "4px", "backgroundColor": "#f3f4f6", "overflow": "hidden"},
-        ),
-        rx.el.div(
-            rx.el.span(JigsawState.budget_remaining, style={"fontWeight": "700"}),
-            " cr remaining",
-            style={"fontSize": "0.72rem", "color": "#9ca3af", "textAlign": "right", "marginTop": "2px"},
-        ),
-        style={
-            "padding": "8px 12px",
-            "borderRadius": "6px",
-            "backgroundColor": "#f0fdfa",
-            "border": "1px solid #99f6e4",
-            "marginBottom": "12px",
-        },
-    )
-
-
-def _jigsaw_left_pane() -> rx.Component:
-    return rx.el.div(
-        rx.el.h3(
-            fomantic_icon("paw", size=18, color=_JIGSAW_ACCENT),
-            rx.el.span(" Choose Organisms", style={"marginLeft": "8px"}),
-            style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
-        ),
-        _jigsaw_budget_bar(),
-        rx.el.div(
-            *[_organism_button(a) for a in ANIMAL_LIBRARY],  # type: ignore[arg-type]
-        ),
-        rx.el.div(
-            rx.el.div(class_name="ui divider"),
-            rx.el.p(
-                f"{len(ANIMAL_LIBRARY)} organisms · {len(GENE_LIBRARY)} genes",
-                style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center"},
-            ),
-            rx.el.p(
-                "Select organisms to compose your genetic jigsaw. "
-                "Each organism contributes its unique genes and traits.",
-                style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "8px", "lineHeight": "1.45"},
-            ),
-            style={"marginTop": "12px"},
-        ),
-    )
-
-
-def _jigsaw_organism_tag(org_item: rx.Var) -> rx.Component:
-    return rx.el.span(
-        rx.el.span(org_item, style={"marginRight": "6px"}),
-        rx.el.span(
-            fomantic_icon("times", size=10),
-            on_click=JigsawState.remove_organism(org_item),
-            style={"cursor": "pointer", "opacity": "0.7"},
-        ),
-        style={
-            "display": "inline-flex",
-            "alignItems": "center",
-            "padding": "4px 10px",
-            "borderRadius": "16px",
-            "backgroundColor": "#f0fdfa",
-            "color": "#0d9488",
-            "fontSize": "0.85rem",
-            "fontWeight": "500",
-            "margin": "3px",
-            "border": "1px solid #99f6e4",
-        },
-    )
-
-
-def _jigsaw_trait_item(trait: rx.Var) -> rx.Component:
-    return rx.el.div(
-        fomantic_icon("check", size=10, color=_JIGSAW_ACCENT),
-        rx.el.span(trait, style={"marginLeft": "6px", "fontSize": "0.88rem", "color": "#374151"}),
-        style={"display": "flex", "alignItems": "center", "padding": "4px 0"},
-    )
-
-
-def _jigsaw_gene_row(gene_item: rx.Var) -> rx.Component:
-    return rx.el.div(
-        fomantic_icon("check", size=10, color=_JIGSAW_ACCENT),
-        rx.el.span(
-            gene_item["trait"],
-            style={"fontSize": "0.84rem", "fontWeight": "500", "color": "#1a1a2e", "width": "45%", "flexShrink": "0"},
-        ),
-        rx.el.span(
-            gene_item["gene"],
-            style={"fontSize": "0.78rem", "fontWeight": "600", "fontFamily": "monospace", "color": _JIGSAW_ACCENT, "marginLeft": "4px"},
-        ),
-        rx.el.span(
-            gene_item["organism"],
-            style={"fontSize": "0.72rem", "color": "#9ca3af", "flex": "1", "textAlign": "right", "marginLeft": "8px"},
-        ),
-        rx.el.span(
-            gene_item["price"], " cr",
-            style={"fontSize": "0.72rem", "fontWeight": "600", "color": "#6b7280", "marginLeft": "8px", "flexShrink": "0"},
-        ),
-        style={"display": "flex", "alignItems": "center", "padding": "4px 0", "gap": "4px"},
-    )
-
-
-def _jigsaw_choice_section() -> rx.Component:
-    body = rx.cond(
-        JigsawState.choice_expanded,
-        rx.el.div(
-            rx.el.input(
-                placeholder="Name or personal tag...",
-                value=JigsawState.personal_tag,
-                on_change=JigsawState.set_personal_tag,
-                style={
-                    "width": "100%",
-                    "padding": "10px 14px",
-                    "borderRadius": "6px",
-                    "border": "1px solid #d1d5db",
-                    "fontSize": "0.95rem",
-                    "marginBottom": "12px",
-                    "outline": "none",
-                    "backgroundColor": "#ffffff",
-                    "color": "#1a1a2e",
-                },
-            ),
-            rx.cond(
-                JigsawState.has_selection,
-                rx.el.div(
-                    rx.el.label(
-                        "Selected organisms:",
-                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                    ),
-                    rx.el.div(
-                        rx.foreach(JigsawState.selected_organisms, _jigsaw_organism_tag),
-                        style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginBottom": "12px"},
-                    ),
-                    rx.el.div(class_name="ui divider"),
-                    # Gene table + SVG preview side by side
-                    rx.el.div(
-                        rx.el.div(
-                            rx.foreach(JigsawState.selected_genes, _jigsaw_gene_row),
-                            style={"flex": "1", "minWidth": "0", "display": "flex", "flexDirection": "column", "gap": "3px"},
-                        ),
-                        rx.cond(
-                            JigsawState.jigsaw_svg != "",
-                            rx.el.div(
-                                rx.html(JigsawState.jigsaw_svg),
-                                style={
-                                    "width": "180px",
-                                    "flexShrink": "0",
-                                    "border": "1px solid #e5e7eb",
-                                    "borderRadius": "8px",
-                                    "padding": "8px",
-                                    "backgroundColor": "#f9fafb",
-                                    "marginLeft": "12px",
-                                },
-                            ),
-                            rx.fragment(),
-                        ),
-                        style={"display": "flex", "alignItems": "flex-start", "marginBottom": "12px"},
-                    ),
-                ),
-                rx.el.p(
-                    "Select organisms from the left panel to assemble your jigsaw.",
-                    style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
-                ),
-            ),
-            rx.el.button(
-                rx.cond(
-                    JigsawState.generating,
-                    fomantic_icon("sync", size=16, style={"animation": "me-spin 1s linear infinite"}),
-                    fomantic_icon("puzzle piece", size=16),
-                ),
-                rx.el.span(
-                    rx.cond(JigsawState.generating, " Generating\u2026", " Materialize"),
-                    style={"marginLeft": "8px"},
-                ),
-                on_click=JigsawState.open_jigsaw_generator,
-                class_name=rx.cond(
-                    JigsawState.generating,
-                    "ui disabled teal button",
-                    rx.cond(JigsawState.has_selection, "ui teal button", "ui disabled teal button"),
-                ),
-                style={"width": "100%", "padding": "12px", "fontSize": "1rem"},
-            ),
-            rx.el.style("@keyframes me-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }"),
-        ),
-        rx.fragment(),
-    )
-
-    return rx.el.div(
-        _section_header(
-            expanded=JigsawState.choice_expanded,
-            icon_name="puzzle piece",
-            title="Choice",
-            on_toggle=JigsawState.toggle_choice_expanded,
-        ),
-        body,
-        style=_COLLAPSIBLE_STYLE,
-    )
-
-
-def _jigsaw_prod_view() -> rx.Component:
-    """Prod view: b/w SVG preview + jigsaw inputs + download button."""
-    return rx.cond(
-        JigsawState.has_generated_svg,
-        rx.el.div(
-            rx.el.div(
-                # Left: print preview — width follows SVG; avoid a wide empty flex lane beside a tall narrow figure
-                rx.el.div(
-                    rx.el.div(
-                        rx.html(JigsawState.generated_jigsaw_svg),
-                        style={
-                            "width": "max-content",
-                            "maxWidth": "100%",
-                            "border": "1px solid #e5e7eb",
-                            "borderRadius": "8px",
-                            "padding": "8px",
-                            "backgroundColor": "#ffffff",
-                            "overflow": "auto",
-                            # ~220 mm tall at 96dpi is ~830px; 600px clipped legs. Cap by viewport, not an arbitrary px.
-                            "maxHeight": "min(92vh, 920px)",
-                        },
-                    ),
-                    style={
-                        "flex": "0 0 auto",
-                        "minWidth": "0",
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "alignItems": "center",
-                    },
-                ),
-                # Right: scale note + inputs — takes all remaining horizontal space
-                rx.el.div(
-                    rx.el.p(
-                        fomantic_icon("expand", size=10, color="#9ca3af"),
-                        " 1 : 1 print preview (CSS mm)",
-                        style={
-                            "fontSize": "0.72rem",
-                            "color": "#9ca3af",
-                            "margin": "0 0 8px 0",
-                            "textAlign": "left",
-                        },
-                    ),
-                    rx.el.label(
-                        "Jigsaw inputs",
-                        style={"fontSize": "0.82rem", "color": "#6b7280", "marginBottom": "6px", "display": "block"},
-                    ),
-                    rx.el.div(
-                        rx.el.div(
-                            fomantic_icon("dna", size=14, color=_JIGSAW_ACCENT),
-                            rx.el.span(" Name: ", style={"fontWeight": "600", "color": "#6b7280"}),
-                            rx.el.span(
-                                JigsawState.personal_tag,
-                                style={"fontWeight": "700", "color": "#1a1a2e"},
-                            ),
-                            style={"display": "flex", "alignItems": "center", "gap": "4px", "padding": "4px 0"},
-                        ),
-                        rx.el.div(
-                            rx.el.span("CRC32 ", style={"color": "#9ca3af"}),
-                            rx.el.span(JigsawState.jigsaw_name_crc, style={"fontWeight": "600"}),
-                            rx.el.span(" XOR mask ", style={"color": "#9ca3af"}),
-                            rx.el.span(JigsawState.jigsaw_bitmask, style={"fontWeight": "600"}),
-                            rx.el.span(" = seed ", style={"color": _JIGSAW_ACCENT}),
-                            rx.el.span(JigsawState.jigsaw_seed, style={"fontWeight": "700", "color": _JIGSAW_ACCENT}),
-                            style={"fontSize": "0.88rem", "color": "#1a1a2e", "padding": "4px 0", "borderBottom": "1px solid #f3f4f6"},
-                        ),
-                        _param_row("Seed", JigsawState.jigsaw_seed),
-                        rx.cond(
-                            JigsawState.jigsaw_pieces > 0,
-                            rx.el.div(
-                                _param_row("Pieces", JigsawState.jigsaw_pieces),
-                                _param_row("Size", JigsawState.jigsaw_dimensions, "mm"),
-                                style={"padding": "4px 0", "borderBottom": "1px solid #f3f4f6"},
-                            ),
-                            rx.fragment(),
-                        ),
-                        rx.el.div(
-                            rx.el.span("Organisms", style={"fontSize": "0.82rem", "color": "#6b7280", "flex": "0 0 100px"}),
-                            rx.el.span(
-                                rx.foreach(
-                                    JigsawState.selected_organisms,
-                                    lambda o: rx.el.span(o, class_name="ui mini teal label", style={"margin": "1px"}),
-                                ),
-                                style={"display": "flex", "flexWrap": "wrap", "gap": "2px"},
-                            ),
-                            style={"display": "flex", "alignItems": "flex-start", "gap": "8px", "padding": "4px 0"},
-                        ),
-                        style={
-                            "padding": "10px 14px",
-                            "borderRadius": "6px",
-                            "backgroundColor": "#f0fdfa",
-                            "border": "1px solid #99f6e4",
-                        },
-                    ),
-                    rx.cond(
-                        JigsawState.stl_ready,
-                        rx.el.div(
-                            rx.el.iframe(
-                                src=JigsawState.jigsaw_viewer_iframe_src,
-                                id="jigsaw-stl-viewer-iframe",
-                                style={
-                                    "width": "100%",
-                                    "height": "min(500px, 65vh)",
-                                    "minHeight": "300px",
-                                    "border": "1px solid #e5e7eb",
-                                    "borderRadius": "8px",
-                                    "backgroundColor": "#1a1a2e",
-                                },
-                            ),
-                            rx.el.p(
-                                "Drag to rotate \u00b7 Scroll to zoom \u00b7 Right-drag to pan",
-                                style={
-                                    "fontSize": "0.82rem",
-                                    "color": "#9ca3af",
-                                    "textAlign": "center",
-                                    "marginTop": "6px",
-                                    "marginBottom": "0",
-                                },
-                            ),
-                            style={"width": "100%"},
-                        ),
-                        rx.fragment(),
-                    ),
-                    style={
-                        "flex": "1 1 280px",
-                        "minWidth": "min(100%, 280px)",
-                        "maxWidth": "100%",
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "alignItems": "stretch",
-                        "gap": "12px",
-                    },
-                ),
-                style={
-                    "display": "flex",
-                    "flexDirection": "row",
-                    "flexWrap": "wrap",
-                    "gap": "16px",
-                    "alignItems": "flex-start",
-                    "width": "100%",
-                    "marginBottom": "12px",
-                },
-            ),
-            rx.el.div(
-                rx.el.label(
-                    "Max faces",
-                    html_for="stl-max-faces",
-                    style={"fontSize": "0.78rem", "color": "#6b7280", "whiteSpace": "nowrap"},
-                ),
-                rx.el.input(
-                    id="stl-max-faces",
-                    type="number",
-                    min=10000,
-                    max=2000000,
-                    step=10000,
-                    value=JigsawState.stl_max_faces,
-                    on_change=JigsawState.set_stl_max_faces,
-                    style={
-                        "width": "100px",
-                        "padding": "4px 6px",
-                        "fontSize": "0.82rem",
-                        "border": "1px solid #d1d5db",
-                        "borderRadius": "4px",
-                        "textAlign": "right",
-                    },
-                ),
-                style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "gap": "8px",
-                    "justifyContent": "flex-end",
-                    "marginBottom": "6px",
-                },
-            ),
-            rx.el.button(
-                fomantic_icon("download", size=14),
-                rx.el.span(
-                    rx.cond(JigsawState.stl_ready, " Download SVG + STL", " Download SVG (STL generating\u2026)"),
-                    style={"marginLeft": "6px"},
-                ),
-                on_click=JigsawState.download_jigsaw_artifacts,
-                class_name="ui teal button",
-                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
-            ),
-            _email_send_form(
-                JigsawState,
-                accent_class="ui teal button",
-                button_label="Send SVG + STL",
-            ),
-            rx.cond(
-                JigsawState.stl_generating,
-                rx.el.div(
-                    rx.el.div(
-                        style={
-                            "height": "3px",
-                            "background": "linear-gradient(90deg, #7c3aed 0%, #a78bfa 50%, #7c3aed 100%)",
-                            "backgroundSize": "200% 100%",
-                            "animation": "stl-progress 1.5s ease-in-out infinite",
-                            "borderRadius": "2px",
-                        },
-                    ),
-                    rx.el.p(
-                        JigsawState.stl_progress,
-                        style={"color": "#9ca3af", "fontSize": "0.78rem", "marginTop": "4px", "textAlign": "center"},
-                    ),
-                    rx.el.style("""
-                        @keyframes stl-progress {
-                            0% { background-position: 200% 0; }
-                            100% { background-position: -200% 0; }
-                        }
-                    """),
-                    style={"marginTop": "8px"},
-                ),
-                rx.fragment(),
-            ),
-            rx.cond(
-                JigsawState.artex_section_visible,
-                rx.el.div(
-                    artex_publish_button(JigsawState, JigsawState.publish_to_artex),
-                    style={"marginTop": "8px"},
-                ),
-                rx.fragment(),
-            ),
-        ),
-        rx.cond(
-            JigsawState.generating,
-            rx.el.p(
-                "Generating jigsaw\u2026",
-                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
-            ),
-            rx.el.p(
-                "Click Materialize in the Choice section to start.",
-                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
-            ),
-        ),
-    )
-
-
-def _jigsaw_dev_view() -> rx.Component:
-    """Dev view: full iframe + result-ready download buttons."""
-    return rx.el.div(
-        rx.el.iframe(
-            src="/jigsaw/index.html",
-            id="jigsaw-generator-iframe",
-            style={
-                "width": "100%",
-                "height": "700px",
-                "border": "1px solid #e5e7eb",
-                "borderRadius": "8px",
-                "backgroundColor": "#ffffff",
-            },
-        ),
-        rx.el.div(
-            rx.el.div(
-                fomantic_icon("check circle", size=16, color=_JIGSAW_ACCENT),
-                rx.el.span(
-                    " Jigsaw generated",
-                    style={"marginLeft": "6px", "fontWeight": "600", "color": _JIGSAW_ACCENT},
-                ),
-                style={"display": "flex", "alignItems": "center", "marginBottom": "10px"},
-            ),
-            rx.el.button(
-                fomantic_icon("download", size=14),
-                rx.el.span(
-                    rx.cond(JigsawState.stl_ready, " Download SVG + STL", " Download SVG (STL generating\u2026)"),
-                    style={"marginLeft": "6px"},
-                ),
-                on_click=JigsawState.download_jigsaw_artifacts,
-                class_name="ui teal button",
-                style={"width": "100%", "padding": "10px", "fontSize": "0.88rem"},
-            ),
-            _email_send_form(
-                JigsawState,
-                accent_class="ui teal button",
-                button_label="Send SVG + STL",
-            ),
-            rx.cond(
-                JigsawState.artex_section_visible,
-                rx.el.div(
-                    artex_publish_button(JigsawState, JigsawState.publish_to_artex),
-                    style={"marginTop": "8px"},
-                ),
-                rx.fragment(),
-            ),
-            id="jigsaw-result-ready",
-            style={
-                "display": "none",
-                "flexDirection": "column",
-                "padding": "12px",
-                "marginTop": "12px",
-                "borderRadius": "6px",
-                "border": "1px solid #99f6e4",
-                "backgroundColor": "#f0fdfa",
-            },
-        ),
-    )
-
-
-def _jigsaw_generator_section() -> rx.Component:
-    _progress_js = (
-        "window.__jigsawResult = null;"
-        "window.__jigsawMeta = {};"
-        "window.addEventListener('message', function(e) {"
-        "  if (!e.data) return;"
-        "  if (e.data.type === 'jigsaw_progress') {"
-        "    var pt = document.getElementById('jigsaw-progress-text');"
-        "    if (pt) pt.textContent = ' ' + (e.data.detail || 'Generating\\u2026');"
-        "  }"
-        "  if (e.data.type === 'jigsaw_result' && e.data.svg) {"
-        "    window.__jigsawResult = e.data.svg;"
-        "    window.__jigsawMeta = {"
-        "      pieces: e.data.pieces || 0,"
-        "      dimensions: e.data.dimensions || '',"
-        "      gridRLE: e.data.gridRLE || null,"
-        "      gridRows: e.data.gridRows || 0,"
-        "      gridCols: e.data.gridCols || 0,"
-        "      cellScale: (e.data.cellScale == null ? 0 : +e.data.cellScale)"
-        "    };"
-        "    var rr = document.getElementById('jigsaw-result-ready');"
-        "    if (rr) rr.style.display = 'flex';"
-        "    var trigger = document.getElementById('jigsaw-complete-trigger');"
-        "    if (trigger) trigger.click();"
-        "  }"
-        "});"
-    )
-
-    _IFRAME_VISIBLE: dict = {
-        "width": "100%",
-        "height": "700px",
-        "border": "1px solid #e5e7eb",
-        "borderRadius": "8px",
-        "backgroundColor": "#ffffff",
-    }
-    _IFRAME_HIDDEN: dict = {
-        "width": "100%",
-        "height": "700px",
-        "border": "none",
-        "position": "absolute",
-        "left": "-9999px",
-        "top": "0",
-    }
-
-    if DEV_MODE:
-        dev_toggle = rx.el.div(
-            rx.el.button(
-                fomantic_icon("code", size=12),
-                rx.el.span(
-                    rx.cond(JigsawState.dev_view, " Dev view", " Prod view"),
-                    style={"marginLeft": "4px"},
-                ),
-                on_click=JigsawState.toggle_dev_view,
-                class_name="ui mini basic button",
-                style={"marginBottom": "8px"},
-            ),
-        )
-        generator_content = rx.cond(
-            JigsawState.show_generator,
-            rx.el.div(
-                rx.cond(JigsawState.dev_view, _jigsaw_dev_view(), rx.fragment()),
-                rx.cond(
-                    JigsawState.dev_view,
-                    rx.fragment(),
-                    rx.el.div(
-                        rx.el.iframe(
-                            src="/jigsaw/index.html",
-                            id="jigsaw-generator-iframe",
-                            style=_IFRAME_HIDDEN,
-                        ),
-                        _jigsaw_prod_view(),
-                    ),
-                ),
-            ),
-            rx.el.p(
-                "Click Materialize in the Choice section to start.",
-                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
-            ),
-        )
-    else:
-        dev_toggle = rx.fragment()
-        generator_content = rx.cond(
-            JigsawState.show_generator,
-            rx.el.div(
-                rx.el.iframe(
-                    src="/jigsaw/index.html",
-                    id="jigsaw-generator-iframe",
-                    style=_IFRAME_HIDDEN,
-                ),
-                _jigsaw_prod_view(),
-            ),
-            rx.el.p(
-                "Click Materialize in the Choice section to start.",
-                style={"color": "#9ca3af", "fontSize": "0.88rem", "textAlign": "center", "padding": "16px"},
-            ),
-        )
-
-    body = rx.cond(
-        JigsawState.generator_expanded,
-        rx.el.div(
-            rx.script(_progress_js),
-            rx.el.button(
-                id="jigsaw-complete-trigger",
-                on_click=JigsawState.on_jigsaw_complete,
-                style={"display": "none"},
-            ),
-            dev_toggle,
-            generator_content,
-        ),
-        rx.fragment(),
-    )
-
-    return rx.el.div(
-        _section_header(
-            expanded=JigsawState.generator_expanded,
-            icon_name="cogs",
-            title="Jigsaw Generator",
-            on_toggle=JigsawState.toggle_generator_expanded,
-            right_badge=rx.cond(
-                JigsawState.generating,
-                rx.el.div(
-                    fomantic_icon("sync", size=12, style={"animation": "me-spin 1s linear infinite"}),
-                    rx.el.span(" Generating\u2026", id="jigsaw-progress-text", style={"marginLeft": "4px", "fontSize": "0.75rem", "color": _JIGSAW_ACCENT}),
-                    style={"display": "flex", "alignItems": "center"},
-                ),
-                rx.cond(
-                    JigsawState.has_generated_svg,
-                    rx.el.span("Ready", class_name="ui mini green label"),
-                    rx.fragment(),
-                ),
-            ),
-        ),
-        body,
-        style=_COLLAPSIBLE_STYLE,
-    )
-
-
-def _jigsaw_pipeline_banner() -> rx.Component:
-    return rx.el.div(
-        rx.el.span(
-            fomantic_icon("arrow right", size=12, color="#0d9488"),
-            " Select organisms ",
-            fomantic_icon("arrow right", size=12, color="#0d9488"),
-            " Generate Pieces ",
-            rx.el.small("(Voronoi) "),
-            fomantic_icon("arrow right", size=12, color="#0d9488"),
-            " Extrude to 3D ",
-            rx.el.a(
-                "(svg_extrude)",
-                href="https://github.com/deffi/svg_extrude",
-                target="_blank",
-                style={"color": "#0d9488", "textDecoration": "underline"},
-            ),
-            " ",
-            fomantic_icon("arrow right", size=12, color="#0d9488"),
-            " 3D-print your jigsaw",
-        ),
-        style={
-            "padding": "10px 14px",
-            "borderRadius": "6px",
-            "backgroundColor": "#f0fdfa",
-            "border": "1px solid #99f6e4",
-            "color": "#134e4a",
-            "fontSize": "0.88rem",
-            "fontWeight": "500",
-            "marginBottom": "10px",
-            "lineHeight": "1.6",
-        },
-    )
-
-
-def _jigsaw_right_pane() -> rx.Component:
-    return rx.el.div(
-        rx.el.textarea(
-            value=JigsawState.jigsaw_svg,
-            id="jigsaw-svg-data",
-            style={"display": "none"},
-        ),
-        rx.el.textarea(
-            value=JigsawState.stl_base64,
-            id="stl-b64-data",
-            style={"display": "none"},
-        ),
-        _jigsaw_category_legend(),
-        _jigsaw_pipeline_banner(),
-        _jigsaw_choice_section(),
-        _jigsaw_generator_section(),
-    )
-
-
-def _jigsaw_tab() -> rx.Component:
-    return two_column_layout(
-        left=_jigsaw_left_pane(),
-        right=_jigsaw_right_pane(),
-    )
-
-
-# ── Tab 3: Gene Library ──────────────────────────────────────────────────────
-
-
-def _source_tag(organism: str) -> rx.Component:
-    return rx.el.span(
-        fomantic_icon("paw-print", size=11),
-        rx.el.span(organism, style={"marginLeft": "4px"}),
-        class_name="ui mini teal label",
-        style={"marginTop": "4px"},
-    )
-
-
-def _gene_card(entry: dict) -> rx.Component:
-    cat_color = CATEGORY_COLORS.get(str(entry.get("category", "")), "#7c3aed")
-    paper = str(entry.get("paper_url", "") or "")
-    detail = str(entry.get("category_detail", "") or entry.get("category", ""))
-    return rx.el.div(
-        rx.el.div(
-            rx.el.span(
-                entry["gene"],  # type: ignore[index]
-                style={"fontWeight": "700", "fontSize": "1rem", "color": "#1a1a2e", "marginRight": "10px"},
-            ),
-            rx.el.span(
-                detail,
-                class_name="ui mini label",
-                style={
-                    "backgroundColor": f"{cat_color}18 !important",
-                    "color": f"{cat_color} !important",
-                    "border": f"1px solid {cat_color}40 !important",
-                    "maxWidth": "100%",
-                    "whiteSpace": "normal",
-                },
-            ),
-            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
-        ),
-        rx.el.div(
-            _source_tag(entry["source_organism"]),  # type: ignore[index]
-            style={"margin": "6px 0 4px 0", "display": "flex", "gap": "4px", "flexWrap": "wrap"},
-        ),
-        rx.el.p(
-            entry["narrative"],  # type: ignore[index]
-            style={"fontSize": "0.88rem", "color": "#4b5563", "margin": "4px 0 6px 0", "lineHeight": "1.5"},
-        ),
-        (
-            rx.el.p(
-                entry["mechanism"],  # type: ignore[index]
-                style={
-                    "fontSize": "0.83rem",
-                    "color": "#6b7280",
-                    "margin": "0 0 6px 0",
-                    "lineHeight": "1.5",
-                    "fontStyle": "italic",
-                },
-            )
-            if str(entry.get("mechanism", "") or "").strip()
-            else rx.fragment()
-        ),
-        rx.el.div(
-            rx.el.a(
-                fomantic_icon("external-link", size=11),
-                rx.el.span(" First linked reference", style={"marginLeft": "4px"}),
-                href=paper,
-                target="_blank",
-                style={"fontSize": "0.78rem"},
-            ),
-            style={"marginTop": "4px"},
-        )
-        if paper
-        else rx.fragment(),
-        style={
-            "padding": "14px 16px",
-            "borderRadius": "6px",
-            "backgroundColor": "#ffffff",
-            "border": "1px solid #e5e7eb",
-            "marginBottom": "12px",
-        },
-    )
-
-
-def _gene_library_tab() -> rx.Component:
-    return rx.el.div(
-        # DataGrid at the top
-        rx.el.div(
-            rx.el.h3(
-                fomantic_icon("dna", size=18, color="#7c3aed"),
-                rx.el.span(
-                    f" {len(GENE_LIBRARY)} genes across {len(UNIQUE_CATEGORIES)} categories",
-                    style={"marginLeft": "8px"},
-                ),
-                style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
-            ),
-            rx.el.div(
-                lazyframe_grid(
-                    GeneGridState,
-                    show_toolbar=True,
-                    show_description_in_header=False,
-                    density="compact",
-                    column_header_height=50,
-                    height="340px",
-                    width="100%",
-                    debug_log=False,
-                ),
-                style={"display": rx.cond(GeneGridState.has_data, "block", "none")},
-            ),
-            style={"marginBottom": "24px"},
-        ),
-        # Cards below
-        rx.el.div(class_name="ui divider"),
-        rx.el.div(
-            *[_gene_card(entry) for entry in GENE_LIBRARY],  # type: ignore[arg-type]
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "repeat(auto-fill, minmax(340px, 1fr))",
-                "gap": "0",
-            },
-        ),
-    )
-
-
-# ── Tab 4: Animal Library ────────────────────────────────────────────────────
-
-
-def _animal_card(entry: dict) -> rx.Component:
-    return rx.el.div(
-        rx.el.div(
-            rx.el.span(
-                entry["organism"],  # type: ignore[index]
-                style={"fontWeight": "700", "fontSize": "1rem", "color": "#1a1a2e"},
-            ),
-            style={"marginBottom": "6px"},
-        ),
-        rx.el.p(
-            entry["superpower"],  # type: ignore[index]
-            style={"fontSize": "0.9rem", "color": "#4b5563", "lineHeight": "1.6", "margin": "0 0 8px 0"},
-        ),
-        rx.el.div(
-            rx.el.label("Genes: ", style={"fontSize": "0.8rem", "color": "#9ca3af", "fontWeight": "600"}),
-            rx.el.span(
-                ", ".join(entry["genes"]),  # type: ignore[arg-type]
-                style={"fontSize": "0.8rem", "color": "#6b7280"},
-            ),
-            style={"marginBottom": "4px"},
-        ),
-        rx.el.div(
-            *[
-                rx.el.span(t, class_name="ui mini violet label", style={"margin": "2px"})
-                for t in entry["traits"]  # type: ignore[union-attr]
-            ],
-            style={"display": "flex", "flexWrap": "wrap", "gap": "2px", "marginTop": "6px"},
-        ),
-        style={
-            "padding": "14px 16px",
-            "borderRadius": "6px",
-            "backgroundColor": "#ffffff",
-            "border": "1px solid #e5e7eb",
-            "marginBottom": "12px",
-        },
-    )
-
-
-def _animal_library_tab() -> rx.Component:
-    return rx.el.div(
-        # DataGrid at the top
-        rx.el.div(
-            rx.el.h3(
-                fomantic_icon("paw", size=18, color="#7c3aed"),
-                rx.el.span(
-                    f" {len(ANIMAL_LIBRARY)} source organisms",
-                    style={"marginLeft": "8px"},
-                ),
-                style={"color": "#1a1a2e", "marginBottom": "12px", "display": "flex", "alignItems": "center"},
-            ),
-            rx.el.div(
-                lazyframe_grid(
-                    AnimalGridState,
-                    show_toolbar=True,
-                    show_description_in_header=False,
-                    density="compact",
-                    column_header_height=50,
-                    height="340px",
-                    width="100%",
-                    debug_log=False,
-                ),
-                style={"display": rx.cond(AnimalGridState.has_data, "block", "none")},
-            ),
-            style={"marginBottom": "24px"},
-        ),
-        # Cards below
-        rx.el.div(class_name="ui divider"),
-        rx.el.div(
-            *[_animal_card(entry) for entry in ANIMAL_LIBRARY],  # type: ignore[arg-type]
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "repeat(auto-fill, minmax(340px, 1fr))",
-                "gap": "0",
-            },
-        ),
-    )
-
-
 # ── Tab navigation ───────────────────────────────────────────────────────────
 
-_TABS: list[tuple[str, str, str]] = [
-    ("/", "home", "About"),
-    ("/materialize", "atom", "Materialize genetic enhancement"),
-    ("/jigsaw", "puzzle piece", "Gene Jigsaw"),
-]
+_RPG_ROUTES: set[str] = {"/", "/materialization", "/about"}
+
+
+def _tab_link(route: str, icon: str, label: str, active_route: str) -> rx.Component:
+    return rx.el.a(
+        fomantic_icon(icon, size=18),
+        rx.el.span(f" {label}", style={"marginLeft": "8px"}),
+        class_name="active item" if route == active_route else "item",
+        href=route,
+    )
+
+
+def _disabled_materialization_tab() -> rx.Component:
+    return rx.el.span(
+        fomantic_icon("atom", size=18),
+        rx.el.span(" Materialization", style={"marginLeft": "8px"}),
+        class_name="disabled item",
+        title="Materialize selected genes first.",
+        style={
+            "opacity": "0.42",
+            "cursor": "not-allowed",
+            "pointerEvents": "auto",
+        },
+    )
 
 
 def _tab_menu(active_route: str) -> rx.Component:
     return rx.el.div(
-        *[
-            rx.el.a(
-                fomantic_icon(icon, size=14),
-                rx.el.span(f" {label}", style={"marginLeft": "6px"}),
-                class_name="active item" if route == active_route else "item",
-                href=route,
+        _tab_link("/", "user", "Character profile", active_route),
+        (
+            _tab_link("/materialization", "atom", "Materialization", active_route)
+            if active_route == "/materialization"
+            else rx.cond(
+                ComposeState.materialization_tab_enabled,
+                _tab_link("/materialization", "atom", "Materialization", active_route),
+                _disabled_materialization_tab(),
             )
-            for route, icon, label in _TABS
-        ],
+        ),
+        _tab_link("/about", "home", "About", active_route),
         class_name="ui top attached tabular menu",
+        id="me-top-tab-menu",
     )
 
 
 def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
+    is_rpg_route = active_route in _RPG_ROUTES
+    is_profile_route = active_route == "/"
+    segment_class_name = (
+        "ui bottom attached segment me-rpg-profile-page"
+        if is_profile_route
+        else "ui bottom attached segment"
+    )
+    tab_theme_css = rx.el.style(
+        """
+        #me-top-tab-menu.ui.top.attached.tabular.menu {
+            background: #020617 !important;
+            border-color: rgba(124, 58, 237, 0.42) !important;
+        }
+        #me-top-tab-menu.ui.top.attached.tabular.menu .item {
+            color: #cbd5e1 !important;
+            border-color: transparent !important;
+            font-size: 1.25rem !important;
+            padding: 1.05em 1.35em !important;
+            min-height: 3.6rem !important;
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+        #me-top-tab-menu.ui.top.attached.tabular.menu .item:hover {
+            background: rgba(124, 58, 237, 0.16) !important;
+            color: #f8fafc !important;
+        }
+        #me-top-tab-menu.ui.top.attached.tabular.menu .active.item {
+            background: #0f172a !important;
+            color: #c4b5fd !important;
+            border-color: rgba(124, 58, 237, 0.72) !important;
+            font-weight: 800 !important;
+        }
+        #me-rpg-tab-segment.ui.bottom.attached.segment {
+            background: #020617 !important;
+            border-color: rgba(124, 58, 237, 0.42) !important;
+        }
+        html:has(.me-rpg-profile-page),
+        body:has(.me-rpg-profile-page) {
+            overflow-x: hidden;
+            overflow-y: hidden;
+            background: #020617 !important;
+        }
+        #me-app-content:has(.me-rpg-profile-page) {
+            height: 100svh !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            background: #020617 !important;
+        }
+        #me-app-content:has(.me-rpg-profile-page) > .ui.fluid.container {
+            height: 100svh;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .me-rpg-profile-page {
+            flex: 1 1 auto;
+            min-height: 0;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            border-bottom: 0 !important;
+            border-radius: 0 !important;
+        }
+        .me-rpg-profile-page > .me-rpg-shell {
+            height: calc(100svh - 3.6rem) !important;
+            min-height: 0 !important;
+            padding: 8px 12px 10px !important;
+            border-radius: 0 !important;
+            overflow: hidden;
+        }
+        .me-rpg-profile-page .me-rpg-dashboard {
+            height: 100%;
+            min-height: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            align-items: stretch;
+            scrollbar-width: thin;
+        }
+        .me-rpg-profile-page .me-rpg-left-panel {
+            position: static;
+            align-self: stretch;
+        }
+        .me-rpg-profile-page .me-rpg-library-section {
+            height: 100%;
+            max-height: 100%;
+            min-height: 0;
+        }
+        .me-rpg-profile-page .me-rpg-center-panel,
+        .me-rpg-profile-page .me-rpg-body-map-panel {
+            min-height: 0;
+        }
+        .me-rpg-profile-page .me-rpg-center-panel {
+            height: 100%;
+            max-height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-gutter: stable;
+        }
+        .me-rpg-profile-page .me-rpg-body-map-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+        .me-rpg-profile-page .me-rpg-body-stage {
+            flex: 1 1 auto;
+            height: auto;
+            min-height: clamp(640px, min(84svh, 70vw), 900px) !important;
+            padding-top: 0;
+            padding-bottom: 96px;
+        }
+        .me-rpg-profile-page .me-rpg-body-image {
+            height: clamp(570px, min(78svh, 66vw), 850px) !important;
+        }
+        @media (max-height: 820px) {
+            .me-rpg-profile-page .me-rpg-center-panel {
+                max-height: calc(100svh - 4.2rem);
+                padding-right: 4px;
+            }
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(620px, 82svh, 760px) !important;
+                padding-bottom: 88px !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(540px, 76svh, 700px) !important;
+                max-width: min(100%, 680px) !important;
+            }
+            .me-rpg-profile-page .me-rpg-materialize-leg-cta {
+                position: sticky;
+                left: auto;
+                bottom: 16px;
+                transform: none;
+                align-self: center;
+                width: max-content;
+                max-width: calc(100% - 24px);
+                margin-top: 12px;
+                margin-bottom: 10px;
+            }
+        }
+        @media (min-aspect-ratio: 13 / 9) and (max-height: 900px) {
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(780px, 108svh, 980px) !important;
+                padding-bottom: 104px !important;
+                justify-content: flex-start !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(700px, 96svh, 900px) !important;
+                max-width: min(100%, 860px) !important;
+            }
+        }
+        @media (min-width: 1800px) and (min-height: 1100px) {
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(980px, 74svh, 1160px) !important;
+                padding-bottom: 112px !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(900px, 69svh, 1080px) !important;
+                max-width: min(100%, 1040px) !important;
+            }
+            .me-rpg-profile-page .me-rpg-materialize-leg-button {
+                min-width: 300px !important;
+                min-height: 68px !important;
+                font-size: clamp(1.6rem, 1.4vw, 2.05rem) !important;
+            }
+        }
+        """
+    )
     return template(
+        tab_theme_css if is_rpg_route else rx.fragment(),
         _tab_menu(active_route),
         rx.el.div(
             content,
-            class_name="ui bottom attached segment",
-            style={"minHeight": "400px"},
+            class_name=segment_class_name,
+            id="me-rpg-tab-segment" if is_rpg_route else "",
+            style={
+                "minHeight": "400px",
+                "background": "#020617" if is_rpg_route else "#ffffff",
+                "borderColor": "rgba(124, 58, 237, 0.42)" if is_rpg_route else "#e5e7eb",
+                "padding": "0.85rem" if is_rpg_route else "1rem",
+            },
         ),
     )
 
@@ -3867,26 +5888,35 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
 
 @rx.page(
     route="/",
+    title=_page_title("/"),
+    description=_page_description("/"),
+    meta=_SOCIAL_META,
     on_load=[AppState.redirect_legacy_tab],
 )
 def index_page() -> rx.Component:
+    """Character profile — default RPG loadout builder."""
+    return _tab_page("/", _rpg_active_genes_layout())
+
+
+@rx.page(
+    route="/materialization",
+    title=_page_title("/materialization"),
+    description=_page_description("/materialization"),
+    meta=_SOCIAL_META,
+    on_load=[ComposeState.apply_saved_report, ComposeState.apply_shared_report, ComposeState.apply_artex_params],
+)
+def materialization_page() -> rx.Component:
+    """Materialization — 3D output, viewer, report, and export actions."""
+    return _tab_page("/materialization", _rpg_materialization_layout())
+
+
+@rx.page(
+    route="/about",
+    title=_page_title("/about"),
+    description=_page_description("/about"),
+    meta=_SOCIAL_META,
+    on_load=[AppState.redirect_legacy_tab],
+)
+def about_page() -> rx.Component:
     """About / landing page — fully static, SSR-friendly."""
-    return _tab_page("/", _landing_tab())
-
-
-@rx.page(
-    route="/materialize",
-    on_load=[ComposeState.apply_shared_report, ComposeState.apply_artex_params],
-)
-def materialize_page() -> rx.Component:
-    """Materialize genetic enhancement — parametric sculpture composer."""
-    return _tab_page("/materialize", _sculpture_tab())
-
-
-@rx.page(
-    route="/jigsaw",
-    on_load=[JigsawState.init_jigsaw, JigsawState.apply_artex_params],
-)
-def jigsaw_page() -> rx.Component:
-    """Gene Jigsaw — organism-based composition with SVG puzzle."""
-    return _tab_page("/jigsaw", _jigsaw_tab())
+    return _tab_page("/about", _rpg_about_layout())
