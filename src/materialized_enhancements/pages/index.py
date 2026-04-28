@@ -3255,12 +3255,12 @@ def _rpg_flow_css() -> rx.Component:
         }
         @media (min-width: 1800px) and (min-height: 1100px) {
             .me-rpg-body-stage {
-                min-height: clamp(1080px, 82dvh, 1320px) !important;
-                padding-bottom: 128px !important;
+                min-height: clamp(980px, 74dvh, 1160px) !important;
+                padding-bottom: 112px !important;
             }
             .me-rpg-body-image {
-                height: clamp(980px, 76dvh, 1220px) !important;
-                max-width: min(100%, 1120px) !important;
+                height: clamp(900px, 69dvh, 1080px) !important;
+                max-width: min(100%, 1040px) !important;
             }
             .me-rpg-materialize-leg-button {
                 min-width: 300px !important;
@@ -5653,18 +5653,19 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         html:has(.me-rpg-profile-page),
         body:has(.me-rpg-profile-page) {
             overflow-x: hidden;
-            overflow-y: auto;
+            overflow-y: hidden;
             background: #020617 !important;
         }
         #me-app-content:has(.me-rpg-profile-page) {
-            height: auto !important;
-            min-height: 100svh !important;
+            height: 100svh !important;
+            min-height: 0 !important;
             padding: 0 !important;
-            overflow: visible !important;
+            overflow: hidden !important;
             background: #020617 !important;
         }
         #me-app-content:has(.me-rpg-profile-page) > .ui.fluid.container {
-            min-height: 100svh;
+            height: 100svh;
+            min-height: 0;
             display: flex;
             flex-direction: column;
         }
@@ -5673,19 +5674,21 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
             min-height: 0;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: visible;
+            overflow: hidden;
             border-left: 0 !important;
             border-right: 0 !important;
             border-bottom: 0 !important;
             border-radius: 0 !important;
         }
         .me-rpg-profile-page > .me-rpg-shell {
-            min-height: calc(100svh - 3.6rem) !important;
+            height: calc(100svh - 3.6rem) !important;
+            min-height: 0 !important;
             padding: 8px 12px 10px !important;
             border-radius: 0 !important;
-            overflow: visible;
+            overflow: hidden;
         }
         .me-rpg-profile-page .me-rpg-dashboard {
+            height: 100%;
             min-height: 0;
             overflow-x: auto;
             overflow-y: hidden;
@@ -5706,7 +5709,8 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
             min-height: 0;
         }
         .me-rpg-profile-page .me-rpg-center-panel {
-            max-height: calc(100svh - 4.45rem);
+            height: 100%;
+            max-height: 100%;
             overflow-y: auto;
             overflow-x: hidden;
             overscroll-behavior: contain;
@@ -5716,6 +5720,7 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         .me-rpg-profile-page .me-rpg-body-map-panel {
             display: flex;
             flex-direction: column;
+            min-height: 100%;
         }
         .me-rpg-profile-page .me-rpg-body-stage {
             flex: 1 1 auto;
@@ -5765,12 +5770,12 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         }
         @media (min-width: 1800px) and (min-height: 1100px) {
             .me-rpg-profile-page .me-rpg-body-stage {
-                min-height: clamp(1080px, 82svh, 1320px) !important;
-                padding-bottom: 128px !important;
+                min-height: clamp(980px, 74svh, 1160px) !important;
+                padding-bottom: 112px !important;
             }
             .me-rpg-profile-page .me-rpg-body-image {
-                height: clamp(980px, 76svh, 1220px) !important;
-                max-width: min(100%, 1120px) !important;
+                height: clamp(900px, 69svh, 1080px) !important;
+                max-width: min(100%, 1040px) !important;
             }
             .me-rpg-profile-page .me-rpg-materialize-leg-button {
                 min-width: 300px !important;
