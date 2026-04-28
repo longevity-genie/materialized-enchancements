@@ -2797,6 +2797,10 @@ def _rpg_flow_css() -> rx.Component:
             display: flex;
             flex-wrap: nowrap;
             align-items: flex-start;
+            min-height: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
         }
         .me-rpg-hero-grid > .me-rpg-left-panel {
             flex: 1.36 1 520px;
@@ -2805,6 +2809,12 @@ def _rpg_flow_css() -> rx.Component:
         .me-rpg-hero-grid > .me-rpg-center-panel {
             flex: 1.3 1 460px;
             min-width: min(100%, 320px);
+            max-height: calc(100dvh - 7rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-gutter: stable;
         }
         .me-rpg-hero-grid > .me-rpg-right-panel {
             flex: 0.46 1 220px;
@@ -2821,7 +2831,10 @@ def _rpg_flow_css() -> rx.Component:
         }
         .me-rpg-body-map-panel {
             position: relative;
+            display: flex;
+            flex-direction: column;
             min-width: 0;
+            min-height: 0;
             padding: 4px 0 0;
             color: #e5e7eb;
         }
@@ -2840,9 +2853,10 @@ def _rpg_flow_css() -> rx.Component:
         .me-rpg-body-stage {
             position: relative;
             width: 100%;
-            min-height: clamp(620px, 76vh, 860px);
+            min-height: clamp(620px, min(80dvh, 66vw), 900px);
             padding: 10px 26px 82px;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             overflow: visible;
@@ -2875,7 +2889,7 @@ def _rpg_flow_css() -> rx.Component:
         .me-rpg-body-image {
             position: relative;
             z-index: 1;
-            height: clamp(560px, 72vh, 820px);
+            height: clamp(540px, min(74dvh, 60vw), 840px);
             max-width: min(100%, 760px);
             object-fit: contain;
             filter:
@@ -3111,20 +3125,32 @@ def _rpg_flow_css() -> rx.Component:
                 grid-template-columns: minmax(0, 1fr) !important;
             }
             .me-rpg-hero-grid {
-                flex-wrap: wrap;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                align-items: stretch;
             }
             .me-rpg-hero-grid > .me-rpg-left-panel,
             .me-rpg-hero-grid > .me-rpg-center-panel,
             .me-rpg-hero-grid > .me-rpg-right-panel {
-                flex-basis: 100%;
-                min-width: 0;
+                flex-basis: auto;
+            }
+            .me-rpg-hero-grid > .me-rpg-left-panel {
+                flex: 0 0 clamp(340px, 46vw, 420px);
+                min-width: clamp(340px, 46vw, 420px);
+            }
+            .me-rpg-hero-grid > .me-rpg-center-panel {
+                flex: 1 0 clamp(420px, 54vw, 620px);
+                min-width: clamp(420px, 54vw, 620px);
+                max-height: calc(100dvh - 6rem);
             }
             .me-rpg-library-section {
-                height: auto;
-                max-height: none;
-                overflow: visible;
-                overscroll-behavior: auto;
-                padding-right: 0;
+                height: calc(100dvh - 6rem);
+                max-height: calc(100dvh - 6rem);
+                overflow-y: auto;
+                overflow-x: hidden;
+                overscroll-behavior: contain;
+                padding-right: 4px;
             }
             .me-rpg-gene-body-grid {
                 grid-template-columns: minmax(0, 1fr);
@@ -3167,10 +3193,79 @@ def _rpg_flow_css() -> rx.Component:
                 font-size: clamp(1.05rem, 5.8vw, 1.45rem) !important;
             }
             .me-rpg-left-panel,
-            .me-rpg-center-panel,
             .me-rpg-right-panel,
             .me-rpg-output-panel > div {
                 position: static !important;
+            }
+        }
+        @media (max-height: 820px) {
+            .me-rpg-shell {
+                min-height: calc(100dvh - 5.25rem) !important;
+            }
+            .me-rpg-hero-grid {
+                align-items: stretch;
+                max-height: calc(100dvh - 5.25rem);
+            }
+            .me-rpg-hero-grid > .me-rpg-center-panel {
+                max-height: calc(100dvh - 5.25rem);
+                padding-right: 4px;
+            }
+            .me-rpg-library-section {
+                height: calc(100dvh - 5.25rem);
+                max-height: calc(100dvh - 5.25rem);
+            }
+            .me-rpg-body-stage {
+                min-height: clamp(620px, 82dvh, 760px) !important;
+                padding: 4px 14px 96px !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(540px, 76dvh, 700px) !important;
+                max-width: min(100%, 680px) !important;
+            }
+            .me-rpg-materialize-leg-cta {
+                position: sticky;
+                left: auto;
+                bottom: 16px;
+                transform: none;
+                align-self: center;
+                width: max-content;
+                max-width: calc(100% - 24px);
+                margin-top: 12px;
+                margin-bottom: 10px;
+            }
+            .me-rpg-materialize-alert-stack {
+                max-width: min(460px, 88vw);
+            }
+        }
+        @media (min-aspect-ratio: 13 / 9) and (max-height: 900px) {
+            .me-rpg-body-stage {
+                min-height: clamp(780px, 108dvh, 980px) !important;
+                padding-bottom: 104px !important;
+                justify-content: flex-start !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(700px, 96dvh, 900px) !important;
+                max-width: min(100%, 860px) !important;
+            }
+            .me-rpg-materialize-leg-button {
+                min-height: 54px !important;
+                padding-top: 13px !important;
+                padding-bottom: 13px !important;
+            }
+        }
+        @media (min-width: 1800px) and (min-height: 1100px) {
+            .me-rpg-body-stage {
+                min-height: clamp(1080px, 82dvh, 1320px) !important;
+                padding-bottom: 128px !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(980px, 76dvh, 1220px) !important;
+                max-width: min(100%, 1120px) !important;
+            }
+            .me-rpg-materialize-leg-button {
+                min-width: 300px !important;
+                min-height: 68px !important;
+                font-size: clamp(1.6rem, 1.4vw, 2.05rem) !important;
             }
         }
         @media (max-width: 560px) {
@@ -5557,43 +5652,45 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         }
         html:has(.me-rpg-profile-page),
         body:has(.me-rpg-profile-page) {
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: #020617 !important;
         }
         #me-app-content:has(.me-rpg-profile-page) {
-            height: 100vh !important;
-            min-height: 0 !important;
+            height: auto !important;
+            min-height: 100svh !important;
             padding: 0 !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             background: #020617 !important;
         }
         #me-app-content:has(.me-rpg-profile-page) > .ui.fluid.container {
-            height: 100%;
+            min-height: 100svh;
             display: flex;
             flex-direction: column;
         }
         .me-rpg-profile-page {
             flex: 1 1 auto;
-            min-height: 0 !important;
+            min-height: 0;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: hidden;
+            overflow: visible;
             border-left: 0 !important;
             border-right: 0 !important;
             border-bottom: 0 !important;
             border-radius: 0 !important;
         }
         .me-rpg-profile-page > .me-rpg-shell {
-            height: 100%;
-            min-height: 0 !important;
+            min-height: calc(100svh - 3.6rem) !important;
             padding: 8px 12px 10px !important;
             border-radius: 0 !important;
-            overflow: hidden;
+            overflow: visible;
         }
         .me-rpg-profile-page .me-rpg-dashboard {
-            height: 100%;
             min-height: 0;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
             align-items: stretch;
+            scrollbar-width: thin;
         }
         .me-rpg-profile-page .me-rpg-left-panel {
             position: static;
@@ -5606,9 +5703,15 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         }
         .me-rpg-profile-page .me-rpg-center-panel,
         .me-rpg-profile-page .me-rpg-body-map-panel {
-            height: 100%;
             min-height: 0;
-            overflow: hidden;
+        }
+        .me-rpg-profile-page .me-rpg-center-panel {
+            max-height: calc(100svh - 4.45rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-gutter: stable;
         }
         .me-rpg-profile-page .me-rpg-body-map-panel {
             display: flex;
@@ -5617,9 +5720,63 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         .me-rpg-profile-page .me-rpg-body-stage {
             flex: 1 1 auto;
             height: auto;
-            min-height: clamp(620px, 76vh, 860px) !important;
+            min-height: clamp(640px, min(84svh, 70vw), 900px) !important;
             padding-top: 0;
-            padding-bottom: 68px;
+            padding-bottom: 96px;
+        }
+        .me-rpg-profile-page .me-rpg-body-image {
+            height: clamp(570px, min(78svh, 66vw), 850px) !important;
+        }
+        @media (max-height: 820px) {
+            .me-rpg-profile-page .me-rpg-center-panel {
+                max-height: calc(100svh - 4.2rem);
+                padding-right: 4px;
+            }
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(620px, 82svh, 760px) !important;
+                padding-bottom: 88px !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(540px, 76svh, 700px) !important;
+                max-width: min(100%, 680px) !important;
+            }
+            .me-rpg-profile-page .me-rpg-materialize-leg-cta {
+                position: sticky;
+                left: auto;
+                bottom: 16px;
+                transform: none;
+                align-self: center;
+                width: max-content;
+                max-width: calc(100% - 24px);
+                margin-top: 12px;
+                margin-bottom: 10px;
+            }
+        }
+        @media (min-aspect-ratio: 13 / 9) and (max-height: 900px) {
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(780px, 108svh, 980px) !important;
+                padding-bottom: 104px !important;
+                justify-content: flex-start !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(700px, 96svh, 900px) !important;
+                max-width: min(100%, 860px) !important;
+            }
+        }
+        @media (min-width: 1800px) and (min-height: 1100px) {
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(1080px, 82svh, 1320px) !important;
+                padding-bottom: 128px !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(980px, 76svh, 1220px) !important;
+                max-width: min(100%, 1120px) !important;
+            }
+            .me-rpg-profile-page .me-rpg-materialize-leg-button {
+                min-width: 300px !important;
+                min-height: 68px !important;
+                font-size: clamp(1.6rem, 1.4vw, 2.05rem) !important;
+            }
         }
         """
     )
