@@ -14,6 +14,7 @@ from materialized_enhancements.env import (
 
 ensure_generated_public_dirs()
 _generated_static = StaticFiles(directory=GENERATED_PUBLIC_DIR, check_dir=False)
+DESKTOP_VIEWPORT_WIDTH_PX = 1440
 
 
 def normalize_reflex_event_websocket_path(app: ASGIApp) -> ASGIApp:
@@ -46,7 +47,7 @@ def normalize_reflex_event_websocket_path(app: ASGIApp) -> ASGIApp:
 app = rx.App(
     theme=rx.theme(appearance="light"),
     head_components=[
-        rx.el.meta(name="viewport", content="width=device-width, initial-scale=1.0"),
+        rx.el.meta(name="viewport", content=f"width={DESKTOP_VIEWPORT_WIDTH_PX}"),
     ],
     api_transformer=normalize_reflex_event_websocket_path,
 )

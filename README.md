@@ -15,6 +15,8 @@
 
 The project is **open source** ([repository](https://github.com/winternewt/materialized-enchancements)) and built so other artists can plug their own generative models into the same biological input engine.
 
+[Project video](https://www.youtube.com/watch?v=adCYIcbR4Gs)
+
 ---
 
 ## What is this?
