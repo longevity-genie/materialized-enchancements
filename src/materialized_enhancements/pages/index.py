@@ -335,7 +335,7 @@ def _landing_tab() -> rx.Component:
                     ),
                     rx.el.div(
                         rx.el.iframe(
-                            src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
+                            src="https://www.youtube.com/embed/adCYIcbR4Gs",
                             title="Materialized Enhancements",
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
                             allow_full_screen=True,
@@ -1662,7 +1662,7 @@ def _rpg_intro_video_panel() -> rx.Component:
         ),
         rx.el.div(
             rx.el.iframe(
-                src="https://www.youtube.com/embed/1QwQfDL12z0?is=gOqqNcAY9rtd5MLr",
+                src="https://www.youtube.com/embed/adCYIcbR4Gs",
                 title="Materialized Enhancements project video",
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
                 allow_full_screen=True,
@@ -3294,20 +3294,43 @@ def _rpg_flow_css() -> rx.Component:
                 max-width: min(460px, 88vw);
             }
         }
-        @media (min-aspect-ratio: 13 / 9) and (max-height: 900px) {
+        @media (min-width: 1200px) and (max-height: 900px) and (orientation: landscape) {
             .me-rpg-body-stage {
-                min-height: clamp(780px, 108dvh, 980px) !important;
-                padding-bottom: 104px !important;
-                justify-content: flex-start !important;
+                min-height: clamp(600px, calc(100dvh - 13rem), 720px) !important;
+                padding: 2px 14px 82px !important;
+                justify-content: center !important;
             }
             .me-rpg-body-image {
-                height: clamp(700px, 96dvh, 900px) !important;
-                max-width: min(100%, 860px) !important;
+                height: clamp(500px, calc(100dvh - 19rem), 620px) !important;
+                max-width: min(100%, 720px) !important;
             }
             .me-rpg-materialize-leg-button {
                 min-height: 54px !important;
                 padding-top: 13px !important;
                 padding-bottom: 13px !important;
+            }
+        }
+        @media (orientation: portrait) and (min-width: 900px) {
+            .me-rpg-body-stage {
+                min-height: clamp(820px, min(84dvh, 92vw), 1180px) !important;
+                padding: 0 18px 78px !important;
+                justify-content: center !important;
+            }
+            .me-rpg-body-image {
+                height: clamp(720px, min(76dvh, 72vw), 1040px) !important;
+                max-width: min(100%, 920px) !important;
+            }
+            .me-rpg-body-marker--expression,
+            .me-rpg-body-marker--perception {
+                top: 23% !important;
+            }
+            .me-rpg-body-marker--longevity-genome,
+            .me-rpg-body-marker--stress-resistance {
+                top: 51% !important;
+            }
+            .me-rpg-body-marker--environmental-adaptation,
+            .me-rpg-body-marker--regeneration {
+                top: 70% !important;
             }
         }
         @media (min-width: 1800px) and (min-height: 1100px) {
@@ -3719,15 +3742,16 @@ def _explanations_panel() -> rx.Component:
             _explanation_item(
                 "Disorder %",
                 "Percentage of intrinsically disordered residues — floppy, unstructured "
-                "regions that lack a fixed 3D shape. High disorder means flexible, "
-                "shape-shifting proteins.",
-                maps_to="-> scale X",
+                "regions that lack a fixed 3D shape. This value is recorded in the "
+                "reproducibility data; Scale X is currently fixed for print safety.",
+                maps_to="recorded",
             ),
             _explanation_item(
                 "Isoelectric point (pI)",
                 "The pH at which the protein carries zero net electric charge. "
-                "Low pI = acidic protein, high pI = basic protein.",
-                maps_to="-> scale Y",
+                "Low pI = acidic protein, high pI = basic protein. This value is "
+                "recorded in the reproducibility data; Scale Y is currently fixed for print safety.",
+                maps_to="recorded",
             ),
             style={
                 "padding": "12px 16px",
@@ -3793,6 +3817,142 @@ def _sculpture_params_panel() -> rx.Component:
         style={"flex": "1", "minWidth": "0"},
     )
 
+
+def _generation_story_metric(
+    label: str,
+    source_label: str,
+    source_value: rx.Var,
+    source_unit: str,
+    output_label: str,
+    output_value: rx.Var,
+    output_unit: str,
+    body: str,
+) -> rx.Component:
+    """Readable one-card explanation of one gene-property-to-geometry mapping."""
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(label, style={"fontSize": "0.78rem", "fontWeight": "900", "color": "#c4b5fd", "letterSpacing": "0.07em"}),
+            rx.el.span(body, style={"fontSize": "0.78rem", "color": "#94a3b8", "marginLeft": "8px"}),
+            style={"display": "flex", "alignItems": "baseline", "gap": "2px", "marginBottom": "4px"},
+        ),
+        rx.el.div(
+            rx.el.span(source_label, style={"color": "#94a3b8"}),
+            rx.el.span(" ", style={"whiteSpace": "pre"}),
+            rx.el.span(source_value, style={"fontWeight": "900", "color": "#f8fafc"}),
+            rx.el.span(f" {source_unit}" if source_unit else "", style={"color": "#64748b"}),
+            rx.el.span(" -> ", style={"color": "#7c3aed", "fontWeight": "900", "padding": "0 6px"}),
+            rx.el.span(output_label, style={"color": "#94a3b8"}),
+            rx.el.span(" ", style={"whiteSpace": "pre"}),
+            rx.el.span(output_value, style={"fontWeight": "900", "color": "#f8fafc"}),
+            rx.el.span(f" {output_unit}" if output_unit else "", style={"color": "#64748b"}),
+            style={
+                "fontSize": "0.86rem",
+                "lineHeight": "1.35",
+                "fontFamily": "'SFMono-Regular', Menlo, Consolas, monospace",
+            },
+        ),
+        style={
+            "padding": "8px 10px",
+            "borderRadius": "8px",
+            "background": "rgba(15, 23, 42, 0.62)",
+            "border": "1px solid rgba(148, 163, 184, 0.20)",
+        },
+    )
+
+
+def _model_generation_story_panel() -> rx.Component:
+    """Plain-language generation explanation shown beside the 3D viewer."""
+    return rx.cond(
+        ComposeState.has_params,
+        rx.el.aside(
+            rx.el.div(
+                fomantic_icon("dna", size=15, color="#a78bfa"),
+                rx.el.span(
+                    "How this model was generated:",
+                    style={"fontSize": "0.92rem", "fontWeight": "900", "color": "#f8fafc"},
+                ),
+                rx.el.span(
+                    " checked genes are summarized into protein properties, then normalized into a Voronoi-based printable shape.",
+                    style={"fontSize": "0.86rem", "lineHeight": "1.35", "color": "#cbd5e1"},
+                ),
+                style={"display": "flex", "gap": "7px", "alignItems": "baseline", "marginBottom": "8px", "flexWrap": "wrap"},
+            ),
+            rx.el.div(
+                rx.el.div(
+                    rx.el.span("Name + selected categories -> ", style={"fontSize": "0.82rem", "color": "#94a3b8", "fontWeight": "800"}),
+                    rx.el.span("seed ", style={"fontSize": "0.82rem", "color": "#c4b5fd", "fontWeight": "800"}),
+                    rx.el.span(ComposeState.param_seed, style={"fontSize": "0.94rem", "fontWeight": "950", "color": "#f8fafc"}),
+                    rx.el.span(" reproducible model", style={"fontSize": "0.82rem", "color": "#cbd5e1"}),
+                    style={
+                        "padding": "8px 10px",
+                        "borderRadius": "8px",
+                        "background": "linear-gradient(135deg, rgba(124, 58, 237, 0.24), rgba(15, 23, 42, 0.70))",
+                        "border": "1px solid rgba(167, 139, 250, 0.30)",
+                    },
+                ),
+                _generation_story_metric(
+                    "Bulk",
+                    "mass",
+                    ComposeState.input_mass_median,
+                    "kDa",
+                    "radius",
+                    ComposeState.param_radius,
+                    "mm",
+                    "wider layers",
+                ),
+                _generation_story_metric(
+                    "Layering",
+                    "exons",
+                    ComposeState.input_exon_sum,
+                    "",
+                    "spacing",
+                    ComposeState.param_spacing,
+                    "mm",
+                    "layer distance",
+                ),
+                _generation_story_metric(
+                    "Detail",
+                    "system",
+                    ComposeState.input_system_sum,
+                    "genes",
+                    "points",
+                    ComposeState.param_points,
+                    "",
+                    "Voronoi cells",
+                ),
+                _generation_story_metric(
+                    "Depth",
+                    "GRAVY",
+                    ComposeState.input_gravy_median,
+                    "",
+                    "extrusion",
+                    ComposeState.param_extrusion,
+                    "",
+                    "cell relief",
+                ),
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "repeat(auto-fit, minmax(300px, 1fr))",
+                    "gap": "8px",
+                },
+            ),
+            rx.el.div(
+                "Scale X/Y use print-safe defaults; full reproducibility values remain in Model parameters below.",
+                style={"fontSize": "0.75rem", "lineHeight": "1.3", "color": "#94a3b8", "marginTop": "6px"},
+            ),
+            style={
+                "flex": "1 1 100%",
+                "minWidth": "280px",
+                "padding": "10px 12px",
+                "borderRadius": "10px",
+                "background": "linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 42, 0.88))",
+                "border": "1px solid rgba(124, 58, 237, 0.28)",
+                "boxShadow": "0 10px 22px rgba(15, 23, 42, 0.12)",
+                "marginBottom": "10px",
+            },
+        ),
+        rx.fragment(),
+    )
 
 def _section_header(
     expanded: rx.Var,
@@ -4052,20 +4212,32 @@ def _sculpture_section() -> rx.Component:
         rx.cond(
             ComposeState.has_stl,
             rx.el.div(
-                rx.el.iframe(
-                    src=ComposeState.viewer_iframe_src,
-                    id="sculpture-viewer-iframe",
+                _model_generation_story_panel(),
+                rx.el.div(
+                    rx.el.div(
+                        rx.el.iframe(
+                            src=ComposeState.viewer_iframe_src,
+                            id="sculpture-viewer-iframe",
+                            style={
+                                "width": "100%",
+                                "height": "840px",
+                                "border": "1px solid #e5e7eb",
+                                "borderRadius": "8px",
+                                "backgroundColor": "#1a1a2e",
+                            },
+                        ),
+                        rx.el.p(
+                            "Drag to rotate · Scroll to zoom · Right-drag to pan",
+                            style={"fontSize": "0.82rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "6px"},
+                        ),
+                        style={"flex": "1 1 620px", "minWidth": "0"},
+                    ),
                     style={
-                        "width": "100%",
-                        "height": "840px",
-                        "border": "1px solid #e5e7eb",
-                        "borderRadius": "8px",
-                        "backgroundColor": "#1a1a2e",
+                        "display": "flex",
+                        "alignItems": "stretch",
+                        "gap": "14px",
+                        "flexWrap": "wrap",
                     },
-                ),
-                rx.el.p(
-                    "Drag to rotate · Scroll to zoom · Right-drag to pan",
-                    style={"fontSize": "0.82rem", "color": "#9ca3af", "textAlign": "center", "marginTop": "6px"},
                 ),
                 _model_action_panel(),
                 _model_parameters_accordion(),
@@ -5838,15 +6010,38 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
                 margin-bottom: 10px;
             }
         }
-        @media (min-aspect-ratio: 13 / 9) and (max-height: 900px) {
+        @media (min-width: 1200px) and (max-height: 900px) and (orientation: landscape) {
             .me-rpg-profile-page .me-rpg-body-stage {
-                min-height: clamp(780px, 108svh, 980px) !important;
-                padding-bottom: 104px !important;
-                justify-content: flex-start !important;
+                min-height: clamp(600px, calc(100svh - 13rem), 720px) !important;
+                padding: 2px 14px 82px !important;
+                justify-content: center !important;
             }
             .me-rpg-profile-page .me-rpg-body-image {
-                height: clamp(700px, 96svh, 900px) !important;
-                max-width: min(100%, 860px) !important;
+                height: clamp(500px, calc(100svh - 19rem), 620px) !important;
+                max-width: min(100%, 720px) !important;
+            }
+        }
+        @media (orientation: portrait) and (min-width: 900px) {
+            .me-rpg-profile-page .me-rpg-body-stage {
+                min-height: clamp(820px, min(84svh, 92vw), 1180px) !important;
+                padding: 0 18px 78px !important;
+                justify-content: center !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-image {
+                height: clamp(720px, min(76svh, 72vw), 1040px) !important;
+                max-width: min(100%, 920px) !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-marker--expression,
+            .me-rpg-profile-page .me-rpg-body-marker--perception {
+                top: 23% !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-marker--longevity-genome,
+            .me-rpg-profile-page .me-rpg-body-marker--stress-resistance {
+                top: 51% !important;
+            }
+            .me-rpg-profile-page .me-rpg-body-marker--environmental-adaptation,
+            .me-rpg-profile-page .me-rpg-body-marker--regeneration {
+                top: 70% !important;
             }
         }
         @media (min-width: 1800px) and (min-height: 1100px) {
