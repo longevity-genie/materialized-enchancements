@@ -8,6 +8,8 @@ import materialized_enhancements.pages.index  # noqa: F401 — registers pages v
 from materialized_enhancements.env import (
     GENERATED_PUBLIC_DIR,
     GENERATED_URL_PREFIX,
+    UMAMI_SCRIPT_URL,
+    UMAMI_WEBSITE_ID,
     ensure_generated_public_dirs,
 )
 
@@ -15,6 +17,18 @@ from materialized_enhancements.env import (
 ensure_generated_public_dirs()
 _generated_static = StaticFiles(directory=GENERATED_PUBLIC_DIR, check_dir=False)
 DESKTOP_VIEWPORT_WIDTH_PX = 1440
+
+_head_components: list[rx.Component] = [
+    rx.el.meta(name="viewport", content=f"width={DESKTOP_VIEWPORT_WIDTH_PX}"),
+]
+
+if UMAMI_SCRIPT_URL and UMAMI_WEBSITE_ID:
+    _head_components.append(
+        rx.script(
+            src=UMAMI_SCRIPT_URL,
+            custom_attrs={"data-website-id": UMAMI_WEBSITE_ID},
+        )
+    )
 
 
 def normalize_reflex_event_websocket_path(app: ASGIApp) -> ASGIApp:
@@ -46,8 +60,6 @@ def normalize_reflex_event_websocket_path(app: ASGIApp) -> ASGIApp:
 
 app = rx.App(
     theme=rx.theme(appearance="light"),
-    head_components=[
-        rx.el.meta(name="viewport", content=f"width={DESKTOP_VIEWPORT_WIDTH_PX}"),
-    ],
+    head_components=_head_components,
     api_transformer=normalize_reflex_event_websocket_path,
 )

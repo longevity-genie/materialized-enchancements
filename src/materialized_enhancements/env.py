@@ -102,6 +102,12 @@ RESEND_REPLY_TO: str = os.getenv("RESEND_REPLY_TO", "")
 IDLE_TIMEOUT_SECONDS: int = int(os.getenv("IDLE_TIMEOUT_SECONDS", "60"))
 IDLE_WARNING_SECONDS: int = int(os.getenv("IDLE_WARNING_SECONDS", "5"))
 
+# Umami analytics — both must be set for the tracking script to be injected.
+# UMAMI_SCRIPT_URL: full URL to /script.js on your Umami instance.
+# UMAMI_WEBSITE_ID: the UUID shown in Umami Settings → Websites.
+UMAMI_SCRIPT_URL: str = os.getenv("UMAMI_SCRIPT_URL", "")
+UMAMI_WEBSITE_ID: str = os.getenv("UMAMI_WEBSITE_ID", "")
+
 
 def idle_redirect_url() -> str:
     """URL the kiosk returns to when the inactivity timer expires.
