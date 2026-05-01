@@ -420,9 +420,9 @@ def _landing_tab() -> rx.Component:
                         style={
                             "padding": "16px",
                             "borderRadius": "16px",
-                            "border": "1px solid #d4c5f9",
-                            "background": "#f3f0ff",
-                            "boxShadow": "0 10px 24px rgba(124, 58, 237, 0.12)",
+                            "border": "1px solid rgba(196, 181, 253, 0.24)",
+                            "background": "rgba(15, 23, 42, 0.54)",
+                            "boxShadow": "0 14px 34px rgba(2, 6, 23, 0.18)",
                             "margin": "0 0 18px 0",
                         },
                     ),
@@ -5902,6 +5902,11 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
         #me-rpg-tab-segment.ui.bottom.attached.segment {
             background: #020617 !important;
             border-color: rgba(124, 58, 237, 0.42) !important;
+        }
+        html:has(#me-rpg-tab-segment),
+        body:has(#me-rpg-tab-segment),
+        #me-app-content:has(#me-rpg-tab-segment) {
+            background: #020617 !important;
         }
         html:has(.me-rpg-profile-page),
         body:has(.me-rpg-profile-page) {
