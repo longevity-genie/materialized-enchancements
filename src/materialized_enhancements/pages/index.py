@@ -1242,6 +1242,66 @@ def _gene_category_accent_color(category: rx.Var) -> rx.Var:
     )
 
 
+def _secondary_category_badge(cat_name: rx.Var) -> rx.Component:
+    color = rx.match(
+        cat_name,
+        ("Stress Resistance", "#e67e22"),
+        ("Longevity & Genome", "#27ae60"),
+        ("Regeneration", "#16a085"),
+        ("Environmental Adaptation", "#2980b9"),
+        ("Perception", "#e84393"),
+        ("Expression", "#8e44ad"),
+        "#7c3aed",
+    )
+    icon_name = rx.match(
+        cat_name,
+        ("Stress Resistance", "shield"),
+        ("Longevity & Genome", "heartbeat"),
+        ("Regeneration", "sync"),
+        ("Environmental Adaptation", "globe"),
+        ("Perception", "eye"),
+        ("Expression", "paint brush"),
+        "star",
+    )
+    return rx.el.span(
+        fomantic_icon(icon_name, size=10, color=color),
+        cat_name,
+        title=cat_name,
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "gap": "4px",
+            "fontSize": "0.7rem",
+            "fontWeight": "700",
+            "padding": "1px 7px",
+            "borderRadius": "4px",
+            "backgroundColor": f"color-mix(in srgb, {color} 18%, transparent)",
+            "border": f"1px solid color-mix(in srgb, {color} 35%, transparent)",
+            "color": color,
+            "whiteSpace": "nowrap",
+        },
+    )
+
+
+def _secondary_categories_row(gene_item: rx.Var) -> rx.Component:
+    return rx.cond(
+        gene_item["secondary_categories"].length() > 0,
+        rx.el.div(
+            rx.foreach(
+                gene_item["secondary_categories"],
+                _secondary_category_badge,
+            ),
+            style={
+                "display": "flex",
+                "flexWrap": "wrap",
+                "gap": "4px",
+                "marginTop": "3px",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
 def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
     included = gene_item["included"]
     gene_sym = gene_item["gene"]
@@ -2435,6 +2495,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                             "marginTop": "2px",
                         },
                     ),
+                    _secondary_categories_row(gene_item),
                     _rpg_gene_species_label(gene_item),
                     style={"flex": "1", "minWidth": "0"},
                 ),
@@ -2541,7 +2602,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
 
 def _rpg_gene_card_for_category(gene_item: rx.Var, category: str) -> rx.Component:
     return rx.cond(
-        gene_item["category"] == category,
+        (gene_item["category"] == category) | gene_item["secondary_categories"].contains(category),
         _rpg_gene_card(gene_item),
         rx.fragment(),
     )

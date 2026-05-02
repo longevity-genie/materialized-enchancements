@@ -166,10 +166,10 @@ _JIGSAW_ACCENT = "#16a085"
 
 
 def _primary_category_color(animal: dict) -> str:
-    """Return the CATEGORY_COLORS hex for the animal's first trait/category."""
-    traits: list = animal.get("traits") or []
-    if traits:
-        return CATEGORY_COLORS.get(traits[0], "#9ca3af")
+    """Return the CATEGORY_COLORS hex for the animal's first category."""
+    categories: list = animal.get("categories") or []
+    if categories:
+        return CATEGORY_COLORS.get(categories[0], "#9ca3af")
     return "#9ca3af"
 
 
@@ -177,7 +177,7 @@ def _primary_category_color(animal: dict) -> str:
 _JIGSAW_LEGEND_ITEMS: list[tuple[str, str]] = [
     (cat, color)
     for cat, color in CATEGORY_COLORS.items()
-    if any(cat in (a.get("traits") or []) for a in ANIMAL_LIBRARY)
+    if any(cat in (a.get("categories") or []) for a in ANIMAL_LIBRARY)
 ]
 
 

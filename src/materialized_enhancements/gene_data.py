@@ -31,6 +31,7 @@ class GeneEntry(TypedDict):
     species_scientific_names: str
     category: str
     category_detail: str
+    secondary_categories: list[str]
     trait: str
     short_description: str
     narrative: str
@@ -55,6 +56,7 @@ class AnimalEntry(TypedDict):
     scientific_name: str
     species_url: str
     genes: list[str]
+    categories: list[str]
     traits: list[str]
     superpower: str
     puzzle_svg: str
@@ -77,7 +79,8 @@ class TestingEntry(TypedDict):
 
 _LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Gene": "gene",
-    "Category": "category_detail",
+    "Category": "category",
+    "Subcategory": "trait",
     "Short Description": "short_description",
     "Narrative": "narrative",
     "Mechanism": "mechanism",
@@ -87,6 +90,7 @@ _LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Translational Gaps": "translational_gaps",
     "Key References (DOIs)": "key_references",
     "Notes (limitations, contradictions, caveats)": "notes",
+    "Secondary Categories": "secondary_categories_raw",
 }
 
 
@@ -132,10 +136,10 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
         .with_columns(
             pl.col("gene_id").str.strip_chars(),
             pl.col("gene").str.strip_chars(),
-            pl.col("category_detail").str.strip_chars(),
+            pl.col("category").str.strip_chars(),
+            pl.col("trait").str.strip_chars(),
             pl.col("short_description").str.strip_chars(),
-            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
-            pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("trait"),
+            (pl.col("category") + " / " + pl.col("trait")).alias("category_detail"),
             pl.col("narrative").alias("description"),
             pl.col("mechanism").alias("enhancement"),
             pl.col("key_references")
@@ -157,6 +161,10 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
         first_sci = scientific_names[0] if scientific_names else ""
         row["species_page_url"] = species_wikipedia_url(first_sci)
         row["testing_entries"] = []
+        raw_sec = str(row.pop("secondary_categories_raw", "") or "").strip()
+        row["secondary_categories"] = [
+            s.strip() for s in raw_sec.split("|") if s.strip()
+        ] if raw_sec else []
     return rows
 
 
@@ -222,12 +230,15 @@ def build_animal_library(library: list[GeneEntry]) -> list[AnimalEntry]:
                     scientific_name=sp["scientific_name"],
                     species_url=species_wikipedia_url(sp["scientific_name"]),
                     genes=[],
+                    categories=[],
                     traits=[],
                     superpower=entry["narrative"],
                     puzzle_svg=resolve_puzzle_svg(entry["gene_id"], [sid]),
                 )
             if entry["gene"] not in species_data[sid]["genes"]:
                 species_data[sid]["genes"].append(entry["gene"])
+            if entry["category"] not in species_data[sid]["categories"]:
+                species_data[sid]["categories"].append(entry["category"])
             if entry["trait"] not in species_data[sid]["traits"]:
                 species_data[sid]["traits"].append(entry["trait"])
             if not species_data[sid]["superpower"]:

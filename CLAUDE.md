@@ -18,7 +18,7 @@ materialized-enhancements/          ← repo root
 │   │   └── puzzle/                 ← SVG puzzle pieces, one per source organism
 │   │       ├── human_base.svg      ← base human silhouette
 │   │       ├── 1_tardigrade.svg
-│   │       └── ...                 ← numbered SVGs, see _ORGANISM_PUZZLE_MAP in gene_data.py
+│   │       └── ...                 ← numbered SVGs, see _SPECIES_PUZZLE_MAP in puzzle.py
 │   ├── interim/                    ← intermediate processing
 │   └── output/                     ← generated art outputs, parquets, public report artifacts (gitignored)
 └── src/materialized_enhancements/
@@ -28,7 +28,7 @@ materialized-enhancements/          ← repo root
     ├── run.py                      ← entry point: exec `reflex run`
     ├── state.py                    ← AppState, ComposeState, JigsawState, CATEGORY_COLORS
     ├── gene_data.py                ← CSV loader → GENE_LIBRARY, CATEGORY_TRAITS, ANIMAL_LIBRARY
-    │                                  also owns _ORGANISM_PUZZLE_MAP (organism → SVG filename)
+    ├── puzzle.py                   ← _SPECIES_PUZZLE_MAP / _SPECIES_LAYER_MAP (species → SVG filename)
     ├── components/
     │   └── layout.py               ← template, two_column_layout, fomantic_icon
     └── pages/
@@ -58,14 +58,15 @@ Gene data is split across three CSVs:
 |---|---|---|
 | gene_id | `gene_id` | Unique gene identifier |
 | Gene | `gene` | Gene display name |
-| Category | `category_detail` | Full hierarchical category (e.g., "Stress Resistance / Radiation Shielding") |
+| Category | `category` | Parent category (e.g., "Stress Resistance") |
+| Subcategory | `trait` | Specific trait within the category (e.g., "Radiation Shielding") |
+| Secondary Categories | `secondary_categories` | Pipe-separated parent category names for cross-cutting genes (optional) |
 | Narrative | `narrative` / `description` | Detailed biological story |
 | Short Description | `short_description` | One-sentence summary |
 | Mechanism | `mechanism` / `enhancement` | Molecular mechanism |
 | Achievements (effect sizes) | `achievements` | Quantified experimental results |
 | Highest Evidence Tier | `evidence_tier` | Evidence strength (T2–T6) |
 | Confidence | `confidence` | Confidence level |
-| Best Host Tested | `best_host_tested` | Where gene has been expressed |
 | Translational Gaps | `translational_gaps` | Remaining research needs |
 | Key References (DOIs) | `key_references` | DOI links to publications |
 | Notes | `notes` | Caveats and contradictions |
@@ -75,23 +76,30 @@ Species fields are resolved at load time via `gene_species.csv` + `species.csv`:
 - `species_common_names: str` — joined common names (e.g., "Black Flying Fox & Bottlenose Dolphin")
 - `species_scientific_names: str` — joined scientific names (italic in UI)
 
-### Key distinction: Category vs Trait
+### Key distinction: Category vs Trait (Subcategory)
 
-- **Category** (9): High-level groupings (e.g., "Stress Resistance", "Longevity & Genome")
-- **Trait**: Derived from the first segment of `category_detail` (split by " / ")
+- **Category** (6): High-level groupings (e.g., "Stress Resistance", "Longevity & Genome") — stored in CSV `Category` column, mapped to Python `category`
+- **Trait / Subcategory**: Specific trait within a category (e.g., "Radiation Shielding") — stored in CSV `Subcategory` column, mapped to Python `trait`
+- **`category_detail`**: Computed display string `f"{category} / {trait}"` for backward-compatible full labels
 - One category contains multiple traits; one trait maps to one or more genes
+
+### Primary vs Secondary Categories
+
+- Each gene has exactly one **primary category** — the `Category` CSV column. This is used for budget accounting, sculpture/model generation, bitmask encoding, and gene counting.
+- A gene may optionally have **secondary categories** — additional parent category names listed in the `Secondary Categories` CSV column (pipe-separated). These are display-only: the gene appears in secondary category accordions with a badge, but budget, sculpture parameters, and counts always use the primary.
+- **Model generation is unaffected by secondary categories** — `sculpture.py` filters genes by `g["category"] in selected_categories` using only the primary.
 
 ### Derived data structures (gene_data.py)
 
 - `SPECIES_LOOKUP: dict[str, SpeciesEntry]` — species_id → species metadata
 - `GENE_SPECIES_MAP: dict[str, list[str]]` — gene_id → list of species_ids
-- `GENE_LIBRARY: list[GeneEntry]` — all 32 genes with resolved species fields
+- `GENE_LIBRARY: list[GeneEntry]` — all genes with resolved species fields
 - `CATEGORY_COUNTS: dict[str, int]` — genes per category
-- `CATEGORY_TRAITS: dict[str, list[str]]` — category → trait names
-- `ANIMAL_LIBRARY: list[AnimalEntry]` — per-species view (keyed by species_id)
+- `CATEGORY_TRAITS: dict[str, list[str]]` — category → trait (subcategory) names
+- `ANIMAL_LIBRARY: list[AnimalEntry]` — per-species view (keyed by species_id); each animal has `categories` (parent) and `traits` (subcategory) lists
 - `SPECIES_GENE_IDS: dict[str, set[str]]` — reverse map: species_id → gene_ids
-- `UNIQUE_CATEGORIES: list[str]` — 9 parent category names
-- `UNIQUE_TRAITS: list[str]` — 35 trait names
+- `UNIQUE_CATEGORIES: list[str]` — parent category names
+- `UNIQUE_TRAITS: list[str]` — trait (subcategory) names
 
 ---
 
@@ -278,6 +286,6 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - Published generated reports are stored under `data/output/public/reports/<slug>/` and served at `/generated/reports/<slug>/`. The folder contains public download files plus a crawler-friendly `index.html`; never commit generated contents.
 - PDF export: do not rasterize `#me-report-pdf-long` per A4 page (balloons file size). Use jsPDF `text()` / `splitTextToSize()` from DOM rows. Page 1 is built in `renderCoverPageA4()` from hidden inputs and `window.__reportViews`, not from scaling a screenshot of `#me-report-card`.
 - In Reflex dev mode, `assets/` is copied to `.web/public/` at compile time; the dev server serves the `.web/public/` copy. When you edit vendored JS under `assets/vendor/` without restarting `reflex run`, copy into `.web/public/vendor/` or restart — otherwise you test a stale asset.
-- Gene/sculpture inputs use `data/input/gene_library.csv`, `data/input/species.csv`, `data/input/gene_species.csv`, and `data/input/gene_properties_extended.csv` (see `gene_data.py` / `sculpture.py`). Species are resolved via the join table, not embedded in the gene CSV. When the CSV `Category` is hierarchical (`Parent / Detail`), the loader keeps the full string as `category_detail` and derives the parent `category` segment for the nine-way budget, bitmask, and sculpture math so points stay aligned with the original model.
+- Gene/sculpture inputs use `data/input/gene_library.csv`, `data/input/species.csv`, `data/input/gene_species.csv`, and `data/input/gene_properties_extended.csv` (see `gene_data.py` / `sculpture.py`). Species are resolved via the join table, not embedded in the gene CSV. The CSV has separate `Category` (parent) and `Subcategory` (trait) columns; the loader maps them to `category` and `trait` fields and computes `category_detail` as `f"{category} / {trait}"` for display.
 - The whole `data/input/` tree is gitignored in this repo; CSVs and puzzle SVGs are local runtime inputs. There is no in-repo command that generates `gene_properties*` — obtain files from the team or another machine, or recreate them using `data/input/sculpture_mapping_spec.md` as the spec.
 - Dev server / LAN: `python-dotenv` loads repo-root `.env` in `rxconfig.py` and `src/materialized_enhancements/run.py` before config. Backend bind defaults to `0.0.0.0` via `BACKEND_BIND_HOST` (or `REFLEX_BACKEND_HOST` when set). `vite_allowed_hosts` is permissive by default so `http://<LAN-IP>:3000` works; optionally restrict with `BACKEND_VITE_ALLOWED_HOSTS`. For phones on Wi‑Fi, `API_URL` may need the machine LAN IP and backend port, not `localhost`, or websockets/state can fail after the first paint.

@@ -89,6 +89,7 @@ class SculptureSelectedGene(TypedDict):
     trait: str
     category: str
     category_detail: str
+    secondary_categories: list[str]
     species_common_names: str
     species_scientific_names: str
     short_description: str
@@ -1483,6 +1484,7 @@ class ComposeState(rx.State):
                 "trait": g["trait"],
                 "category": g["category"],
                 "category_detail": g["category_detail"],
+                "secondary_categories": g.get("secondary_categories", []),
                 "species_common_names": g["species_common_names"],
                 "species_scientific_names": g["species_scientific_names"],
                 "short_description": g["short_description"],

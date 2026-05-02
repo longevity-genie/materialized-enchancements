@@ -67,16 +67,18 @@ The active public Gene Library is custom Reflex/Fomantic UI, not `reflex-mui-dat
 
 ## Gene Library
 
-32 genes · 6 parent categories · 26 source species spanning microbes, animals, fungi, humans, and archaic-human ancestry.
+38 genes · 6 parent categories · 26+ source species spanning microbes, animals, fungi, humans, and archaic-human ancestry.
 
 | Category | Genes |
 |---|---|
 | Stress Resistance | 8 |
-| Longevity & Genome | 7 |
-| Regeneration | 4 |
+| Longevity & Genome | 10 |
+| Regeneration | 7 |
 | Environmental Adaptation | 5 |
 | Perception | 4 |
 | Expression | 4 |
+
+Each gene has one **primary category** (used for budget accounting, sculpture generation, and accordion placement) and optionally one or more **secondary categories** indicating cross-cutting biological relevance. Secondary categories are displayed as badges on gene cards and cause the gene to also appear in those category accordions.
 
 ### Data files
 
@@ -84,7 +86,7 @@ Gene data is split across three CSV files in `data/input/`:
 
 | File | Purpose | Key columns |
 |---|---|---|
-| `gene_library.csv` | Gene metadata (source of truth) | `gene_id`, `Gene`, `Category`, `Narrative`, `Short Description`, `Mechanism`, `Achievements`, `Evidence Tier`, `Confidence`, … |
+| `gene_library.csv` | Gene metadata (source of truth) | `gene_id`, `Gene`, `Category`, `Subcategory`, `Narrative`, `Short Description`, `Mechanism`, `Achievements`, `Evidence Tier`, `Confidence`, `Secondary Categories`, … |
 | `species.csv` | Species lookup table | `species_id`, `scientific_name`, `common_name`, taxonomy (`kingdom` through `family`), life-history data (`max_longevity_years`, `adult_weight_g`, …) |
 | `gene_species.csv` | Many-to-many join | `gene_id`, `species_id` — multi-species genes (e.g. klotho in both human and mouse) have multiple rows |
 
@@ -123,14 +125,15 @@ Append a row to `data/input/gene_library.csv`:
 |---|---|---|
 | `gene_id` | Unique lowercase slug | `cirbp` |
 | `Gene` | Display name / symbol | `CIRBP` |
-| `Category` | Hierarchical `Parent / Detail` | `Stress Resistance / Cold-Inducible Repair` |
+| `Category` | Parent category name — determines budget accounting, sculpture parameters, and main accordion placement | `Stress Resistance` |
+| `Subcategory` | Specific trait within the category | `Cold-Inducible Repair` |
+| `Secondary Categories` | Pipe-separated parent category names for cross-cutting genes (optional, can be empty) | `Longevity & Genome` or `Stress Resistance\|Regeneration` |
 | `Narrative` | 200–400 word biological story — what the gene does, key experiments, caveats, and contradictions | *(see existing entries for tone)* |
 | `Short Description` | One sentence for card view | `Bowhead whales seem to use CIRBP as part of a very careful DNA-repair system…` |
 | `Mechanism` | Molecular mechanism of action | `Cold-inducible RNA-binding protein; promotes Ku70/80 loading…` |
 | `Achievements (effect sizes)` | Quantified experimental results with citations | `Drosophila overexpression extended lifespan ~20%…` |
 | `Highest Evidence Tier` | T2 (in vitro) through T6 (multiple independent labs) | `T6` |
 | `Confidence` | `Low`, `Medium`, `Medium-High`, or `High` | `Medium-High` |
-| `Best Host Tested` | Where the gene has been successfully expressed | `Human cells in vitro; Drosophila whole-organism` |
 | `Translational Gaps` | What remains to be proven | `Mouse Tg lifespan/cancer study; AAV/LNP delivery…` |
 | `Key References (DOIs)` | Pipe-separated DOI links | `Author Journal Year https://doi.org/… \| …` |
 | `Notes (limitations, contradictions, caveats)` | Honest caveats — contradictions matter | `CIRBP has DUAL ROLES: extracellular CIRP is pro-inflammatory…` |
@@ -139,6 +142,12 @@ Append a row to `data/input/gene_library.csv`:
 - Be honest about contradictions and limitations — the audience is scientifically literate.
 - Mention the strongest experimental evidence with effect sizes.
 - End on a realistic assessment, not hype.
+
+**Choosing categories:**
+- The **Category** column is the parent category — it determines budget accounting, sculpture parameters, and the gene's main accordion placement. Pick the single best fit.
+- The **Subcategory** column is the specific trait within that category (e.g., "Radiation Shielding" within "Stress Resistance"). The loader maps this to the `trait` field and computes a combined `category_detail` display label (`"Category / Subcategory"`).
+- **Secondary categories** are optional. Add them when a gene has clear biological relevance to another parent category — e.g., FOXO3 is primarily "Longevity & Genome" but also relevant to "Stress Resistance". The gene will appear in secondary category accordions with a badge. Budget and model generation always use the primary category only.
+- Valid parent category names: `Stress Resistance`, `Longevity & Genome`, `Regeneration`, `Environmental Adaptation`, `Perception`, `Expression`.
 
 ### 4. Link gene to species
 
