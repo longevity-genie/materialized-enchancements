@@ -1,0 +1,27 @@
+species_id,scientific_name,common_name,genus,species,kingdom,phylum,class,order,family,max_longevity_years,adult_weight_g,metabolic_rate_w,body_mass_g,temperature_k,female_maturity_days,male_maturity_days,gestation_days,imr_per_year,mrdt_years
+aequorea_victoria,Aequorea victoria,Crystal jellyfish,Aequorea,victoria,Animalia,Cnidaria,Hydrozoa,Leptothecata,Aequoreidae,0.5,,,,,,,,,
+ambystoma_mexicanum,Ambystoma mexicanum,Axolotl,Ambystoma,mexicanum,Animalia,Chordata,Amphibia,Caudata,Ambystomatidae,17.0,,,,,548,548,18,,
+balaena_mysticetus,Balaena mysticetus,Bowhead whale,Balaena,mysticetus,Animalia,Chordata,Mammalia,Cetacea,Balaenidae,211.0,100000000.0,,,,8212,8212,396,,
+cladosporium_sphaerospermum,Cladosporium sphaerospermum,Chernobyl fungus,Cladosporium,sphaerospermum,Fungi,Ascomycota,Dothideomycetes,Cladosporiales,Cladosporiaceae,,,,,298.0,,,,,
+crotalus_atrox,Crotalus atrox,Western diamondback rattlesnake,Crotalus,atrox,Animalia,Chordata,Reptilia,Squamata,Viperidae,27.0,6700.0,,,,1095,1095,167,,
+cyclorana_platycephala,Cyclorana platycephala,Water-holding frog,Cyclorana,platycephala,Animalia,Chordata,Amphibia,Anura,Hylidae,,,,,,,,,,
+deinococcus_radiodurans,Deinococcus radiodurans,Conan the Bacterium,Deinococcus,radiodurans,Bacteria,Deinococcota,Deinococci,Deinococcales,Deinococcaceae,,9.5e-13,,9.5e-13,303.0,,,,,
+electrophorus_electricus,Electrophorus electricus,Electric eel,Electrophorus,electricus,Animalia,Chordata,Teleostei,Gymnotiformes,Electrophoridae,12.6,,,,,,,,,
+erithacus_rubecula,Erithacus rubecula,European robin,Erithacus,rubecula,Animalia,Chordata,Aves,Passeriformes,Muscicapidae,19.3,17.3,0.281,17.6,,365,365,,0.02,1.6
+felis_catus,Felis catus,Cat,Felis,catus,Animalia,Chordata,Mammalia,Carnivora,Felidae,30.0,3900.0,,,311.25,289,304,65,,
+gekko_japonicus,Gekko japonicus,Japanese gecko,Gekko,japonicus,Animalia,Chordata,Reptilia,Squamata,Gekkonidae,23.5,54.13,,,,,,,,
+heterocephalus_glaber,Heterocephalus glaber,Naked mole-rat,Heterocephalus,glaber,Animalia,Chordata,Mammalia,Rodentia,Bathyergidae,31.0,35.0,0.128,35.3,305.25,228,,70,,
+homarus_americanus,Homarus americanus,American lobster,Homarus,americanus,Animalia,Arthropoda,Malacostraca,Decapoda,Nephropidae,100.0,,,,,,,,,
+homo_sapiens,Homo sapiens,Human,Homo,sapiens,Animalia,Chordata,Mammalia,Primates,Hominidae,122.5,62035.0,82.78,70000.0,310.15,4745,5110,280,0.0002,8.0
+leptonychotes_weddellii,Leptonychotes weddellii,Weddell seal,Leptonychotes,weddellii,Animalia,Chordata,Mammalia,Carnivora,Phocidae,,425000.0,,,,1365,1642,304,,
+loxodonta_africana,Loxodonta africana,African elephant,Loxodonta,africana,Animalia,Chordata,Mammalia,Proboscidea,Elephantidae,65.0,4800000.0,,,309.35,4018,3650,670,0.002,8.0
+mus_musculus,Mus musculus,Mouse,Mus,musculus,Animalia,Chordata,Mammalia,Rodentia,Muridae,4.0,20.5,0.271,18.0,310.05,42,42,19,0.01,0.3
+photinus_pyralis,Photinus pyralis,Firefly,Photinus,pyralis,Animalia,Arthropoda,Insecta,Coleoptera,Lampyridae,,,,,,,,,,
+pseudopleuronectes_americanus,Pseudopleuronectes americanus,Winter flounder,Pseudopleuronectes,americanus,Animalia,Chordata,Teleostei,Pleuronectiformes,Pleuronectidae,14.0,1980.0,,,,1022,1034,,,
+pteropus_alecto,Pteropus alecto,Black flying fox,Pteropus,alecto,Animalia,Chordata,Mammalia,Chiroptera,Pteropodidae,20.3,672.1,,,,,,,,
+ramazzottius_varieornatus,Ramazzottius varieornatus,Tardigrade,Ramazzottius,varieornatus,Animalia,Tardigrada,Eutardigrada,Parachela,Ramazzottiidae,0.096,,,,,,,,,
+schmidtea_mediterranea,Schmidtea mediterranea,Planarian,Schmidtea,mediterranea,Animalia,Platyhelminthes,Trepaxonemata,Neoophora,Dugesiidae,,,,,,,,,,999.0
+sepia_officinalis,Sepia officinalis,Common cuttlefish,Sepia,officinalis,Animalia,Mollusca,Cephalopoda,Sepiida,Sepiidae,,,,,,,,,,
+somniosus_microcephalus,Somniosus microcephalus,Greenland shark,Somniosus,microcephalus,Animalia,Chordata,Chondrichthyes,Squaliformes,Somniosidae,392.0,,,,,56940,,,,
+turritopsis_dohrnii,Turritopsis dohrnii,Immortal jellyfish,Turritopsis,dohrnii,Animalia,Cnidaria,Hydrozoa,Anthoathecatae,Oceanidae,,,,,,,,,,
+tursiops_truncatus,Tursiops truncatus,Bottlenose dolphin,Tursiops,truncatus,Animalia,Chordata,Mammalia,Cetacea,Delphinidae,51.6,200000.0,,,,2831,3689,365,,

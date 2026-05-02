@@ -1,0 +1,6 @@
+#!/bin/sh
+# Keep CLAUDE.md in sync with AGENTS.md (AGENTS.md is the source of truth)
+if git diff --cached --name-only | grep -q "^AGENTS.md$"; then
+    cp AGENTS.md CLAUDE.md
+    git add CLAUDE.md
+fi

@@ -217,6 +217,9 @@ marimo/_lsp/
 __marimo__/
 .just_dna_pipelines.code-workspace
 
+# Internal data-prep / analysis scripts (not used by app)
+tools/
+
 # Repo-local runtime state / caches
 data/interim/
 data/output/

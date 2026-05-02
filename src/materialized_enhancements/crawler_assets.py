@@ -121,7 +121,7 @@ def build_llms_txt() -> str:
 
 - Site: {_canonical_base_url()}
 - Repository: https://github.com/winternewt/materialized-enchancements
-- Data source: `data/input/gene_library_extended.csv` loaded by `materialized_enhancements.gene_data`
+- Data source: `data/input/gene_library.csv` loaded by `materialized_enhancements.gene_data`
 
 ## Public Pages
 

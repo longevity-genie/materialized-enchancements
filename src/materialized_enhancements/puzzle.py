@@ -1,8 +1,8 @@
-"""Jigsaw puzzle: organism selections → SVG composition.
+"""Jigsaw puzzle: species selections → SVG composition.
 
-Manages puzzle-piece SVGs for each source organism and composes them
+Manages puzzle-piece SVGs for each source species and composes them
 into a combined jigsaw SVG showing the human silhouette with selected
-organism layers.
+species layers.
 """
 
 from __future__ import annotations
@@ -15,41 +15,66 @@ PUZZLE_DIR = Path(__file__).resolve().parents[2] / "data" / "input" / "puzzle"
 ALL_ANIMALS_SVG_PATH = PUZZLE_DIR / "ALL_ANIMALS.svg"
 
 
-_ORGANISM_PUZZLE_MAP: dict[str, str] = {
-    "tardigrade": "1_tardigrade.svg",
-    "deinococcus": "2_Deinococcus.svg",
-    "naked mole rat": "3_naked mole rat.svg",
-    "fungi": "4_fungi_true.svg",
-    "elephant": "5_elephant.svg",
-    "shark": "6_shark.svg",
-    "whale": "7_whale.svg",
-    "jellyfish": "8_jellyfish.svg",
-    "planarian": "9_planarian.svg",
-    "axolotl": "10_axolotl.svg",
-    "bat": "11_bat.svg",
-    "seal": "12_seal.svg",
-    "cuttlefish": "19_octopus.svg",
-    "octopus": "19_octopus.svg",
-    "fish": "13_fish.svg",
-    "dolphin": "14_dolphin.svg",
-    "pit viper": "15_Pit Viper.svg",
-    "viper": "15_Pit Viper.svg",
-    "mantis shrimp": "16_Mantis Shrimp.svg",
-    "robin": "17_European Robin.svg",
-    "cat": "18_cat.svg",
-    "firefly": "20._fireflysvg.svg",
-    "eel": "21_eel.svg",
-    "sea slug": "22_sea slug.svg",
-    "elysia": "22_sea slug.svg",
-    "gecko": "23_gecko.svg",
-    "roundworm": "24_worm.svg",
-    "caenorhabditis": "24_worm.svg",
-    "mouse": "25_mouse.svg",
-    "lobster": "26_lobster.svg",
-    "frog": "27_frog.svg",
-    "tibetan": "28_homo-longi.svg",
-    "denisov": "28_homo-longi.svg",
-    "highlander": "28_homo-longi.svg",
+HUMAN_SPECIES_ID = "homo_sapiens"
+
+_SPECIES_PUZZLE_MAP: dict[str, str] = {
+    "ramazzottius_varieornatus": "1_tardigrade.svg",
+    "deinococcus_radiodurans": "2_Deinococcus.svg",
+    "heterocephalus_glaber": "3_naked mole rat.svg",
+    "cladosporium_sphaerospermum": "4_fungi_true.svg",
+    "loxodonta_africana": "5_elephant.svg",
+    "somniosus_microcephalus": "6_shark.svg",
+    "balaena_mysticetus": "7_whale.svg",
+    "turritopsis_dohrnii": "8_jellyfish.svg",
+    "aequorea_victoria": "8_jellyfish.svg",
+    "schmidtea_mediterranea": "9_planarian.svg",
+    "ambystoma_mexicanum": "10_axolotl.svg",
+    "pteropus_alecto": "11_bat.svg",
+    "leptonychotes_weddellii": "12_seal.svg",
+    "sepia_officinalis": "19_octopus.svg",
+    "pseudopleuronectes_americanus": "13_fish.svg",
+    "tursiops_truncatus": "14_dolphin.svg",
+    "crotalus_atrox": "15_Pit Viper.svg",
+    "erithacus_rubecula": "17_European Robin.svg",
+    "felis_catus": "18_cat.svg",
+    "photinus_pyralis": "20._fireflysvg.svg",
+    "electrophorus_electricus": "21_eel.svg",
+    "gekko_japonicus": "23_gecko.svg",
+    "mus_musculus": "25_mouse.svg",
+    "homarus_americanus": "26_lobster.svg",
+    "cyclorana_platycephala": "27_frog.svg",
+}
+
+_GENE_PUZZLE_OVERRIDE: dict[str, str] = {
+    "epas1_tibetan": "28_homo-longi.svg",
+}
+
+_SPECIES_LAYER_MAP: dict[str, str] = {
+    "ramazzottius_varieornatus": "1_tardigrade",
+    "deinococcus_radiodurans": "2_Deinococcus",
+    "heterocephalus_glaber": "3_naked mole rat",
+    "cladosporium_sphaerospermum": "4_fungi",
+    "loxodonta_africana": "5_elephant",
+    "somniosus_microcephalus": "6_shark",
+    "balaena_mysticetus": "7_whale",
+    "turritopsis_dohrnii": "8_jellyfish",
+    "aequorea_victoria": "8_jellyfish",
+    "schmidtea_mediterranea": "9_planarian",
+    "ambystoma_mexicanum": "10_axolotl",
+    "pteropus_alecto": "11_bat",
+    "leptonychotes_weddellii": "12_seal",
+    "sepia_officinalis": "19_octopus",
+    "pseudopleuronectes_americanus": "13_fish",
+    "tursiops_truncatus": "14_dolphin",
+    "crotalus_atrox": "15_pit viper",
+    "erithacus_rubecula": "17_european robin",
+    "felis_catus": "18_cat",
+    "photinus_pyralis": "20_firefly",
+    "electrophorus_electricus": "21_eel",
+    "gekko_japonicus": "23_gecko",
+    "mus_musculus": "25_mouse",
+    "homarus_americanus": "26_lobster",
+    "cyclorana_platycephala": "27_frog",
 }
 
 
@@ -63,65 +88,25 @@ ET.register_namespace("inkscape", _INKSCAPE_NS)
 ET.register_namespace("sodipodi", _SODIPODI_NS)
 ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
 
-def _norm_org_for_match(name: str) -> str:
-    """Lowercase and treat hyphens like spaces so e.g. 'mole-rat' matches 'mole rat'."""
-    return name.lower().replace("-", " ")
 
-
-_ORGANISM_LAYER_MAP: dict[str, str] = {
-    "tardigrade": "1_tardigrade",
-    "deinococcus": "2_Deinococcus",
-    "naked mole rat": "3_naked mole rat",
-    "fungi": "4_fungi",
-    "elephant": "5_elephant",
-    "shark": "6_shark",
-    "whale": "7_whale",
-    "jellyfish": "8_jellyfish",
-    "planarian": "9_planarian",
-    "axolotl": "10_axolotl",
-    "bat": "11_bat",
-    "seal": "12_seal",
-    "cuttlefish": "19_octopus",
-    "octopus": "19_octopus",
-    "fish": "13_fish",
-    "dolphin": "14_dolphin",
-    "pit viper": "15_pit viper",
-    "viper": "15_pit viper",
-    "mantis shrimp": "16_mantis shrimp",
-    "robin": "17_european robin",
-    "cat": "18_cat",
-    "firefly": "20_firefly",
-    "eel": "21_eel",
-    "sea slug": "22_sea slug",
-    "elysia": "22_sea slug",
-    "gecko": "23_gecko",
-    "roundworm": "24_worm",
-    "caenorhabditis": "24_worm",
-    "worm": "24_worm",
-    "mouse": "25_mouse",
-    "lobster": "26_lobster",
-    "frog": "27_frog",
-}
-
-
-def resolve_puzzle_svg(source_organism: str) -> str:
-    """Return the puzzle SVG filename for a given source organism string, or empty string."""
-    lower = _norm_org_for_match(source_organism)
-    for keyword, svg in _ORGANISM_PUZZLE_MAP.items():
-        if keyword in lower:
+def resolve_puzzle_svg(gene_id: str, species_ids: list[str]) -> str:
+    """Return the puzzle SVG filename for a gene given its species, or empty string."""
+    if gene_id in _GENE_PUZZLE_OVERRIDE:
+        return _GENE_PUZZLE_OVERRIDE[gene_id]
+    for sid in species_ids:
+        svg = _SPECIES_PUZZLE_MAP.get(sid, "")
+        if svg:
             return svg
     return ""
 
 
-def _resolve_organism_layers(organisms: list[str]) -> set[str]:
-    """Resolve a list of organism display names to their SVG layer labels."""
+def _resolve_species_layers(species_ids: list[str]) -> set[str]:
+    """Resolve a list of species_ids to their SVG layer labels."""
     labels: set[str] = set()
-    for org in organisms:
-        lower = _norm_org_for_match(org)
-        for keyword, label in _ORGANISM_LAYER_MAP.items():
-            if keyword in lower:
-                labels.add(label)
-                break
+    for sid in species_ids:
+        label = _SPECIES_LAYER_MAP.get(sid)
+        if label:
+            labels.add(label)
     return labels
 
 
@@ -132,11 +117,8 @@ _ALL_ANIMALS_SVG_RAW: str = (
 )
 
 
-HUMAN_ORGANISM = "Human (Homo sapiens)"
-
-
-def build_jigsaw_svg(selected_organisms: list[str], bold_base: bool = False) -> str:
-    """Build a filtered SVG keeping only the base silhouette + selected organism layers.
+def build_jigsaw_svg(selected_species_ids: list[str], bold_base: bool = False) -> str:
+    """Build a filtered SVG keeping only the base silhouette + selected species layers.
 
     When bold_base is True the base silhouette outline is thickened to indicate
     that a human-specific gene selection is active.
@@ -145,7 +127,7 @@ def build_jigsaw_svg(selected_organisms: list[str], bold_base: bool = False) -> 
         return ""
 
     root = ET.fromstring(_ALL_ANIMALS_SVG_RAW)
-    keep_labels = {"0_base"} | _resolve_organism_layers(selected_organisms)
+    keep_labels = {"0_base"} | _resolve_species_layers(selected_species_ids)
 
     to_remove: list[ET.Element] = []
     for child in root:

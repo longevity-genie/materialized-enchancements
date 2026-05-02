@@ -11,7 +11,7 @@ from materialized_enhancements.gene_data import (
     DEFAULT_BUDGET,
     GENE_LIBRARY,
 )
-from materialized_enhancements.puzzle import HUMAN_ORGANISM
+from materialized_enhancements.puzzle import HUMAN_SPECIES_ID
 from materialized_enhancements.state import CATEGORY_COLORS, JigsawState
 
 
@@ -165,14 +165,6 @@ _COLLAPSIBLE_STYLE: dict = {
 _JIGSAW_ACCENT = "#16a085"
 
 
-def _organism_display_parts(organism: str) -> tuple[str, str]:
-    """Split 'Common Name (Latin details)' into (common, latin_with_parens)."""
-    idx = organism.find("(")
-    if idx > 0:
-        return organism[:idx].rstrip(), organism[idx:]
-    return organism, ""
-
-
 def _primary_category_color(animal: dict) -> str:
     """Return the CATEGORY_COLORS hex for the animal's first trait/category."""
     traits: list = animal.get("traits") or []
@@ -190,17 +182,55 @@ _JIGSAW_LEGEND_ITEMS: list[tuple[str, str]] = [
 
 
 def _organism_button(animal: dict) -> rx.Component:
-    organism = str(animal["organism"])
+    species_id = str(animal["species_id"])
+    common_name = str(animal["common_name"])
+    scientific_name = str(animal["scientific_name"])
+    species_url = str(animal.get("species_url", ""))
     gene_count = len(animal["genes"])
-    price = ANIMAL_PRICES.get(organism, 0)
-    is_selected = JigsawState.selected_organisms.contains(organism)
-    is_affordable = JigsawState.affordable_organisms.contains(organism)
+    price = ANIMAL_PRICES.get(species_id, 0)
+    is_selected = JigsawState.selected_organisms.contains(species_id)
+    is_affordable = JigsawState.affordable_organisms.contains(species_id)
     is_enabled = is_selected | is_affordable
-    is_human = organism == HUMAN_ORGANISM
+    is_human = species_id == HUMAN_SPECIES_ID
     icon_name = "user" if is_human else "paw"
     cat_color = _primary_category_color(animal)
 
-    common_name, latin_detail = _organism_display_parts(organism)
+    wiki_link = rx.el.a(
+        fomantic_icon(
+            "external-link-alt",
+            size=10,
+            color=rx.cond(is_selected, "rgba(255,255,255,0.7)", "#9ca3af"),
+        ),
+        href=species_url,
+        target="_blank",
+        rel="noopener noreferrer",
+        title=f"{scientific_name} on Wikipedia",
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "padding": "2px 4px",
+            "flexShrink": "0",
+            "opacity": "0.6",
+            "transition": "opacity 0.15s ease",
+            "_hover": {"opacity": "1"},
+        },
+    ) if species_url else rx.fragment()
+
+    row_style = {
+        "marginBottom": "4px",
+        "textAlign": "left",
+        "padding": "8px 10px 8px 10px",
+        "borderRadius": "6px",
+        "border": "1px solid",
+        "borderLeft": f"3px solid {cat_color}",
+        "borderColor": rx.cond(is_selected, _JIGSAW_ACCENT, rx.cond(is_enabled, "#e5e7eb", "#f3f4f6")),
+        "backgroundColor": rx.cond(is_selected, _JIGSAW_ACCENT, "#ffffff"),
+        "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
+        "opacity": rx.cond(is_enabled, "1", "0.5"),
+        "transition": "all 0.15s ease",
+        "display": "flex",
+        "alignItems": "center",
+    }
 
     return rx.el.div(
         rx.el.div(
@@ -212,14 +242,14 @@ def _organism_button(animal: dict) -> rx.Component:
             rx.el.span(
                 common_name,
                 rx.el.span(
-                    f" {latin_detail}",
+                    f" ({scientific_name})",
                     style={
                         "fontSize": "0.72rem",
                         "opacity": "0.7",
                         "fontStyle": "italic",
                         "fontWeight": "400",
                     },
-                ) if latin_detail else "",
+                ) if scientific_name else "",
                 style={"fontSize": "0.85rem", "flex": "1", "marginLeft": "8px", "lineHeight": "1.3"},
             ),
             rx.el.span(
@@ -246,23 +276,17 @@ def _organism_button(animal: dict) -> rx.Component:
                     "flexShrink": "0",
                 },
             ),
-            style={"display": "flex", "alignItems": "center", "width": "100%"},
+            on_click=JigsawState.toggle_organism(species_id),
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "flex": "1",
+                "minWidth": "0",
+                "cursor": rx.cond(is_enabled, "pointer", "not-allowed"),
+            },
         ),
-        on_click=JigsawState.toggle_organism(organism),
-        style={
-            "marginBottom": "4px",
-            "textAlign": "left",
-            "cursor": rx.cond(is_enabled, "pointer", "not-allowed"),
-            "padding": "8px 10px 8px 10px",
-            "borderRadius": "6px",
-            "border": "1px solid",
-            "borderLeft": f"3px solid {cat_color}",
-            "borderColor": rx.cond(is_selected, _JIGSAW_ACCENT, rx.cond(is_enabled, "#e5e7eb", "#f3f4f6")),
-            "backgroundColor": rx.cond(is_selected, _JIGSAW_ACCENT, "#ffffff"),
-            "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
-            "opacity": rx.cond(is_enabled, "1", "0.5"),
-            "transition": "all 0.15s ease",
-        },
+        wiki_link,
+        style=row_style,
     )
 
 
@@ -424,7 +448,7 @@ def _jigsaw_gene_row(gene_item: rx.Var) -> rx.Component:
             style={"fontSize": "0.78rem", "fontWeight": "600", "fontFamily": "monospace", "color": _JIGSAW_ACCENT, "marginLeft": "4px"},
         ),
         rx.el.span(
-            gene_item["organism"],
+            gene_item["common_name"],
             style={"fontSize": "0.72rem", "color": "#9ca3af", "flex": "1", "textAlign": "right", "marginLeft": "8px"},
         ),
         rx.el.span(

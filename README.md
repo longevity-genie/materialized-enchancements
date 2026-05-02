@@ -67,7 +67,7 @@ The active public Gene Library is custom Reflex/Fomantic UI, not `reflex-mui-dat
 
 ## Gene Library
 
-32 genes · 6 parent categories · 32 source-organism rows spanning microbes, animals, humans, and archaic-human ancestry.
+32 genes · 6 parent categories · 26 source species spanning microbes, animals, fungi, humans, and archaic-human ancestry.
 
 | Category | Genes |
 |---|---|
@@ -78,7 +78,99 @@ The active public Gene Library is custom Reflex/Fomantic UI, not `reflex-mui-dat
 | Perception | 4 |
 | Expression | 4 |
 
-The canonical data source is `data/input/gene_library_extended.csv`. Gene pricing and geometry mapping are loaded from `data/input/gene_properties_extended.csv`; those local runtime inputs are gitignored in this repository.
+### Data files
+
+Gene data is split across three CSV files in `data/input/`:
+
+| File | Purpose | Key columns |
+|---|---|---|
+| `gene_library.csv` | Gene metadata (source of truth) | `gene_id`, `Gene`, `Category`, `Narrative`, `Short Description`, `Mechanism`, `Achievements`, `Evidence Tier`, `Confidence`, … |
+| `species.csv` | Species lookup table | `species_id`, `scientific_name`, `common_name`, taxonomy (`kingdom` through `family`), life-history data (`max_longevity_years`, `adult_weight_g`, …) |
+| `gene_species.csv` | Many-to-many join | `gene_id`, `species_id` — multi-species genes (e.g. klotho in both human and mouse) have multiple rows |
+
+Gene pricing and geometry mapping are loaded from `data/input/gene_properties_extended.csv`. All files under `data/input/` are local runtime inputs and gitignored.
+
+At import time, `gene_data.py` joins the three tables and resolves display names (`species_common_names`, `species_scientific_names`) and puzzle SVG artwork for each gene from the species lookup.
+
+---
+
+## Contributing a New Gene
+
+Scientists and biologists who want to propose a new gene for the library should follow the steps below. No Python code changes are needed — the app reads everything from the CSV files.
+
+### 1. Pick your gene
+
+Choose a gene with a clear, documented phenotype in at least one model organism. The library focuses on genes whose effects could be imagined as human enhancements, so strong experimental evidence and a compelling biological narrative are important.
+
+### 2. Add the species (if new)
+
+Check if the source species already exists in `data/input/species.csv`. If not, add a row:
+
+```csv
+species_id,scientific_name,common_name,genus,species,kingdom,phylum,class,order,family,max_longevity_years,adult_weight_g,...
+```
+
+- **`species_id`** — lowercase `genus_species` slug (e.g. `heterocephalus_glaber`). This is the join key used everywhere.
+- **`scientific_name`** — binomial, title-cased (e.g. `Heterocephalus glaber`).
+- **`common_name`** — the familiar name shown in the UI (e.g. `Naked mole-rat`).
+- Taxonomy and life-history columns can be sourced from [AnAge](https://genomics.senescence.info/species/) or filled manually.
+
+### 3. Add the gene
+
+Append a row to `data/input/gene_library.csv`:
+
+| Column | What to write | Example |
+|---|---|---|
+| `gene_id` | Unique lowercase slug | `cirbp` |
+| `Gene` | Display name / symbol | `CIRBP` |
+| `Category` | Hierarchical `Parent / Detail` | `Stress Resistance / Cold-Inducible Repair` |
+| `Narrative` | 200–400 word biological story — what the gene does, key experiments, caveats, and contradictions | *(see existing entries for tone)* |
+| `Short Description` | One sentence for card view | `Bowhead whales seem to use CIRBP as part of a very careful DNA-repair system…` |
+| `Mechanism` | Molecular mechanism of action | `Cold-inducible RNA-binding protein; promotes Ku70/80 loading…` |
+| `Achievements (effect sizes)` | Quantified experimental results with citations | `Drosophila overexpression extended lifespan ~20%…` |
+| `Highest Evidence Tier` | T2 (in vitro) through T6 (multiple independent labs) | `T6` |
+| `Confidence` | `Low`, `Medium`, `Medium-High`, or `High` | `Medium-High` |
+| `Best Host Tested` | Where the gene has been successfully expressed | `Human cells in vitro; Drosophila whole-organism` |
+| `Translational Gaps` | What remains to be proven | `Mouse Tg lifespan/cancer study; AAV/LNP delivery…` |
+| `Key References (DOIs)` | Pipe-separated DOI links | `Author Journal Year https://doi.org/… \| …` |
+| `Notes (limitations, contradictions, caveats)` | Honest caveats — contradictions matter | `CIRBP has DUAL ROLES: extracellular CIRP is pro-inflammatory…` |
+
+**Writing guidelines for the narrative:**
+- Be honest about contradictions and limitations — the audience is scientifically literate.
+- Mention the strongest experimental evidence with effect sizes.
+- End on a realistic assessment, not hype.
+
+### 4. Link gene to species
+
+Add one row to `data/input/gene_species.csv` per species the gene comes from:
+
+```csv
+gene_id,species_id
+cirbp,balaena_mysticetus
+```
+
+If the gene involves multiple species (convergent evolution, or studied in both human and mouse), add multiple rows — the UI will display all species names joined with "&".
+
+### 5. Add pricing (optional)
+
+If you have access to `data/input/gene_properties_extended.csv`, add a row with a `gene_price` (integer enhancement credits). Pricing reflects a rough combination of evidence strength, translational readiness, and narrative appeal. If you are not sure, leave this for the maintainers.
+
+### 6. Add puzzle artwork (optional)
+
+If a new species was added and you want a silhouette in the jigsaw puzzle:
+
+1. Place an SVG file in `data/input/puzzle/` (naming convention: `<N>_<animal>.svg`).
+2. Add the species_id → SVG filename mapping in `src/materialized_enhancements/puzzle.py` under `_SPECIES_PUZZLE_MAP` and `_SPECIES_LAYER_MAP`.
+
+Silhouettes are typically sourced from [PhyloPic](https://www.phylopic.org/) — prefer CC0 or CC-BY licensed images. See the Attributions section below for licensing requirements.
+
+### 7. Test locally
+
+```bash
+uv run start
+```
+
+Browse to `http://localhost:3000/` — your gene should appear under its category with the species name and (if provided) puzzle artwork. No Python code changes should be required if the CSVs are correct.
 
 ---
 
@@ -295,7 +387,7 @@ uv run pytest tests/test_artex_integration.py -v -s
 ## Tech Stack
 
 - **Frontend UI**: [Reflex](https://reflex.dev/) + Fomantic UI, styled as an RPG character/loadout builder
-- **Data model**: Polars loaders over `data/input/gene_library_extended.csv` and `gene_properties_extended.csv`
+- **Data model**: Polars loaders over `data/input/gene_library.csv`, `species.csv`, `gene_species.csv`, and `gene_properties_extended.csv`
 - **3D generation**: Python parametric geometry pipeline in `src/materialized_enhancements/sculpture.py`
 - **Reports and exports**: browser-side `html-to-image`, `jsPDF`, QR code generation, optional portrait upload, STL + JSON bundles, generated static share folders
 - **Publishing target**: [ARTEX Platform API](https://github.com/CODAME/artex-open) for shipping materialized artifacts to venue displays

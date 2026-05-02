@@ -1000,9 +1000,35 @@ def _gene_confidence_badge(bucket: rx.Var, confidence: rx.Var) -> rx.Component:
     )
 
 
-def _gene_tested_on_row(host_text: rx.Var) -> rx.Component:
+def _tested_host_badge(entry: rx.Var) -> rx.Component:
+    return rx.el.span(
+        _testing_positive_dot(entry["positive"]),
+        entry["host"],
+        rx.cond(
+            entry["tissue_or_system"] != "",
+            rx.el.span(
+                " (", entry["tissue_or_system"], ")",
+                style={"color": "#94a3b8", "fontSize": "0.68rem"},
+            ),
+            rx.fragment(),
+        ),
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "gap": "2px",
+            "fontSize": "0.76rem",
+            "color": "#cbd5e1",
+            "background": "rgba(148,163,184,0.1)",
+            "borderRadius": "4px",
+            "padding": "1px 6px",
+            "whiteSpace": "nowrap",
+        },
+    )
+
+
+def _gene_tested_on_row(testing_entries: rx.Var) -> rx.Component:
     return rx.cond(
-        host_text != "",
+        testing_entries.length() > 0,
         rx.el.div(
             rx.el.span(
                 "Tested on",
@@ -1016,11 +1042,129 @@ def _gene_tested_on_row(host_text: rx.Var) -> rx.Component:
                     "flexShrink": "0",
                 },
             ),
-            rx.el.span(
-                host_text,
-                style={"fontSize": "0.86rem", "color": "#cbd5e1", "lineHeight": "1.45"},
+            rx.foreach(testing_entries, _tested_host_badge),
+            style={"display": "flex", "alignItems": "center", "gap": "4px", "flexWrap": "wrap"},
+        ),
+        rx.fragment(),
+    )
+
+
+_POSITIVE_COLORS: dict[str, str] = {
+    "true": "#22c55e",
+    "false": "#ef4444",
+    "mixed": "#f59e0b",
+}
+
+
+def _testing_positive_dot(val: rx.Var) -> rx.Component:
+    return rx.el.span(
+        "●",
+        style={
+            "color": rx.cond(
+                val == "true",
+                "#22c55e",
+                rx.cond(val == "false", "#ef4444", "#f59e0b"),
             ),
-            style={"display": "flex", "alignItems": "baseline", "gap": "4px", "flexWrap": "wrap"},
+            "fontSize": "0.7rem",
+            "marginRight": "2px",
+        },
+    )
+
+
+def _testing_entry_row(entry: rx.Var) -> rx.Component:
+    return rx.el.tr(
+        rx.el.td(
+            _testing_positive_dot(entry["positive"]),
+            rx.el.span(entry["host"], style={"fontWeight": "600"}),
+            style={"padding": "3px 8px 3px 4px", "whiteSpace": "nowrap"},
+        ),
+        rx.el.td(
+            entry["tissue_or_system"],
+            style={"padding": "3px 8px", "color": "#94a3b8"},
+        ),
+        rx.el.td(
+            entry["intervention"],
+            style={"padding": "3px 8px"},
+        ),
+        rx.el.td(
+            entry["delivery"],
+            style={"padding": "3px 8px", "color": "#94a3b8"},
+        ),
+        rx.el.td(
+            entry["integration"],
+            style={"padding": "3px 8px", "color": "#94a3b8"},
+        ),
+        rx.el.td(
+            entry["key_result"],
+            style={"padding": "3px 8px", "maxWidth": "320px"},
+        ),
+        rx.el.td(
+            rx.cond(
+                entry["doi"] != "",
+                rx.el.a(
+                    entry["reference_short"],
+                    href=entry["doi"],
+                    target="_blank",
+                    rel="noopener noreferrer",
+                    style={"color": "#93c5fd", "textDecoration": "underline", "textUnderlineOffset": "2px"},
+                ),
+                rx.el.span(entry["reference_short"]),
+            ),
+            style={"padding": "3px 8px", "whiteSpace": "nowrap"},
+        ),
+        style={"borderBottom": "1px solid rgba(148,163,184,0.1)"},
+    )
+
+
+def _gene_testing_table(testing_entries: rx.Var) -> rx.Component:
+    return rx.cond(
+        testing_entries.length() > 0,
+        rx.el.div(
+            rx.el.div(
+                "Testing Evidence",
+                style={
+                    "fontSize": "0.82rem",
+                    "fontWeight": "800",
+                    "color": "#94a3b8",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                    "marginBottom": "6px",
+                },
+            ),
+            rx.el.div(
+                rx.el.table(
+                    rx.el.thead(
+                        rx.el.tr(
+                            rx.el.th("Host", style={"padding": "4px 8px 4px 4px", "textAlign": "left"}),
+                            rx.el.th("System", style={"padding": "4px 8px", "textAlign": "left"}),
+                            rx.el.th("Intervention", style={"padding": "4px 8px", "textAlign": "left"}),
+                            rx.el.th("Delivery", style={"padding": "4px 8px", "textAlign": "left"}),
+                            rx.el.th("Integration", style={"padding": "4px 8px", "textAlign": "left"}),
+                            rx.el.th("Key Result", style={"padding": "4px 8px", "textAlign": "left"}),
+                            rx.el.th("Reference", style={"padding": "4px 8px", "textAlign": "left"}),
+                            style={
+                                "fontSize": "0.7rem",
+                                "fontWeight": "700",
+                                "color": "#64748b",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.05em",
+                                "borderBottom": "1px solid rgba(148,163,184,0.2)",
+                            },
+                        ),
+                    ),
+                    rx.el.tbody(
+                        rx.foreach(testing_entries, _testing_entry_row),
+                    ),
+                    style={
+                        "width": "100%",
+                        "fontSize": "0.76rem",
+                        "color": "#cbd5e1",
+                        "borderCollapse": "collapse",
+                    },
+                ),
+                style={"overflowX": "auto", "maxWidth": "100%"},
+            ),
+            style={"margin": "8px 0"},
         ),
         rx.fragment(),
     )
@@ -1144,19 +1288,51 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                         "whiteSpace": "nowrap",
                     },
                 ),
-                rx.el.span(
-                    gene_item["source_organism"],
-                    style={
-                        "fontSize": "0.88rem",
-                        "color": rx.cond(included, "#6b7280", "#9ca3af"),
-                        "marginLeft": "6px",
-                        "flex": "1",
-                        "textAlign": "right",
-                        "minWidth": "0",
-                        "overflow": "hidden",
-                        "textOverflow": "ellipsis",
-                        "whiteSpace": "nowrap",
-                    },
+                rx.cond(
+                    gene_item["species_page_url"] != "",
+                    rx.el.a(
+                        gene_item["species_common_names"],
+                        " ",
+                        rx.el.span(
+                            gene_item["species_scientific_names"],
+                            style={"fontStyle": "italic", "opacity": "0.75"},
+                        ),
+                        href=gene_item["species_page_url"],
+                        target="_blank",
+                        rel="noopener noreferrer",
+                        style={
+                            "fontSize": "0.88rem",
+                            "color": rx.cond(included, "#6b7280", "#9ca3af"),
+                            "marginLeft": "6px",
+                            "flex": "1",
+                            "textAlign": "right",
+                            "minWidth": "0",
+                            "overflow": "hidden",
+                            "textOverflow": "ellipsis",
+                            "whiteSpace": "nowrap",
+                            "textDecoration": "none",
+                            "_hover": {"textDecoration": "underline"},
+                        },
+                    ),
+                    rx.el.span(
+                        gene_item["species_common_names"],
+                        " ",
+                        rx.el.span(
+                            gene_item["species_scientific_names"],
+                            style={"fontStyle": "italic", "opacity": "0.75"},
+                        ),
+                        style={
+                            "fontSize": "0.88rem",
+                            "color": rx.cond(included, "#6b7280", "#9ca3af"),
+                            "marginLeft": "6px",
+                            "flex": "1",
+                            "textAlign": "right",
+                            "minWidth": "0",
+                            "overflow": "hidden",
+                            "textOverflow": "ellipsis",
+                            "whiteSpace": "nowrap",
+                        },
+                    ),
                 ),
                 rx.el.span(
                     gene_item["price"],
@@ -1224,7 +1400,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
         ),
         rx.el.div(
             _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
-            _gene_tested_on_row(gene_item["best_host_tested"]),
+            _gene_tested_on_row(gene_item["testing_entries"]),
             style={
                 "display": "flex",
                 "flexDirection": "column",
@@ -1238,6 +1414,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 _gene_selection_text_block("Full description", gene_item["narrative"]),
                 _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                 _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                _gene_testing_table(gene_item["testing_entries"]),
                 _gene_selection_text_block("Highest evidence tier", gene_item["evidence_tier"]),
                 _gene_selection_text_block("Translational gaps", gene_item["translational_gaps"]),
                 rx.cond(
@@ -1485,7 +1662,7 @@ def _rpg_gene_puzzle_icon(gene_item: rx.Var) -> rx.Component:
         rx.el.span(
             rx.el.img(
                 src=gene_item["puzzle_src"],
-                alt=gene_item["source_organism"],
+                alt=gene_item["species_common_names"],
                 loading="lazy",
                 decoding="async",
                 style={
@@ -1528,11 +1705,24 @@ def _rpg_gene_puzzle_icon(gene_item: rx.Var) -> rx.Component:
 
 
 def _rpg_gene_species_label(gene_item: rx.Var) -> rx.Component:
+    name_content = rx.el.span(
+        rx.el.span(gene_item["species_common_names"], style={"fontWeight": "600"}),
+        " ",
+        rx.el.span(gene_item["species_scientific_names"], style={"fontStyle": "italic", "opacity": "0.75"}),
+        style={"minWidth": "0", "overflow": "hidden", "textOverflow": "ellipsis"},
+    )
     return rx.el.div(
         _rpg_gene_puzzle_icon(gene_item),
-        rx.el.span(
-            gene_item["source_organism"],
-            style={"minWidth": "0", "overflow": "hidden", "textOverflow": "ellipsis"},
+        rx.cond(
+            gene_item["species_page_url"] != "",
+            rx.el.a(
+                name_content,
+                href=gene_item["species_page_url"],
+                target="_blank",
+                rel="noopener noreferrer",
+                style={"textDecoration": "none", "color": "inherit", "_hover": {"textDecoration": "underline"}},
+            ),
+            name_content,
         ),
         style={
             "display": "flex",
@@ -2301,10 +2491,11 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             ),
             rx.el.div(
                 _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
-                _gene_tested_on_row(gene_item["best_host_tested"]),
+                _gene_tested_on_row(gene_item["testing_entries"]),
                 rx.cond(
                     is_expanded,
                     rx.el.div(
+                        _gene_testing_table(gene_item["testing_entries"]),
                         _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
                         _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
                         _rpg_gene_side_text("Notes", gene_item["notes"]),
@@ -4354,7 +4545,8 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
         ),
         rx.el.div(
             _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
-            _gene_tested_on_row(gene_item["best_host_tested"]),
+            _gene_tested_on_row(gene_item["testing_entries"]),
+            _gene_testing_table(gene_item["testing_entries"]),
             rx.cond(
                 gene_item["evidence_tier"] != "",
                 rx.el.div(
@@ -4403,12 +4595,41 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
     )
 
 
+def _species_name_link(
+    common_name: rx.Var,
+    scientific_name: rx.Var,
+    species_url: rx.Var,
+    *,
+    sci_style: dict | None = None,
+) -> rx.Component:
+    """Species name that links to Wikipedia when a URL is available."""
+    default_sci_style = {"fontStyle": "italic", "color": "#94a3b8", "fontWeight": "400"}
+    if sci_style:
+        default_sci_style.update(sci_style)
+    name_content = rx.fragment(
+        rx.el.span(common_name, style={"fontWeight": "900", "color": "#f8fafc"}),
+        " ",
+        rx.el.span(scientific_name, style=default_sci_style),
+    )
+    return rx.cond(
+        species_url != "",
+        rx.el.a(
+            name_content,
+            href=species_url,
+            target="_blank",
+            rel="noopener noreferrer",
+            style={"textDecoration": "none", "color": "inherit", "_hover": {"textDecoration": "underline", "textDecorationColor": "#94a3b8"}},
+        ),
+        rx.el.span(name_content),
+    )
+
+
 def _report_animal_row(animal_item: rx.Var) -> rx.Component:
-    """Puzzle glyph + organism name + traits; parent uses two columns."""
+    """Puzzle glyph + species name + traits; parent uses two columns."""
     text_block = rx.el.div(
         rx.el.div(
-            animal_item["organism"],
-            style={"fontWeight": "900", "color": "#f8fafc", "fontSize": "0.85rem", "lineHeight": "1.3"},
+            _species_name_link(animal_item["common_name"], animal_item["scientific_name"], animal_item["species_url"]),
+            style={"fontSize": "0.85rem", "lineHeight": "1.3"},
         ),
         rx.el.div(
             rx.el.span("Traits: ", style={"color": "#94a3b8", "fontWeight": "800", "fontSize": "0.72rem"}),
@@ -4450,7 +4671,12 @@ def _report_animal_row(animal_item: rx.Var) -> rx.Component:
         rx.el.div(
             rx.el.div(
                 fomantic_icon("paw", size=12, color="#16a085", style={"marginRight": "6px", "verticalAlign": "middle"}),
-                rx.el.span(animal_item["organism"], style={"fontWeight": "900", "color": "#f8fafc"}),
+                _species_name_link(
+                    animal_item["common_name"],
+                    animal_item["scientific_name"],
+                    animal_item["species_url"],
+                    sci_style={"fontSize": "0.78rem"},
+                ),
                 style={"display": "block", "lineHeight": "1.4", "marginBottom": "2px"},
             ),
             rx.el.div(
@@ -4772,10 +4998,8 @@ def _png_animal_row(animal_item: rx.Var) -> rx.Component:
     """Square PNG: three columns; bounded text wraps vertically; one primary trait."""
     text_block = rx.el.div(
         rx.el.div(
-            animal_item["organism"],
+            rx.el.span(animal_item["common_name"], style={"fontWeight": "900", "color": "#f8fafc"}),
             style={
-                "fontWeight": "900",
-                "color": "#f8fafc",
                 "fontSize": "0.58rem",
                 "lineHeight": "1.15",
                 "marginBottom": "2px",
@@ -4838,7 +5062,7 @@ def _png_animal_row(animal_item: rx.Var) -> rx.Component:
         ),
         rx.el.div(
             rx.el.span("\u2022 ", style={"color": "#16a085", "fontWeight": "700"}),
-            rx.el.span(animal_item["organism"], style={"fontWeight": "900", "color": "#f8fafc"}),
+            rx.el.span(animal_item["common_name"], style={"fontWeight": "900", "color": "#f8fafc"}),
             rx.el.span(" \u2014 ", style={"color": "#94a3b8"}),
             rx.el.span(animal_item["primary_trait"], style={"color": "#cbd5e1", "fontSize": "0.6rem"}),
             style={
@@ -4894,7 +5118,7 @@ def _png_gene_row(gene_item: rx.Var) -> rx.Component:
         ),
         rx.el.span(" (", style={"color": "#94a3b8", "fontSize": "0.52rem"}),
         rx.el.span(
-            gene_item["source_organism"],
+            gene_item["species_common_names"],
             style={"color": "#5eead4", "fontWeight": "800", "fontSize": "0.52rem"},
         ),
         rx.el.span(")", style={"color": "#94a3b8", "fontSize": "0.52rem"}),
@@ -5210,7 +5434,24 @@ def _report_pdf_long_content() -> rx.Component:
                         style={"color": _gene_category_accent_color(g["category"]), "fontWeight": "600"},
                     ),
                     rx.el.span("  (", style={"color": "#9ca3af"}),
-                    rx.el.span(g["source_organism"], style={"color": "#0d9488", "fontWeight": "600"}),
+                    rx.cond(
+                        g["species_page_url"] != "",
+                        rx.el.a(
+                            rx.el.span(g["species_common_names"], style={"fontWeight": "600"}),
+                            " ",
+                            rx.el.span(g["species_scientific_names"], style={"fontStyle": "italic"}),
+                            href=g["species_page_url"],
+                            target="_blank",
+                            rel="noopener noreferrer",
+                            style={"color": "#0d9488", "textDecoration": "none", "_hover": {"textDecoration": "underline"}},
+                        ),
+                        rx.el.span(
+                            rx.el.span(g["species_common_names"], style={"fontWeight": "600"}),
+                            " ",
+                            rx.el.span(g["species_scientific_names"], style={"fontStyle": "italic"}),
+                            style={"color": "#0d9488"},
+                        ),
+                    ),
                     rx.el.span(")", style={"color": "#9ca3af"}),
                     style={"fontSize": "0.95rem", "marginBottom": "2px"},
                 ),
@@ -5235,12 +5476,32 @@ def _report_pdf_long_content() -> rx.Component:
                     rx.fragment(),
                 ),
                 rx.cond(
-                    g["best_host_tested"] != "",
-                    rx.el.p(
-                        rx.el.span("Tested on: ", style={"color": "#9ca3af", "fontWeight": "600"}),
-                        rx.el.span(g["best_host_tested"], style={"color": "#374151"}),
+                    g["testing_entries"].length() > 0,
+                    rx.el.div(
+                        rx.el.span("Tested on: ", style={"color": "#9ca3af", "fontWeight": "600", "fontSize": "0.74rem"}),
+                        rx.foreach(g["testing_entries"], lambda te: rx.el.span(
+                            te["host"],
+                            rx.cond(
+                                te["tissue_or_system"] != "",
+                                rx.el.span(
+                                    " (", te["tissue_or_system"], ")",
+                                    style={"color": "#9ca3af", "fontSize": "0.62rem"},
+                                ),
+                                rx.fragment(),
+                            ),
+                            style={
+                                "display": "inline-flex",
+                                "alignItems": "center",
+                                "fontSize": "0.7rem",
+                                "color": "#374151",
+                                "background": "#f3f4f6",
+                                "borderRadius": "3px",
+                                "padding": "0 4px",
+                                "marginRight": "3px",
+                            },
+                        )),
                         class_name="me-report-tested",
-                        style={"fontSize": "0.74rem", "margin": "0 0 4px 0", "lineHeight": "1.45"},
+                        style={"display": "flex", "alignItems": "center", "gap": "2px", "flexWrap": "wrap", "margin": "0 0 4px 0"},
                     ),
                     rx.fragment(),
                 ),

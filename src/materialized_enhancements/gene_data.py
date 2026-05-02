@@ -5,16 +5,30 @@ from typing import TypedDict
 
 import polars as pl
 
-from materialized_enhancements.puzzle import HUMAN_ORGANISM, resolve_puzzle_svg
+from urllib.parse import quote as url_quote
+
+from materialized_enhancements.puzzle import HUMAN_SPECIES_ID, resolve_puzzle_svg
 
 
-DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_library_extended.csv"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "input"
+DATA_PATH = DATA_DIR / "gene_library.csv"
+SPECIES_PATH = DATA_DIR / "species.csv"
+GENE_SPECIES_PATH = DATA_DIR / "gene_species.csv"
+GENE_TESTING_PATH = DATA_DIR / "gene_testing.csv"
+
+
+class SpeciesEntry(TypedDict):
+    species_id: str
+    scientific_name: str
+    common_name: str
 
 
 class GeneEntry(TypedDict):
     gene_id: str
     gene: str
-    source_organism: str
+    species_ids: list[str]
+    species_common_names: str
+    species_scientific_names: str
     category: str
     category_detail: str
     trait: str
@@ -24,7 +38,6 @@ class GeneEntry(TypedDict):
     achievements: str
     evidence_tier: str
     confidence: str
-    best_host_tested: str
     translational_gaps: str
     key_references: str
     notes: str
@@ -32,19 +45,38 @@ class GeneEntry(TypedDict):
     enhancement: str
     paper_url: str
     puzzle_svg: str
+    species_page_url: str
+    testing_entries: list[dict[str, str]]
 
 
 class AnimalEntry(TypedDict):
-    organism: str
+    species_id: str
+    common_name: str
+    scientific_name: str
+    species_url: str
     genes: list[str]
     traits: list[str]
     superpower: str
     puzzle_svg: str
 
 
+class TestingEntry(TypedDict):
+    gene_id: str
+    host: str
+    tissue_or_system: str
+    intervention: str
+    delivery: str
+    integration: str
+    key_result: str
+    effect_size: str
+    positive: str
+    reference_short: str
+    doi: str
+    year: str
+
+
 _LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Gene": "gene",
-    "Source Organism": "source_organism",
     "Category": "category_detail",
     "Short Description": "short_description",
     "Narrative": "narrative",
@@ -52,11 +84,44 @@ _LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Achievements (effect sizes)": "achievements",
     "Highest Evidence Tier": "evidence_tier",
     "Confidence": "confidence",
-    "Best Host Tested": "best_host_tested",
     "Translational Gaps": "translational_gaps",
     "Key References (DOIs)": "key_references",
     "Notes (limitations, contradictions, caveats)": "notes",
 }
+
+
+def species_wikipedia_url(scientific_name: str) -> str:
+    if not scientific_name:
+        return ""
+    return "https://en.wikipedia.org/wiki/" + url_quote(scientific_name.replace(" ", "_"))
+
+
+def _load_species_lookup(path: Path = SPECIES_PATH) -> dict[str, SpeciesEntry]:
+    """Load species.csv into a lookup keyed by species_id."""
+    df = pl.read_csv(path).select(["species_id", "scientific_name", "common_name"])
+    return {
+        row["species_id"]: SpeciesEntry(
+            species_id=row["species_id"],
+            scientific_name=row["scientific_name"],
+            common_name=row["common_name"],
+        )
+        for row in df.to_dicts()
+    }
+
+
+def _load_gene_species_map(path: Path = GENE_SPECIES_PATH) -> dict[str, list[str]]:
+    """Load gene_species.csv into a dict: gene_id → [species_id, ...]."""
+    df = pl.read_csv(path)
+    result: dict[str, list[str]] = {}
+    for row in df.to_dicts():
+        gid = row["gene_id"].strip()
+        sid = row["species_id"].strip()
+        result.setdefault(gid, []).append(sid)
+    return result
+
+
+SPECIES_LOOKUP: dict[str, SpeciesEntry] = _load_species_lookup()
+GENE_SPECIES_MAP: dict[str, list[str]] = _load_gene_species_map()
 
 
 def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
@@ -67,7 +132,6 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
         .with_columns(
             pl.col("gene_id").str.strip_chars(),
             pl.col("gene").str.strip_chars(),
-            pl.col("source_organism").str.strip_chars(),
             pl.col("category_detail").str.strip_chars(),
             pl.col("short_description").str.strip_chars(),
             pl.col("category_detail").str.split(" / ").list.get(0).str.strip_chars().alias("category"),
@@ -82,7 +146,17 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
     )
     rows: list[GeneEntry] = df.to_dicts()  # type: ignore[assignment]
     for row in rows:
-        row["puzzle_svg"] = resolve_puzzle_svg(row["source_organism"])
+        gid = row["gene_id"]
+        sids = GENE_SPECIES_MAP.get(gid, [])
+        row["species_ids"] = sids
+        common_names = [SPECIES_LOOKUP[s]["common_name"] for s in sids if s in SPECIES_LOOKUP]
+        scientific_names = [SPECIES_LOOKUP[s]["scientific_name"] for s in sids if s in SPECIES_LOOKUP]
+        row["species_common_names"] = " & ".join(common_names) if common_names else "Unknown"
+        row["species_scientific_names"] = " & ".join(scientific_names) if scientific_names else ""
+        row["puzzle_svg"] = resolve_puzzle_svg(gid, sids)
+        first_sci = scientific_names[0] if scientific_names else ""
+        row["species_page_url"] = species_wikipedia_url(first_sci)
+        row["testing_entries"] = []
     return rows
 
 
@@ -133,98 +207,32 @@ def build_category_traits(library: list[GeneEntry]) -> dict[str, list[str]]:
     return cat_traits
 
 
-_ORGANISM_NORMALIZE: dict[str, str] = {
-    # --- jellyfish variants ---
-    "Immortal Jellyfish (Turritopsis dohrnii)": "Jellyfish (Cnidaria)",
-    "Turritopsis dohrnii (medusa→cyst→polyp reverse development)": "Jellyfish (Cnidaria)",
-    "Crystal Jellyfish (Aequorea victoria)": "Jellyfish (Cnidaria)",
-    "Aequorea victoria (crystal jellyfish)": "Jellyfish (Cnidaria)",
-    # --- naked mole rat variants ---
-    "Naked Mole Rat / Long-lived species (Heterocephalus glaber)": "Naked Mole Rat (Heterocephalus glaber)",
-    "Naked mole-rat (Heterocephalus glaber)": "Naked Mole Rat (Heterocephalus glaber)",
-    "Naked mole-rat / conserved mammalian (Mn-SOD)": "Naked Mole Rat (Heterocephalus glaber)",
-    # --- deinococcus variants ---
-    "Deinococcus radiodurans / Conserved across species": "Deinococcus radiodurans (Conan the Bacterium)",
-    "Deinococcus radiodurans R1": "Deinococcus radiodurans (Conan the Bacterium)",
-    # --- tardigrade variants (two CSV rows, same animal) ---
-    "Tardigrade (Ramazzottius varieornatus / Hypsibius exemplaris)": "Tardigrade (Ramazzottius varieornatus)",
-    # --- elephant variants ---
-    "African elephant (Loxodonta africana) / Elephas maximus": "African Elephant (Loxodonta africana)",
-    "African elephant (Loxodonta africana)": "African Elephant (Loxodonta africana)",
-    # --- human / archaic-human (no SVG piece; bold-base treatment) ---
-    "Human / Conserved across mammals (Homo sapiens)": HUMAN_ORGANISM,
-    "Human (centenarian-associated GWAS locus); C. elegans daf-16 ortholog": HUMAN_ORGANISM,
-    "Human (endogenous, Pro140Lys engineered variant)": HUMAN_ORGANISM,
-    "Mouse / human (KL-VS longevity variant)": HUMAN_ORGANISM,
-    "Tibetan Highlanders (Denisovan introgression into Homo sapiens)": HUMAN_ORGANISM,
-    "Tibetan highlanders (archaic Denisovan introgression)": HUMAN_ORGANISM,
-    # --- organisms whose raw CSV name needs a human-readable label ---
-    "Bowhead whale (Balaena mysticetus)": "Bowhead Whale (Balaena mysticetus)",
-    "Somniosus microcephalus (lifespan 272–392 ± 120 yr)": "Greenland Shark (Somniosus microcephalus)",
-    "Cladosporium sphaerospermum / Cryptococcus neoformans / Wangiella dermatitidis (Chernobyl fungi)": "Melanizing Fungi (Chernobyl strains)",
-    "Schmidtea mediterranea (planarian)": "Planarian Flatworm (Schmidtea mediterranea)",
-    "Conserved vertebrate; axolotl high-expression (Ambystoma mexicanum)": "Axolotl (Ambystoma mexicanum)",
-    "Pteropus alecto, Rhinolophus sinicus, Myotis davidii (Chiroptera)": "Bat (Order Chiroptera)",
-    "Weddell seal (Leptonychotes weddellii)": "Weddell Seal (Leptonychotes weddellii)",
-    "Winter flounder (Type I), Antarctic notothenioids (AFGP), ocean pout (Type III)": "Antifreeze Fish (flounder, ice fish)",
-    "Bottlenose dolphin (Tursiops truncatus)": "Bottlenose Dolphin (Tursiops truncatus)",
-    "Pit vipers (Crotalinae), pythons, boas": "Pit Viper (Crotalinae)",
-    "European robin (Erithacus rubecula)": "European Robin (Erithacus rubecula)",
-    "Cat (Felis catus) and Carnivora": "Cat (Felis catus)",
-    "Cuttlefish/octopus (Sepia officinalis), Doryteuthis opalescens": "Octopus (Cephalopoda)",
-    "Australian water-holding frog (Cyclorana platycephala); mammalian AQP1 as baseline": "Water-Holding Frog (Cyclorana platycephala)",
-    "Photinus pyralis": "Firefly (Photinus pyralis)",
-    "Electrophorus electricus/voltai + gymnotiforms/mormyrids": "Electric Eel (Electrophorus electricus)",
-    "Gekko japonicus": "Tokay Gecko (Gekko japonicus)",
-}
-
-_ORGANISM_SPLIT: dict[str, list[str]] = {
-    # Prestin/SLC26A5 convergently evolved in both lineages — each gets the gene.
-    "Echolocating Bats & Dolphins (convergent evolution)": [
-        "Bat (Order Chiroptera)",
-        "Bottlenose Dolphin (Tursiops truncatus)",
-    ],
-    "Echolocating bats + dolphins (convergent)": [
-        "Bat (Order Chiroptera)",
-        "Bottlenose Dolphin (Tursiops truncatus)",
-    ],
-    # TERT longevity gene studied in mouse/human with lobster as longevity comparator.
-    # Both organisms contribute to the trait; each gets its own puzzle piece.
-    "Mouse / human; lobster (Homarus americanus) as comparator": [
-        "Mouse (Mus musculus)",
-        "Lobster (Homarus americanus)",
-    ],
-}
-
-
-def _normalize_organism(raw: str) -> list[str]:
-    """Return the target organism name(s) for a raw organism string."""
-    if raw in _ORGANISM_SPLIT:
-        return _ORGANISM_SPLIT[raw]
-    return [_ORGANISM_NORMALIZE.get(raw, raw)]
-
-
 def build_animal_library(library: list[GeneEntry]) -> list[AnimalEntry]:
-    """Build a per-organism library from the gene data, merging related organisms."""
-    org_data: dict[str, AnimalEntry] = {}
+    """Build a per-species library from the gene data."""
+    species_data: dict[str, AnimalEntry] = {}
     for entry in library:
-        targets = _normalize_organism(entry["source_organism"])
-        for org in targets:
-            if org not in org_data:
-                org_data[org] = AnimalEntry(
-                    organism=org,
+        for sid in entry["species_ids"]:
+            sp = SPECIES_LOOKUP.get(sid)
+            if not sp:
+                continue
+            if sid not in species_data:
+                species_data[sid] = AnimalEntry(
+                    species_id=sid,
+                    common_name=sp["common_name"],
+                    scientific_name=sp["scientific_name"],
+                    species_url=species_wikipedia_url(sp["scientific_name"]),
                     genes=[],
                     traits=[],
                     superpower=entry["narrative"],
-                    puzzle_svg=resolve_puzzle_svg(org),
+                    puzzle_svg=resolve_puzzle_svg(entry["gene_id"], [sid]),
                 )
-            if entry["gene"] not in org_data[org]["genes"]:
-                org_data[org]["genes"].append(entry["gene"])
-            if entry["trait"] not in org_data[org]["traits"]:
-                org_data[org]["traits"].append(entry["trait"])
-            if not org_data[org]["superpower"]:
-                org_data[org]["superpower"] = entry["enhancement"]
-    return list(org_data.values())
+            if entry["gene"] not in species_data[sid]["genes"]:
+                species_data[sid]["genes"].append(entry["gene"])
+            if entry["trait"] not in species_data[sid]["traits"]:
+                species_data[sid]["traits"].append(entry["trait"])
+            if not species_data[sid]["superpower"]:
+                species_data[sid]["superpower"] = entry["enhancement"]
+    return list(species_data.values())
 
 
 GENE_LIBRARY: list[GeneEntry] = load_gene_library()
@@ -236,28 +244,46 @@ CATEGORY_TRAITS: dict[str, list[str]] = build_category_traits(GENE_LIBRARY)
 ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
 
 
-def _build_organism_members(library: list[GeneEntry]) -> dict[str, set[str]]:
-    """Reverse map: merged organism name → set of raw source_organism strings."""
+def _build_species_gene_ids(library: list[GeneEntry]) -> dict[str, set[str]]:
+    """Reverse map: species_id → set of gene_ids belonging to that species."""
     members: dict[str, set[str]] = {}
     for entry in library:
-        raw = entry["source_organism"]
-        for target in _normalize_organism(raw):
-            members.setdefault(target, set()).add(raw)
+        for sid in entry["species_ids"]:
+            members.setdefault(sid, set()).add(entry["gene_id"])
     return members
 
 
-ORGANISM_MEMBERS: dict[str, set[str]] = _build_organism_members(GENE_LIBRARY)
+SPECIES_GENE_IDS: dict[str, set[str]] = _build_species_gene_ids(GENE_LIBRARY)
+
+
+def _load_gene_testing(path: Path = GENE_TESTING_PATH) -> list[TestingEntry]:
+    df = pl.read_csv(path).fill_null("")
+    return df.to_dicts()  # type: ignore[return-value]
+
+
+def _build_gene_testing_map(
+    testing: list[TestingEntry],
+) -> dict[str, list[TestingEntry]]:
+    result: dict[str, list[TestingEntry]] = {}
+    for entry in testing:
+        result.setdefault(entry["gene_id"], []).append(entry)
+    return result
+
+
+GENE_TESTING: list[TestingEntry] = _load_gene_testing()
+GENE_TESTING_MAP: dict[str, list[TestingEntry]] = _build_gene_testing_map(GENE_TESTING)
+
+for _g in GENE_LIBRARY:
+    _g["testing_entries"] = [dict(t) for t in GENE_TESTING_MAP.get(_g["gene_id"], [])]
 
 
 # ---------------------------------------------------------------------------
 # Budget system — prices resolved by gene_id from gene_properties_extended.csv.
-# We intentionally join via gene_id (not gene name) because display gene labels can
-# differ between gene_library_extended.csv and gene_properties_extended.csv.
 # CATEGORY_PRICES sums all genes in a category (UI: max spend if every gene is on).
 # CATEGORY_MIN_GENE_PRICES is the cheapest gene in each category (gate for selecting
 # a category: user only needs room for one gene, not the full category total).
 # ---------------------------------------------------------------------------
-GENE_PRICES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties_extended.csv"
+GENE_PRICES_PATH = DATA_DIR / "gene_properties_extended.csv"
 
 DEFAULT_BUDGET: int = 100
 
@@ -340,10 +366,10 @@ CATEGORY_MIN_GENE_PRICES: dict[str, int] = _category_min_gene_prices(PRICING_TAB
 
 
 def _build_animal_prices(animals: list[AnimalEntry]) -> dict[str, int]:
-    """Sum gene prices per merged animal."""
+    """Sum gene prices per species."""
     prices: dict[str, int] = {}
     for a in animals:
-        prices[a["organism"]] = sum(GENE_PRICES[g] for g in a["genes"])
+        prices[a["species_id"]] = sum(GENE_PRICES[g] for g in a["genes"])
     return prices
 
 

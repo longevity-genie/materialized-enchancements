@@ -22,10 +22,13 @@ from materialized_enhancements.gene_data import (
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     GENE_PRICES,
-    ORGANISM_MEMBERS,
+    GENE_SPECIES_MAP,
+    SPECIES_GENE_IDS,
+    SPECIES_LOOKUP,
     UNIQUE_CATEGORIES,
+    species_wikipedia_url,
 )
-from materialized_enhancements.puzzle import HUMAN_ORGANISM, build_jigsaw_svg
+from materialized_enhancements.puzzle import HUMAN_SPECIES_ID, build_jigsaw_svg
 from materialized_enhancements.sculpture import (
     DEFAULT_EXPORT_DIR,
     compute_sculpture_params,
@@ -86,7 +89,8 @@ class SculptureSelectedGene(TypedDict):
     trait: str
     category: str
     category_detail: str
-    source_organism: str
+    species_common_names: str
+    species_scientific_names: str
     short_description: str
     narrative: str
     mechanism: str
@@ -94,7 +98,7 @@ class SculptureSelectedGene(TypedDict):
     evidence_tier: str
     confidence: str
     confidence_bucket: str
-    best_host_tested: str
+    testing_entries: list[dict[str, str]]
     translational_gaps: str
     key_references: str
     key_reference_segments: list[KeyReferenceSegment]
@@ -104,6 +108,7 @@ class SculptureSelectedGene(TypedDict):
     paper_url: str
     puzzle_svg: str
     puzzle_src: str
+    species_page_url: str
     included: bool
     price: int
     protein_length_aa: str
@@ -466,7 +471,7 @@ def _build_sculpture_email_html(
 
     org_rows = "".join(
         f'<tr>'
-        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#1a1a2e;">{_html_escape(o.get("organism", ""))}</td>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#1a1a2e;">{_html_escape(o.get("common_name", ""))} <em style="color:#6b7280;">({_html_escape(o.get("scientific_name", ""))})</em></td>'
         f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#374151;">{_html_escape(o.get("superpower", ""))}</td>'
         f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:12px;">{_html_escape(o.get("traits_csv", ""))}</td>'
         f'</tr>'
@@ -475,7 +480,7 @@ def _build_sculpture_email_html(
     org_table = (
         f'<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:6px;">'
         f'<thead><tr>'
-        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Organism</th>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Species</th>'
         f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Superpower</th>'
         f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Traits</th>'
         f'</tr></thead><tbody>{org_rows}</tbody></table>'
@@ -571,7 +576,7 @@ def _build_jigsaw_email_html(
 
     org_rows = "".join(
         f'<tr>'
-        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#1a1a2e;">{_html_escape(o.get("organism", ""))}</td>'
+        f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#1a1a2e;">{_html_escape(o.get("common_name", ""))} <em style="color:#6b7280;">({_html_escape(o.get("scientific_name", ""))})</em></td>'
         f'<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#374151;">{_html_escape(o.get("superpower", ""))}</td>'
         f'</tr>'
         for o in organism_entries
@@ -579,7 +584,7 @@ def _build_jigsaw_email_html(
     org_table = (
         f'<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:6px;">'
         f'<thead><tr>'
-        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Organism</th>'
+        f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Species</th>'
         f'<th style="text-align:left;padding:6px 10px;border-bottom:2px solid #e5e7eb;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Superpower granted</th>'
         f'</tr></thead><tbody>{org_rows}</tbody></table>'
         if organism_entries else ""
@@ -1352,7 +1357,7 @@ class ComposeState(rx.State):
             traits = list(self.selected_traits)
             included_genes = [g["gene"] for g in self.included_composition_genes]
             organisms = [
-                {"organism": a["organism"], "superpower": a["superpower"], "traits_csv": a["traits_csv"]}
+                {"common_name": a["common_name"], "scientific_name": a["scientific_name"], "superpower": a["superpower"], "traits_csv": a["traits_csv"]}
                 for a in self.selected_animals
             ]
             params = dict(self.sculpture_params)
@@ -1478,7 +1483,8 @@ class ComposeState(rx.State):
                 "trait": g["trait"],
                 "category": g["category"],
                 "category_detail": g["category_detail"],
-                "source_organism": g["source_organism"],
+                "species_common_names": g["species_common_names"],
+                "species_scientific_names": g["species_scientific_names"],
                 "short_description": g["short_description"],
                 "narrative": g["narrative"],
                 "mechanism": g["mechanism"],
@@ -1486,7 +1492,7 @@ class ComposeState(rx.State):
                 "evidence_tier": g["evidence_tier"],
                 "confidence": g["confidence"],
                 "confidence_bucket": _confidence_bucket(str(g.get("confidence", ""))),
-                "best_host_tested": g["best_host_tested"],
+                "testing_entries": g.get("testing_entries", []),
                 "translational_gaps": g["translational_gaps"],
                 "key_references": g["key_references"],
                 "key_reference_segments": _split_key_references_with_links(str(g.get("key_references", ""))),
@@ -1496,6 +1502,7 @@ class ComposeState(rx.State):
                 "paper_url": g["paper_url"],
                 "puzzle_svg": g["puzzle_svg"],
                 "puzzle_src": f"/puzzle/{quote(g['puzzle_svg'])}" if g["puzzle_svg"] else "",
+                "species_page_url": g.get("species_page_url", ""),
                 "included": g["gene"] in self.included_genes,
                 "price": price,
                 **_gene_props_flat(g["gene"], g["gene_id"]),
@@ -1517,44 +1524,51 @@ class ComposeState(rx.State):
 
     @rx.var
     def selected_animals(self) -> list[dict]:
-        """Group selected genes by source organism for the report.
+        """Group selected genes by species for the report.
 
-        Pulls the short per-organism superpower blurb from ANIMAL_LIBRARY.
+        Pulls the short per-species superpower blurb from ANIMAL_LIBRARY.
         Only includes genes the user explicitly included.
         """
-        by_org: dict[str, dict] = {}
+        by_species: dict[str, dict] = {}
         for g in GENE_LIBRARY:
             if g["category"] not in self.selected_categories:
                 continue
             if g["gene"] not in self.included_genes:
                 continue
-            org = g["source_organism"]
-            if org not in by_org:
-                by_org[org] = {
-                    "organism": org,
-                    "superpower": "",
-                    "genes": [],
-                    "traits": [],
-                    "puzzle_svg": "",
-                    "puzzle_src": "",
-                }
-            by_org[org]["genes"].append(g["gene"])
-            if g["trait"] not in by_org[org]["traits"]:
-                by_org[org]["traits"].append(g["trait"])
+            for sid in g["species_ids"]:
+                if sid not in by_species:
+                    sp = SPECIES_LOOKUP.get(sid)
+                    sci = sp["scientific_name"] if sp else ""
+                    by_species[sid] = {
+                        "species_id": sid,
+                        "common_name": sp["common_name"] if sp else sid,
+                        "scientific_name": sci,
+                        "species_url": species_wikipedia_url(sci),
+                        "superpower": "",
+                        "genes": [],
+                        "traits": [],
+                        "puzzle_svg": "",
+                        "puzzle_src": "",
+                    }
+                if g["gene"] not in by_species[sid]["genes"]:
+                    by_species[sid]["genes"].append(g["gene"])
+                if g["trait"] not in by_species[sid]["traits"]:
+                    by_species[sid]["traits"].append(g["trait"])
 
         for a in ANIMAL_LIBRARY:
-            if a["organism"] in by_org:
-                by_org[a["organism"]]["superpower"] = a["superpower"]
+            aid = a["species_id"]
+            if aid in by_species:
+                by_species[aid]["superpower"] = a["superpower"]
                 ps = a["puzzle_svg"]
-                by_org[a["organism"]]["puzzle_svg"] = ps
-                by_org[a["organism"]]["puzzle_src"] = f"/puzzle/{quote(ps)}" if ps else ""
+                by_species[aid]["puzzle_svg"] = ps
+                by_species[aid]["puzzle_src"] = f"/puzzle/{quote(ps)}" if ps else ""
 
-        for row in by_org.values():
+        for row in by_species.values():
             traits: list[str] = row["traits"]
             row["traits_csv"] = ", ".join(traits)
             row["primary_trait"] = traits[0] if traits else "\u2014"
 
-        return list(by_org.values())
+        return list(by_species.values())
 
     @rx.var
     def export_categories_csv(self) -> str:
@@ -1563,20 +1577,21 @@ class ComposeState(rx.State):
 
     @rx.var
     def export_animals_summary(self) -> str:
-        """One line per organism (legacy fallback; PDF prefers export_animals_json)."""
+        """One line per species for PDF export."""
         lines: list[str] = []
         for a in self.selected_animals:
-            lines.append(f"{a['organism']} — {a['superpower']}")
+            lines.append(f"{a['common_name']} ({a['scientific_name']}) — {a['superpower']}")
         return "\n".join(lines)
 
     @rx.var
     def export_animals_json(self) -> str:
-        """Structured organism rows for PDF cover: puzzle art URL + traits (browser reads as JSON)."""
+        """Structured species rows for PDF cover: puzzle art URL + traits (browser reads as JSON)."""
         payload: list[dict[str, Any]] = []
         for a in self.selected_animals:
             payload.append(
                 {
-                    "organism": a["organism"],
+                    "common_name": a["common_name"],
+                    "scientific_name": a["scientific_name"],
                     "puzzle_svg": a.get("puzzle_svg", ""),
                     "puzzle_src": a.get("puzzle_src", ""),
                     "traits": a.get("traits", []),
@@ -1600,7 +1615,8 @@ class ComposeState(rx.State):
                     "gene": g["gene"],
                     "category_detail": g["category_detail"],
                     "category": g["category"],
-                    "source_organism": g["source_organism"],
+                    "species_common_names": g["species_common_names"],
+                    "species_scientific_names": g["species_scientific_names"],
                 }
             )
         return json.dumps(payload)
@@ -1933,24 +1949,18 @@ class JigsawState(rx.State):
     email_sent: bool = False
     email_error: str = ""
 
-    def _active_raw_organisms(self) -> set[str]:
-        """Expand selected merged organism names to the raw CSV organism names."""
-        raw: set[str] = set()
-        for org in self.selected_organisms:
-            raw |= ORGANISM_MEMBERS.get(org, {org})
-        return raw
-
     def _unique_selected_genes(self) -> set[str]:
-        """Unique gene names across all selected organisms (for budget dedup)."""
-        raw_orgs = self._active_raw_organisms()
+        """Unique gene names across all selected species (for budget dedup)."""
         genes: set[str] = set()
-        for g in GENE_LIBRARY:
-            if g["source_organism"] in raw_orgs:
-                genes.add(g["gene"])
+        for sid in self.selected_organisms:
+            gene_ids = SPECIES_GENE_IDS.get(sid, set())
+            for g in GENE_LIBRARY:
+                if g["gene_id"] in gene_ids:
+                    genes.add(g["gene"])
         return genes
 
     def _rebuild_svg(self) -> None:
-        bold = HUMAN_ORGANISM in self.selected_organisms
+        bold = HUMAN_SPECIES_ID in self.selected_organisms
         self.jigsaw_svg = build_jigsaw_svg(self.selected_organisms, bold_base=bold)
 
     def set_personal_tag(self, value: str) -> None:
@@ -1965,18 +1975,18 @@ class JigsawState(rx.State):
     def _compute_budget_spent(self) -> int:
         return sum(GENE_PRICES.get(g, 0) for g in self._unique_selected_genes())
 
-    def toggle_organism(self, organism: str) -> None:
-        if organism in self.selected_organisms:
-            self.selected_organisms = [o for o in self.selected_organisms if o != organism]
+    def toggle_organism(self, species_id: str) -> None:
+        if species_id in self.selected_organisms:
+            self.selected_organisms = [o for o in self.selected_organisms if o != species_id]
         else:
-            price = ANIMAL_PRICES.get(organism, 0)
+            price = ANIMAL_PRICES.get(species_id, 0)
             if self._compute_budget_spent() + price > DEFAULT_BUDGET:
                 return
-            self.selected_organisms = [*self.selected_organisms, organism]
+            self.selected_organisms = [*self.selected_organisms, species_id]
         self._rebuild_svg()
 
-    def remove_organism(self, organism: str) -> None:
-        self.selected_organisms = [o for o in self.selected_organisms if o != organism]
+    def remove_organism(self, species_id: str) -> None:
+        self.selected_organisms = [o for o in self.selected_organisms if o != species_id]
         self._rebuild_svg()
 
     def toggle_choice_expanded(self) -> None:
@@ -2206,7 +2216,7 @@ class JigsawState(rx.State):
             organisms = list(self.selected_organisms)
             traits = list(self.selected_traits)
             organism_entries = [
-                {"organism": a["organism"], "superpower": a["superpower"]}
+                {"common_name": a["common_name"], "scientific_name": a["scientific_name"], "superpower": a["superpower"]}
                 for a in self.selected_animal_entries
             ]
             svg_text = self.generated_jigsaw_svg
@@ -2384,10 +2394,10 @@ class JigsawState(rx.State):
     @rx.var
     def jigsaw_bitmask(self) -> int:
         bitmask = 0
-        all_organisms = [a["organism"] for a in ANIMAL_LIBRARY]
-        for org in self.selected_organisms:
-            if org in all_organisms:
-                idx = all_organisms.index(org) + 1
+        all_species = [a["species_id"] for a in ANIMAL_LIBRARY]
+        for sid in self.selected_organisms:
+            if sid in all_species:
+                idx = all_species.index(sid) + 1
                 bitmask |= (1 << (idx - 1))
         return bitmask
 
@@ -2399,15 +2409,16 @@ class JigsawState(rx.State):
 
     @rx.var
     def selected_genes(self) -> list[dict]:
-        raw_orgs = self._active_raw_organisms()
+        selected_sids = set(self.selected_organisms)
         seen: set[str] = set()
         result: list[dict] = []
         for g in GENE_LIBRARY:
-            if g["source_organism"] in raw_orgs and g["gene"] not in seen:
+            if set(g["species_ids"]) & selected_sids and g["gene"] not in seen:
                 seen.add(g["gene"])
                 result.append({
                     "gene": g["gene"],
-                    "organism": g["source_organism"],
+                    "common_name": g["species_common_names"],
+                    "scientific_name": g["species_scientific_names"],
                     "trait": g["trait"],
                     "price": GENE_PRICES.get(g["gene"], 0),
                 })
@@ -2415,10 +2426,10 @@ class JigsawState(rx.State):
 
     @rx.var
     def selected_traits(self) -> list[str]:
-        raw_orgs = self._active_raw_organisms()
+        selected_sids = set(self.selected_organisms)
         traits: list[str] = []
         for g in GENE_LIBRARY:
-            if g["source_organism"] in raw_orgs:
+            if set(g["species_ids"]) & selected_sids:
                 if g["trait"] not in traits:
                     traits.append(g["trait"])
         return traits
@@ -2427,14 +2438,16 @@ class JigsawState(rx.State):
     def selected_animal_entries(self) -> list[dict]:
         return [
             {
-                "organism": a["organism"],
+                "species_id": a["species_id"],
+                "common_name": a["common_name"],
+                "scientific_name": a["scientific_name"],
                 "superpower": a["superpower"],
                 "genes": a["genes"],
                 "traits": a["traits"],
                 "puzzle_svg": a["puzzle_svg"],
             }
             for a in ANIMAL_LIBRARY
-            if a["organism"] in self.selected_organisms
+            if a["species_id"] in self.selected_organisms
         ]
 
     @rx.var
@@ -2453,10 +2466,10 @@ class JigsawState(rx.State):
     def affordable_organisms(self) -> list[str]:
         remaining = DEFAULT_BUDGET - self._compute_budget_spent()
         return [
-            a["organism"]
+            a["species_id"]
             for a in ANIMAL_LIBRARY
-            if a["organism"] in self.selected_organisms
-            or ANIMAL_PRICES.get(a["organism"], 0) <= remaining
+            if a["species_id"] in self.selected_organisms
+            or ANIMAL_PRICES.get(a["species_id"], 0) <= remaining
         ]
 
     @rx.var
