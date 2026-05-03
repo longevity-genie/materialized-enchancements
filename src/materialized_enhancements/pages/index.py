@@ -310,15 +310,14 @@ def _landing_tab() -> rx.Component:
                         },
                     ),
                     rx.el.p(
-                        "Build your post-human character from real genes — tardigrade radiation shields, "
-                        "naked-mole-rat cancer resistance, Greenland shark longevity — backed by scientific "
-                        "evidence tiers and real citations — and 3D-print the result.",
+                        "Real genes. Real science. Your character.",
                         style={
                             "color": "#7c3aed",
-                            "fontSize": "1.15rem",
-                            "fontWeight": "700",
-                            "lineHeight": "1.6",
+                            "fontSize": "1.25rem",
+                            "fontWeight": "800",
+                            "lineHeight": "1.5",
                             "marginBottom": "14px",
+                            "letterSpacing": "0.01em",
                         },
                     ),
                     rx.el.p(
@@ -2303,9 +2302,35 @@ def _rpg_body_map_panel() -> rx.Component:
         rx.el.div(
             rx.el.div(
                 rx.el.div(
+                    rx.el.div(
+                        rx.el.span(
+                            ComposeState.display_name,
+                            style={
+                                "fontSize": "1.1rem",
+                                "fontWeight": "900",
+                                "color": "#f8fafc",
+                                "letterSpacing": "0.02em",
+                            },
+                        ),
+                        rx.el.span(
+                            " · Real genes. Real science. Your character.",
+                            style={
+                                "fontSize": "0.82rem",
+                                "fontWeight": "600",
+                                "color": "#c4b5fd",
+                            },
+                        ),
+                        style={
+                            "display": "flex",
+                            "alignItems": "baseline",
+                            "gap": "4px",
+                            "flexWrap": "wrap",
+                            "marginBottom": "6px",
+                        },
+                    ),
                     rx.el.input(
                         id="compose-personal-tag",
-                        placeholder="Enter your name here",
+                        placeholder="Enhanced <Name>",
                         value=ComposeState.personal_tag,
                         on_change=ComposeState.set_personal_tag,
                         style={
@@ -2325,8 +2350,8 @@ def _rpg_body_map_panel() -> rx.Component:
                     ),
                     style={
                         "display": "flex",
-                        "alignItems": "center",
-                        "gap": "10px",
+                        "flexDirection": "column",
+                        "gap": "0px",
                         "marginBottom": "7px",
                     },
                 ),
@@ -2537,58 +2562,51 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             style={"display": "flex", "alignItems": "flex-start", "gap": "6px"},
         ),
         rx.el.div(
-            rx.el.div(
-                rx.el.p(
-                    gene_item["short_description"],
-                    style={
-                        "fontSize": "0.98rem",
-                        "color": rx.cond(included, "#e0f2fe", "#dbeafe"),
-                        "margin": "0",
-                        "lineHeight": "1.62",
-                        "whiteSpace": "pre-wrap",
-                    },
-                ),
-                rx.cond(
-                    is_expanded,
-                    rx.el.div(
-                        _gene_selection_text_block("Full description", gene_item["narrative"]),
-                        _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
-                        _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
-                        style={
-                            "marginTop": "14px",
-                            "paddingTop": "12px",
-                            "borderTop": "1px solid rgba(148, 163, 184, 0.18)",
-                        },
-                    ),
-                    rx.fragment(),
-                ),
-                style={"minWidth": "0"},
+            rx.el.p(
+                gene_item["short_description"],
+                style={
+                    "fontSize": "0.98rem",
+                    "color": rx.cond(included, "#e0f2fe", "#dbeafe"),
+                    "margin": "0",
+                    "lineHeight": "1.62",
+                    "whiteSpace": "pre-wrap",
+                },
             ),
             rx.el.div(
                 _gene_confidence_badge(gene_item["confidence_bucket"], gene_item["confidence"]),
                 _gene_tested_on_row(gene_item["testing_entries"]),
-                rx.cond(
-                    is_expanded,
-                    rx.el.div(
-                        _gene_testing_table(gene_item["testing_entries"]),
-                        _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
-                        _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
-                        _rpg_gene_side_text("Notes", gene_item["notes"]),
-                        rx.cond(
-                            gene_item["key_references"] != "",
-                            _rpg_gene_side_references(gene_item["key_reference_segments"]),
-                            rx.fragment(),
-                        ),
-                        style={"display": "flex", "flexDirection": "column", "gap": "8px", "marginTop": "8px"},
-                    ),
-                    rx.fragment(),
-                ),
                 style={
                     "display": "flex",
                     "flexDirection": "column",
                     "gap": "8px",
-                    "minWidth": "0",
+                    "marginTop": "8px",
                 },
+            ),
+            rx.cond(
+                is_expanded,
+                rx.el.div(
+                    _gene_selection_text_block("Full description", gene_item["narrative"]),
+                    _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
+                    _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                    _gene_testing_table(gene_item["testing_entries"]),
+                    _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
+                    _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
+                    _rpg_gene_side_text("Notes", gene_item["notes"]),
+                    rx.cond(
+                        gene_item["key_references"] != "",
+                        _rpg_gene_side_references(gene_item["key_reference_segments"]),
+                        rx.fragment(),
+                    ),
+                    style={
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "gap": "8px",
+                        "marginTop": "14px",
+                        "paddingTop": "12px",
+                        "borderTop": "1px solid rgba(148, 163, 184, 0.18)",
+                    },
+                ),
+                rx.fragment(),
             ),
             class_name="me-rpg-gene-body-grid",
             style={"margin": "10px 0 0 26px"},
@@ -4270,7 +4288,7 @@ def _choice_section() -> rx.Component:
             ),
             rx.el.input(
                 id="compose-personal-tag",
-                placeholder="Enter your name here",
+                placeholder="Enhanced <Name>",
                 value=ComposeState.personal_tag,
                 on_change=ComposeState.set_personal_tag,
                 style={

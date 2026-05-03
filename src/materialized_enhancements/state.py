@@ -61,7 +61,7 @@ from materialized_enhancements.env import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_PERSONAL_TAG = "A new human to be"
+DEFAULT_PERSONAL_TAG = ""
 REPORT_CHARACTER_NOTE_MAX_CHARS: int = 420
 REPORT_PORTRAIT_MAX_BYTES: int = 2_500_000
 REPORT_PORTRAIT_ALLOWED_TYPES: set[str] = {"image/jpeg", "image/png", "image/webp"}
@@ -837,7 +837,7 @@ class ComposeState(rx.State):
     def _recompute_params(self) -> None:
         """Recompute sculpture params live as the user changes selections."""
         self._shrink_included_genes_to_budget()
-        if not self.selected_categories or not self.personal_tag.strip():
+        if not self.selected_categories:
             self.sculpture_params = {}
             return
         active = self._active_gene_library()
@@ -845,7 +845,7 @@ class ComposeState(rx.State):
             self.sculpture_params = {}
             return
         params = compute_sculpture_params(
-            name=self.personal_tag,
+            name=self.personal_tag.strip() or "anonymous",
             selected_categories=self.selected_categories,
             all_categories=UNIQUE_CATEGORIES,
             gene_library=active,
@@ -858,7 +858,7 @@ class ComposeState(rx.State):
         async with self:
             if self.generating:
                 return
-            tag = self.personal_tag.strip() or DEFAULT_PERSONAL_TAG
+            tag = self.personal_tag.strip() or "anonymous"
             cats = list(self.selected_categories)
             if not cats:
                 return
@@ -868,7 +868,6 @@ class ComposeState(rx.State):
             active = self._active_gene_library()
             if not active:
                 return
-            self.personal_tag = tag
             self.generating = True
             self.generation_error = ""
             self.stl_filename = ""
@@ -1229,7 +1228,7 @@ class ComposeState(rx.State):
             artifact["character_note"] = self.report_character_note.strip()
         if self.report_portrait_filename:
             artifact["report_portrait_filename"] = self.report_portrait_filename
-        title = f"Materialized Enhancements report for {tag}"
+        title = f"Materialized Enhancements — {tag}"
         description = "A generated personal enhancement report with downloadable STL model and A4 report."
 
         try:
@@ -1682,7 +1681,7 @@ class ComposeState(rx.State):
         if not genes:
             genes = [entry["gene"] for entry in GENE_LIBRARY if entry["category"] in categories]
 
-        self.personal_tag = str(artifact.get("name", "")).strip() or DEFAULT_PERSONAL_TAG
+        self.personal_tag = str(artifact.get("name", "")).strip()
         self.selected_categories = categories
         self.included_genes = genes
         self.sculpture_params = dict(artifact.get("sculpture_params", {}))
@@ -1878,6 +1877,11 @@ class ComposeState(rx.State):
         return str(self.sculpture_params.get("personal_tag", ""))
 
     @rx.var
+    def display_name(self) -> str:
+        tag = self.personal_tag.strip()
+        return f"Enhanced {tag}" if tag else "Enhanced <Name>"
+
+    @rx.var
     def input_name_crc(self) -> int:
         return int(self.sculpture_params.get("input_name_crc", 0))
 
@@ -1913,7 +1917,7 @@ class ComposeState(rx.State):
 class JigsawState(rx.State):
     """State for the preserved Gene Jigsaw component."""
 
-    personal_tag: str = "A new human, to be"
+    personal_tag: str = DEFAULT_PERSONAL_TAG
     selected_organisms: list[str] = []
     jigsaw_svg: str = ""
     generating: bool = False

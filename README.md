@@ -140,6 +140,10 @@ Started at CODAME ART+TECH 『 The New Human 』 in Milano, now developed by the
 
 The project is **open source** ([repository](https://github.com/winternewt/materialized-enchancements)) and built so other artists can plug their own generative models into the same biological input engine.
 
+### Gratitudes
+
+- **[hidoba](https://github.com/hidoba)** — interface advice and help with Milan Design Week
+
 ---
 
 ## Tech Stack
