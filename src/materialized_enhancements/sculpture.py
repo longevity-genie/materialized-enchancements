@@ -21,7 +21,7 @@ from compass_web.config import MAX_MODEL_SPAN
 
 logger = logging.getLogger(__name__)
 
-GENE_PROPERTIES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties_extended.csv"
+GENE_PROPERTIES_PATH = Path(__file__).resolve().parents[2] / "data" / "input" / "gene_properties.csv"
 DEFAULT_EXPORT_DIR = Path(__file__).resolve().parents[2] / "data" / "output" / "sculptures"
 
 NUM_CIRCLES = 8
@@ -54,7 +54,7 @@ _BASE_MIN_SCALE = DEFAULT_SCALE  # below 0.1 the mesh nearly collapses in one ax
 _BASE_MAX_SCALE = 1.5  # beyond 1.5× the silhouette distorts unpleasantly
 
 # ---------------------------------------------------------------------------
-# Source ranges — observed min/max from gene_properties_extended.csv
+# Source ranges — observed min/max from gene_properties.csv
 # ---------------------------------------------------------------------------
 _SRC_RANGES: Dict[str, Tuple[float, float]] = {
     "protein_mass_kda": (12.2, 208.0),

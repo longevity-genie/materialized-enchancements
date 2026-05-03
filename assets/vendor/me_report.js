@@ -950,7 +950,7 @@
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7.5);
     pdf.setTextColor(107, 114, 128);
-    pdf.text(pdfSafeWinAnsi('CODAME \u00b7 The New Human \u00b7 Milano 2026'), m + 26, fy + 13);
+    pdf.text(pdfSafeWinAnsi('GlucoseDAO \u00b7 Longevity Genie'), m + 26, fy + 13);
     pdf.setFont('courier', 'normal');
     pdf.setFontSize(6.5);
     pdf.setTextColor(107, 114, 128);

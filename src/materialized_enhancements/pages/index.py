@@ -310,27 +310,40 @@ def _landing_tab() -> rx.Component:
                         },
                     ),
                     rx.el.p(
+                        "Build your post-human character from real genes — tardigrade radiation shields, "
+                        "naked-mole-rat cancer resistance, Greenland shark longevity — backed by scientific "
+                        "evidence tiers and real citations — and 3D-print the result.",
+                        style={
+                            "color": "#7c3aed",
+                            "fontSize": "1.15rem",
+                            "fontWeight": "700",
+                            "lineHeight": "1.6",
+                            "marginBottom": "14px",
+                        },
+                    ),
+                    rx.el.p(
                         "Upgrading human DNA is not science fiction — it is already happening in adults today. "
                         "In alternative jurisdictions like Prospera, medical tourists are actively receiving gene "
-                        "therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). But what happens "
-                        'in ten years as we unlock harder-to-implement targets to shape "The New Human"? Nature '
-                        "already has the code for extreme survival: shark longevity, tardigrade radiation shields, "
-                        "and axolotl regeneration.",
+                        "therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). "
+                        "The next decade will bring harder questions about what traits people might choose. "
+                        "Nature already has the code for extreme survival: shark longevity, tardigrade radiation "
+                        "shields, whale DNA repair, axolotl regeneration, and bat immune tolerance.",
                         style=_p_body,
                     ),
                     rx.el.p(
                         rx.fragment(
                             rx.el.strong("Materialized Enhancements", style={"color": "#1a1a2e"}),
-                            " turns this impending synthetic biology into participatory artwork. You select desired "
-                            '"enhancement genes" through the interface. Those selections, combined with a personal '
-                            "digital signature, are the exact inputs to a generative algorithm. The result is a "
-                            "single, unrepeatable 3D form — ready for 3D printing.",
+                            " is an RPG-style character creator for speculative human enhancement. "
+                            "Every gene card cites peer-reviewed papers, shows a tiered evidence grade (T2–T6), "
+                            "and is upfront about contradictions and translational gaps. "
+                            "Spend enhancement credits on real genes from extraordinary organisms, "
+                            "watch your profile light up by category, then materialize the result as a "
+                            "unique 3D-printable artifact and a personal enhancement report.",
                         ),
                         style=_p_body,
                     ),
                     rx.el.p(
-                        "Started at CODAME ART+TECH 『 The New Human 』 in Milano, now developed by the joint "
-                        "GlucoseDAO and Longevity Genie team.",
+                        "Developed by the joint GlucoseDAO and Longevity Genie team.",
                         style={"color": "#7c3aed", "fontSize": "0.95rem", "fontWeight": "600", "marginBottom": "18px"},
                     ),
                     rx.el.div(
@@ -362,9 +375,10 @@ def _landing_tab() -> rx.Component:
                         },
                     ),
                     rx.el.p(
-                        "We want you to learn a little genetics in a playful way: browse real enhancement "
-                        "genes, see how they are grouped, then take home a souvenir — a unique 3D-printable form "
-                        "and a printable enhancement report generated from your choices.",
+                        "Learn real genetics in a playful way: browse enhancement genes with scientific evidence "
+                        "tiers, peer-reviewed citations, and notes on contradictions — see how they are grouped "
+                        "by biological function, then take home a unique souvenir — a 3D-printable form and a "
+                        "personal report generated from your choices.",
                         style={**_p_muted, "marginBottom": "16px"},
                     ),
                     rx.el.p(
@@ -427,7 +441,7 @@ def _landing_tab() -> rx.Component:
                         },
                     ),
                     rx.el.p(
-                        "In the next tab, pick categories and genes, then run the generator to materialize your piece.",
+                        "Ready? Pick your enhancement categories, select genes, and materialize your character.",
                         style={
                             "fontSize": "1.35rem",
                             "lineHeight": "1.55",
@@ -5042,7 +5056,7 @@ def _report_card() -> rx.Component:
                 style={"fontSize": "0.9rem", "fontWeight": "900", "color": "#c4b5fd"},
             ),
             rx.el.div(
-                "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+                "GlucoseDAO \u00b7 Longevity Genie",
                 style={"fontSize": "0.75rem", "color": "#94a3b8", "marginTop": "2px"},
             ),
             style={
@@ -5413,7 +5427,7 @@ def _report_png_card() -> rx.Component:
             style={"fontSize": "0.95rem", "fontWeight": "900", "color": "#c4b5fd"},
         ),
         rx.el.div(
-            "CODAME \u00b7 The New Human \u00b7 Milano 2026",
+            "GlucoseDAO \u00b7 Longevity Genie",
             style={"fontSize": "0.8rem", "color": "#94a3b8", "marginTop": "4px"},
         ),
         style={

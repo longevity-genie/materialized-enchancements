@@ -30,8 +30,9 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/",
         title="Character Profile",
         description=(
-            "Interactive genetic enhancement loadout builder: visitors choose real-world genes, "
-            "source organisms, and enhancement categories that shape a future-human profile."
+            "Build your post-human character from real genes — tardigrade radiation shields, "
+            "naked-mole-rat cancer resistance, Greenland shark longevity — backed by scientific "
+            "evidence tiers and real citations. Spend enhancement credits and 3D-print the result."
         ),
         changefreq="weekly",
         priority=1.0,
@@ -40,8 +41,8 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/materialization",
         title="Materialization",
         description=(
-            "3D materialization page for the selected gene profile, including the generated sculpture, "
-            "shareable report, STL export, and ARTEX publishing flow."
+            "Materialize your genetic enhancement profile into a unique 3D-printable sculpture, "
+            "shareable report card, and personal enhancement dossier."
         ),
         changefreq="weekly",
         priority=0.9,
@@ -50,8 +51,8 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/about",
         title="About Materialized Enhancements",
         description=(
-            "Project background for the Materialized Enhancements artwork, started at CODAME Art+Tech "
-            "and now developed by the joint GlucoseDAO and Longevity Genie team."
+            "RPG-style character creator for speculative human enhancement. Learn real genetics "
+            "in a playful way, by the GlucoseDAO and Longevity Genie team."
         ),
         changefreq="monthly",
         priority=0.8,

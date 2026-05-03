@@ -289,12 +289,12 @@ for _g in GENE_LIBRARY:
 
 
 # ---------------------------------------------------------------------------
-# Budget system — prices resolved by gene_id from gene_properties_extended.csv.
+# Budget system — prices resolved by gene_id from gene_properties.csv.
 # CATEGORY_PRICES sums all genes in a category (UI: max spend if every gene is on).
 # CATEGORY_MIN_GENE_PRICES is the cheapest gene in each category (gate for selecting
 # a category: user only needs room for one gene, not the full category total).
 # ---------------------------------------------------------------------------
-GENE_PRICES_PATH = DATA_DIR / "gene_properties_extended.csv"
+GENE_PRICES_PATH = DATA_DIR / "gene_properties.csv"
 
 DEFAULT_BUDGET: int = 100
 
@@ -325,7 +325,7 @@ def _build_pricing_table(
     if missing.height > 0:
         missing_ids = ", ".join(sorted(set(missing["gene_id"].to_list())))
         raise ValueError(
-            "Missing gene_price entries in gene_properties_extended.csv for gene_id(s): "
+            "Missing gene_price entries in gene_properties.csv for gene_id(s): "
             f"{missing_ids}"
         )
 
@@ -340,7 +340,7 @@ def _build_pricing_table(
             )
         )
         raise ValueError(
-            "gene_price must be > 0 for all genes in gene_properties_extended.csv. "
+            "gene_price must be > 0 for all genes in gene_properties.csv. "
             f"Bad rows: {bad_rows}"
         )
 
