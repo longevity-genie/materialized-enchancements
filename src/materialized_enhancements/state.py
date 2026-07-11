@@ -959,6 +959,8 @@ class ComposeState(rx.State):
     notice_visible: bool = False
     notice_epoch: int = 0
     remove_hint_shown: bool = False
+    first_gene_remove_hint_shown: bool = False
+    first_gene_remove_hint_visible: bool = False
     stl_filename: str = ""
     stl_download_path: str = ""
     pipeline_stats: Dict[str, Any] = {}
@@ -1101,7 +1103,7 @@ class ComposeState(rx.State):
             self._record_mobile_gene_addition(gene, _category_for_gene_name(gene))
             added = True
         self._recompute_params()
-        event = self._sync_advisory_notice()
+        event = (self._maybe_first_gene_remove_hint() if added else None) or self._sync_advisory_notice()
         if event:
             yield event
         if added:
@@ -1133,7 +1135,7 @@ class ComposeState(rx.State):
         self.included_genes = [*self.included_genes, gene]
         self._record_mobile_gene_addition(gene, category)
         self._recompute_params()
-        event = self._sync_advisory_notice()
+        event = self._maybe_first_gene_remove_hint() or self._sync_advisory_notice()
         if event:
             yield event
         yield rx.call_script(_mobile_body_change_overlay_script())
@@ -1212,6 +1214,20 @@ class ComposeState(rx.State):
 
     def _raise_error_notice(self, text: str) -> rx.event.EventSpec:
         return self._raise_notice(text, "error")
+
+    def _maybe_first_gene_remove_hint(self) -> rx.event.EventSpec | None:
+        """One-time hint after the very first gene is ever inserted."""
+        if not self.first_gene_remove_hint_shown and len(self.included_genes) == 1:
+            self.first_gene_remove_hint_shown = True
+            self.first_gene_remove_hint_visible = True
+            return ComposeState.fade_first_gene_remove_hint()
+        return None
+
+    @rx.event(background=True)
+    async def fade_first_gene_remove_hint(self) -> None:
+        await asyncio.sleep(4)
+        async with self:
+            self.first_gene_remove_hint_visible = False
 
     def _sync_advisory_notice(self) -> rx.event.EventSpec | None:
         if self.materialize_requirements_notice:
