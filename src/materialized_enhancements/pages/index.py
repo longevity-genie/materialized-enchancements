@@ -2820,6 +2820,39 @@ def _rpg_silhouette_marker(
     )
 
 
+def _first_gene_remove_hint() -> rx.Component:
+    return rx.el.div(
+        fomantic_icon("info circle", size=12, color="#86efac"),
+        rx.el.span(
+            "You can remove genes by right-clicking their marker chip on the body map.",
+            style={"marginLeft": "6px"},
+        ),
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "marginTop": "6px",
+            "padding": "6px 10px",
+            "borderRadius": "8px",
+            "fontSize": "0.78rem",
+            "fontWeight": "700",
+            "lineHeight": "1.35",
+            "backgroundColor": "rgba(15, 23, 42, 0.6)",
+            "border": "1px solid rgba(134, 239, 172, 0.48)",
+            "color": "#86efac",
+            "transition": "opacity 0.5s ease, transform 0.5s ease, max-height 0.5s ease",
+            "opacity": rx.cond(ComposeState.first_gene_remove_hint_visible, 1, 0),
+            "transform": rx.cond(
+                ComposeState.first_gene_remove_hint_visible,
+                "translateY(0)",
+                "translateY(-6px)",
+            ),
+            "maxHeight": rx.cond(ComposeState.first_gene_remove_hint_visible, "60px", "0px"),
+            "overflow": "hidden",
+            "pointerEvents": "none",
+        },
+    )
+
+
 def _rpg_body_map_panel() -> rx.Component:
     return rx.el.div(
         rx.el.div(
@@ -2929,6 +2962,7 @@ def _rpg_body_map_panel() -> rx.Component:
                         },
                     ),
                 ),
+                _first_gene_remove_hint(),
                 class_name="me-rpg-body-map-title",
             ),
             style={
