@@ -2526,7 +2526,8 @@ def _rpg_selected_gene_loadout() -> rx.Component:
                 style={"display": "flex", "flexDirection": "column", "gap": "10px"},
             ),
         ),
-        style={**_RPG_PANEL_STYLE, "padding": "14px", "marginBottom": "12px"},
+        _materialize_hint_bubble("genes"),
+        style={**_RPG_PANEL_STYLE, "padding": "14px", "marginBottom": "12px", "position": "relative"},
     )
 
 
@@ -2569,6 +2570,8 @@ def _rpg_materialization_leg_cta() -> rx.Component:
             "me-rpg-materialize-leg-cta me-onboarding-materialize-lift",
             "me-rpg-materialize-leg-cta",
         ),
+        on_mouse_enter=ComposeState.show_materialize_hint,
+        on_mouse_leave=ComposeState.hide_materialize_hint,
     )
 
 
@@ -2906,6 +2909,7 @@ def _rpg_body_map_panel() -> rx.Component:
                             "gap": "10px",
                         },
                     ),
+                    _materialize_hint_bubble("name"),
                     style=rx.cond(
                         ComposeState.show_onboarding_name,
                         {
@@ -3788,6 +3792,7 @@ def _rpg_gene_library_panel() -> rx.Component:
         _pdb_viewer_scripts(),
         _rpg_gene_library_anchor_script(),
         _rpg_gene_library_title(),
+        rx.el.div(_materialize_hint_bubble("genes"), style={"position": "relative"}),
         _gene_library_onboarding_tooltip(),
         rx.el.div(
             *[_rpg_category_gene_accordion(cat) for cat in UNIQUE_CATEGORIES],
@@ -6351,6 +6356,7 @@ def _choice_section() -> rx.Component:
                     "color": "#1a1a2e",
                 },
             ),
+            rx.el.div(_materialize_hint_bubble("name"), style={"position": "relative"}),
             rx.cond(
                 ComposeState.has_selection,
                 rx.el.div(
@@ -6379,6 +6385,7 @@ def _choice_section() -> rx.Component:
                         rx.foreach(ComposeState.selected_genes, _gene_checkbox),
                         style={"display": "flex", "flexDirection": "column", "gap": "3px", "marginBottom": "12px"},
                     ),
+                    rx.el.div(_materialize_hint_bubble("genes"), style={"position": "relative"}),
                 ),
                 rx.el.p(
                     "Select categories from the left panel.",
@@ -6396,6 +6403,8 @@ def _choice_section() -> rx.Component:
                     style={"marginLeft": "8px"},
                 ),
                 on_click=ComposeState.materialize,
+                on_mouse_enter=ComposeState.show_materialize_hint,
+                on_mouse_leave=ComposeState.hide_materialize_hint,
                 class_name=rx.cond(
                     ComposeState.generating,
                     "ui disabled primary button",
@@ -9260,43 +9269,104 @@ def _global_notice_toast() -> rx.Component:
     is_hint = ComposeState.notice_kind == "hint"
     accent = rx.cond(is_error, "#fca5a5", rx.cond(is_hint, "#86efac", "#fde68a"))
     icon_name = rx.cond(is_hint, "info circle", "circle-alert")
-    return rx.el.div(
-        fomantic_icon(icon_name, size=14, color=accent),
-        rx.el.span(ComposeState.notice_text, style={"marginLeft": "8px"}),
-        style={
-            "position": "fixed",
-            "left": "75%",
-            "bottom": "28px",
-            "zIndex": 2000,
-            "display": "flex",
-            "alignItems": "center",
-            "maxWidth": "min(90vw, 440px)",
-            "padding": "12px 18px",
-            "borderRadius": "10px",
-            "fontSize": "0.9rem",
-            "fontWeight": "700",
-            "lineHeight": "1.35",
-            "boxShadow": "0 12px 32px rgba(2, 6, 23, 0.38)",
-            "backgroundColor": "rgba(15, 23, 42, 0.84)",
-            "border": rx.cond(
-                is_error,
-                "1px solid rgba(248, 113, 113, 0.48)",
-                rx.cond(
-                    is_hint,
-                    "1px solid rgba(134, 239, 172, 0.48)",
-                    "1px solid rgba(251, 191, 36, 0.48)",
+    return rx.cond(
+        ComposeState.notice_kind == "warning",
+        rx.fragment(),
+        rx.el.div(
+            fomantic_icon(icon_name, size=14, color=accent),
+            rx.el.span(ComposeState.notice_text, style={"marginLeft": "8px"}),
+            style={
+                "position": "fixed",
+                "left": "75%",
+                "bottom": "28px",
+                "zIndex": 2000,
+                "display": "flex",
+                "alignItems": "center",
+                "maxWidth": "min(90vw, 440px)",
+                "padding": "12px 18px",
+                "borderRadius": "10px",
+                "fontSize": "0.9rem",
+                "fontWeight": "700",
+                "lineHeight": "1.35",
+                "boxShadow": "0 12px 32px rgba(2, 6, 23, 0.38)",
+                "backgroundColor": "rgba(15, 23, 42, 0.84)",
+                "border": rx.cond(
+                    is_error,
+                    "1px solid rgba(248, 113, 113, 0.48)",
+                    rx.cond(
+                        is_hint,
+                        "1px solid rgba(134, 239, 172, 0.48)",
+                        "1px solid rgba(251, 191, 36, 0.48)",
+                    ),
                 ),
-            ),
-            "color": accent,
-            "transition": "opacity 0.5s ease, transform 0.5s ease",
-            "opacity": rx.cond(ComposeState.notice_visible, 1, 0),
-            "transform": rx.cond(
-                ComposeState.notice_visible,
-                "translate(-50%, 0)",
-                "translate(-50%, 12px)",
-            ),
-            "pointerEvents": rx.cond(ComposeState.notice_visible, "auto", "none"),
-        },
+                "color": accent,
+                "transition": "opacity 0.5s ease, transform 0.5s ease",
+                "opacity": rx.cond(ComposeState.notice_visible, 1, 0),
+                "transform": rx.cond(
+                    ComposeState.notice_visible,
+                    "translate(-50%, 0)",
+                    "translate(-50%, 12px)",
+                ),
+                "pointerEvents": rx.cond(ComposeState.notice_visible, "auto", "none"),
+            },
+        ),
+    )
+
+
+def _materialize_hint_bubble(anchor: str) -> rx.Component:
+    text = (
+        ComposeState.materialize_name_missing_notice
+        if anchor == "name"
+        else ComposeState.materialize_genes_warning_notice
+    )
+    visible = (
+        ComposeState.name_warning_visible
+        if anchor == "name"
+        else ComposeState.genes_warning_visible
+    )
+    position_style = (
+        {
+            "position": "fixed",
+            "left": "24px",
+            "bottom": "28px",
+            "marginTop": "0",
+            "zIndex": 1500,
+            "maxWidth": "320px",
+        }
+        if anchor == "genes"
+        else {
+            "position": "absolute",
+            "top": "100%",
+            "left": "0",
+            "marginTop": "6px",
+            "zIndex": 60,
+            "maxWidth": "320px",
+        }
+    )
+    return rx.cond(
+        text,
+        rx.el.div(
+            fomantic_icon("circle-alert", size=13, color="#fde68a"),
+            rx.el.span(text, style={"marginLeft": "7px"}),
+            style={
+                **position_style,
+                "display": "flex",
+                "alignItems": "center",
+                "padding": "9px 12px",
+                "borderRadius": "9px",
+                "fontSize": "0.8rem",
+                "fontWeight": "700",
+                "lineHeight": "1.35",
+                "boxShadow": "0 12px 32px rgba(2, 6, 23, 0.38)",
+                "backgroundColor": "rgba(15, 23, 42, 0.92)",
+                "border": "1px solid rgba(251, 191, 36, 0.48)",
+                "color": "#fde68a",
+                "transition": "opacity 0.3s ease",
+                "opacity": rx.cond(visible, 1, 0),
+                "pointerEvents": "none",
+            },
+        ),
+        rx.fragment(),
     )
 
 

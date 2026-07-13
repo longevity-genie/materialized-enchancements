@@ -956,9 +956,15 @@ class ComposeState(rx.State):
 
     notice_text: str = ""
     notice_kind: str = ""
+    notice_anchor: str = ""
     notice_visible: bool = False
     notice_epoch: int = 0
     remove_hint_shown: bool = False
+    name_warning_visible: bool = False
+    name_warning_epoch: int = 0
+    genes_warning_visible: bool = False
+    genes_warning_epoch: int = 0
+    has_reached_recommended_genes: bool = False
     stl_filename: str = ""
     stl_download_path: str = ""
     pipeline_stats: Dict[str, Any] = {}
@@ -1033,9 +1039,6 @@ class ComposeState(rx.State):
     def set_personal_tag(self, value: str):  # type: ignore[return]
         self.personal_tag = value
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
 
     def toggle_category(self, category: str):  # type: ignore[return]
         if category in self.selected_categories:
@@ -1051,9 +1054,6 @@ class ComposeState(rx.State):
             self.selected_categories = [*self.selected_categories, category]
         self._prune_included_genes()
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
 
     def select_category(self, category: str):  # type: ignore[return]
         """Select a category from the body map without treating a repeat click as removal."""
@@ -1069,9 +1069,6 @@ class ComposeState(rx.State):
         self.selected_categories = [*self.selected_categories, category]
         self._prune_included_genes()
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
         if self.onboarding_step_index == 0:
             yield from self.advance_onboarding()
 
@@ -1079,14 +1076,15 @@ class ComposeState(rx.State):
         self.selected_categories = [c for c in self.selected_categories if c != category]
         self._prune_included_genes()
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
 
     def _record_mobile_gene_addition(self, gene: str, category: str) -> None:
         self.mobile_change_overlay_gene = gene
         self.mobile_change_overlay_category = category
         self.mobile_change_overlay_nonce += 1
+
+    def _mark_gene_milestones(self) -> None:
+        if _count_included_genes_in_choice(self.selected_categories, self.included_genes) >= RECOMMENDED_MIN_INCLUDED_GENES_FOR_TOTEM:
+            self.has_reached_recommended_genes = True
 
     def toggle_gene(self, gene: str):  # type: ignore[return]
         added = False
@@ -1100,10 +1098,8 @@ class ComposeState(rx.State):
             self.included_genes = [*self.included_genes, gene]
             self._record_mobile_gene_addition(gene, _category_for_gene_name(gene))
             added = True
+            self._mark_gene_milestones()
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
         if added:
             yield rx.call_script(_mobile_body_change_overlay_script())
 
@@ -1118,9 +1114,6 @@ class ComposeState(rx.State):
             if not remaining_in_category:
                 self.selected_categories = [c for c in self.selected_categories if c != category]
             self._recompute_params()
-            event = self._sync_advisory_notice()
-            if event:
-                yield event
             return
 
         spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
@@ -1132,10 +1125,8 @@ class ComposeState(rx.State):
             self.selected_categories = [*self.selected_categories, category]
         self.included_genes = [*self.included_genes, gene]
         self._record_mobile_gene_addition(gene, category)
+        self._mark_gene_milestones()
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
         yield rx.call_script(_mobile_body_change_overlay_script())
 
     def remove_gene_marker_shortcut(self, gene: str, category: str):  # type: ignore[return]
@@ -1150,9 +1141,6 @@ class ComposeState(rx.State):
         if not remaining_in_category:
             self.selected_categories = [c for c in self.selected_categories if c != category]
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
 
     def deselect_all_genes(self):  # type: ignore[return]
         """Clear the active RPG gene loadout."""
@@ -1160,9 +1148,6 @@ class ComposeState(rx.State):
         self.included_genes = []
         self.expanded_genes = []
         self._recompute_params()
-        event = self._sync_advisory_notice()
-        if event:
-            yield event
 
     def toggle_gene_details(self, gene: str) -> None:
         if gene in self.expanded_genes:
@@ -1213,19 +1198,34 @@ class ComposeState(rx.State):
     def _raise_error_notice(self, text: str) -> rx.event.EventSpec:
         return self._raise_notice(text, "error")
 
-    def _sync_advisory_notice(self) -> rx.event.EventSpec | None:
-        if self.materialize_requirements_notice:
-            return self._raise_notice(self.materialize_requirements_notice, "warning")
-        if self.materialize_totem_diversity_notice:
-            if not self.remove_hint_shown:
-                self.remove_hint_shown = True
-                self.notice_text = self.materialize_totem_diversity_notice
-                self.notice_kind = "warning"
-                self.notice_visible = True
-                self.notice_epoch += 1
-                return ComposeState.fade_notice_then_hint(self.notice_epoch)
-            return self._raise_notice(self.materialize_totem_diversity_notice, "warning")
-        return None
+    def show_materialize_hint(self):  # type: ignore[return]
+        events: list[rx.event.EventSpec] = []
+        if self.materialize_name_missing_notice:
+            self.name_warning_epoch += 1
+            self.name_warning_visible = True
+            events.append(ComposeState.schedule_hide_name_warning(self.name_warning_epoch))
+        if self.materialize_genes_warning_notice:
+            self.genes_warning_epoch += 1
+            self.genes_warning_visible = True
+            events.append(ComposeState.schedule_hide_genes_warning(self.genes_warning_epoch))
+        return events
+
+    def hide_materialize_hint(self):  # type: ignore[return]
+        return
+
+    @rx.event(background=True)
+    async def schedule_hide_name_warning(self, epoch: int) -> None:
+        await asyncio.sleep(4)
+        async with self:
+            if self.name_warning_epoch == epoch:
+                self.name_warning_visible = False
+
+    @rx.event(background=True)
+    async def schedule_hide_genes_warning(self, epoch: int) -> None:
+        await asyncio.sleep(4)
+        async with self:
+            if self.genes_warning_epoch == epoch:
+                self.genes_warning_visible = False
 
     @rx.event(background=True)
     async def fade_notice(self, epoch: int) -> None:
@@ -2769,9 +2769,20 @@ class ComposeState(rx.State):
 
     @rx.var
     def materialize_name_missing_notice(self) -> str:
-        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
-        if spent > 0 and not self.has_personal_tag:
+        if not self.has_personal_tag:
             return "Please enter a character name or alias above to materialize your enhancements."
+        return ""
+
+    @rx.var
+    def materialize_genes_warning_notice(self) -> str:
+        n = _count_included_genes_in_choice(self.selected_categories, self.included_genes)
+        if n <= 0:
+            return "Choose at least one gene from the Gene library before materializing."
+        if not self.has_reached_recommended_genes:
+            return (
+                "For a more diverse, representative totem we recommend including at least three genes. "
+                "You can still materialize with one or two if you prefer."
+            )
         return ""
 
     @rx.var
@@ -2794,19 +2805,6 @@ class ComposeState(rx.State):
         return (
             "You are ready. Press the pulsing Materialize button below to grow your unique "
             "mathematical Voronoi sculpture and download your personal report."
-        )
-
-    @rx.var
-    def materialize_totem_diversity_notice(self) -> str:
-        """Non-empty soft hint when Choice has few genes; materialize is not blocked."""
-        if not self.selected_categories:
-            return ""
-        n = _count_included_genes_in_choice(self.selected_categories, self.included_genes)
-        if n <= 0 or n >= RECOMMENDED_MIN_INCLUDED_GENES_FOR_TOTEM:
-            return ""
-        return (
-            "For a more diverse, representative totem we recommend including at least three genes. "
-            "You can still materialize with one or two if you prefer."
         )
 
     @rx.var
