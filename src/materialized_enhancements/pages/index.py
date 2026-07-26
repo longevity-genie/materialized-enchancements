@@ -172,6 +172,45 @@ def _email_send_form(
 # ── Tab 0: Landing (nav label: About) ───────────────────────────────────────
 
 
+def _roadmap_item(title: str, detail: str) -> rx.Component:
+    return rx.el.li(
+        rx.el.strong(title, style={"color": "#f8fafc"}),
+        f" — {detail}",
+        style={
+            "color": "#cbd5e1",
+            "fontSize": "0.98rem",
+            "lineHeight": "1.6",
+            "marginBottom": "8px",
+        },
+    )
+
+
+def _contact_link(label: str, href: str) -> rx.Component:
+    external_attrs: dict[str, str] = (
+        {"target": "_blank", "rel": "noopener noreferrer"}
+        if href.startswith("http")
+        else {}
+    )
+    return rx.el.a(
+        label,
+        href=href,
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "padding": "9px 12px",
+            "borderRadius": "999px",
+            "border": "1px solid rgba(196, 181, 253, 0.38)",
+            "background": "rgba(124, 58, 237, 0.14)",
+            "color": "#ddd6fe",
+            "fontSize": "0.86rem",
+            "fontWeight": "800",
+            "textDecoration": "none",
+        },
+        **external_attrs,
+    )
+
+
 def _landing_tab() -> rx.Component:
     _p_muted = {
         "color": "#6b7280",
@@ -294,31 +333,6 @@ def _landing_tab() -> rx.Component:
                 style=_team_text,
             ),
             style=_team_member_card,
-        )
-
-    def _contact_link(label: str, href: str) -> rx.Component:
-        external_attrs: dict[str, str] = (
-            {"target": "_blank", "rel": "noopener noreferrer"}
-            if href.startswith("http")
-            else {}
-        )
-        return rx.el.a(
-            label,
-            href=href,
-            style={
-                "display": "inline-flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "padding": "9px 12px",
-                "borderRadius": "999px",
-                "border": "1px solid rgba(196, 181, 253, 0.38)",
-                "background": "rgba(124, 58, 237, 0.14)",
-                "color": "#ddd6fe",
-                "fontSize": "0.86rem",
-                "fontWeight": "800",
-                "textDecoration": "none",
-            },
-            **external_attrs,
         )
 
     return rx.el.div(
@@ -448,6 +462,85 @@ def _landing_tab() -> rx.Component:
                             _contact_link(
                                 "Anton on LinkedIn",
                                 "https://www.linkedin.com/in/antonkulaga/",
+                            ),
+                            style={
+                                "display": "flex",
+                                "flexWrap": "wrap",
+                                "gap": "8px",
+                            },
+                        ),
+                        style={
+                            "padding": "16px",
+                            "borderRadius": "16px",
+                            "border": "1px solid rgba(196, 181, 253, 0.24)",
+                            "background": "rgba(15, 23, 42, 0.54)",
+                            "boxShadow": "0 14px 34px rgba(2, 6, 23, 0.18)",
+                            "margin": "0 0 18px 0",
+                        },
+                    ),
+                    rx.el.div(
+                        rx.el.h2(
+                            "What we want to build next",
+                            style={
+                                "color": "#1a1a2e",
+                                "fontSize": "1.35rem",
+                                "fontWeight": "900",
+                                "margin": "0 0 8px 0",
+                            },
+                        ),
+                        rx.el.p(
+                            "What you see today is an early version. We have a long list of features we would "
+                            "love to add, and most of them are limited by funding and hands rather than by ideas:",
+                            style={**_p_body, "marginBottom": "10px"},
+                        ),
+                        rx.el.ul(
+                            _roadmap_item(
+                                "A deeper enhancement knowledge base",
+                                "many more genes and variants, richer evidence summaries, side effects and "
+                                "trade-offs, and clearer explanations of what is actually known versus speculated.",
+                            ),
+                            _roadmap_item(
+                                "A map of who is working on this",
+                                "companies, clinics, and labs developing or offering gene therapies, so visitors "
+                                "can see where the real-world pipeline stands for each enhancement.",
+                            ),
+                            _roadmap_item(
+                                "A printable human 3D model of your enhanced state",
+                                "instead of an abstract form, a full figure that visibly reflects the traits you "
+                                "chose — the enhancements rendered on a body you can print and hold.",
+                            ),
+                            _roadmap_item(
+                                "More art and fabrication options",
+                                "additional generative models plugged into the same biological input engine, "
+                                "better print quality, and wearable variants.",
+                            ),
+                            _roadmap_item(
+                                "Exhibition and classroom mode",
+                                "guided walkthroughs, translations, and offline-friendly builds so museums, "
+                                "schools, and science festivals can run it without us being in the room.",
+                            ),
+                            style={
+                                "margin": "0 0 12px 0",
+                                "paddingLeft": "20px",
+                                "listStyle": "disc",
+                            },
+                        ),
+                        rx.el.p(
+                            "All of this takes research time, compute, printing materials, and travel to venues. "
+                            "The project is open source and free to use, so donations, grants, sponsorships, "
+                            "in-kind support (printing, hosting, hardware), and volunteer contributions are what "
+                            "decide how much of this list actually gets built. If any of it matters to you, "
+                            "supporting the project directly moves it forward — and if you represent a foundation, "
+                            "lab, or company interested in funding a specific feature, please get in touch.",
+                            style={**_p_body, "marginBottom": "12px"},
+                        ),
+                        rx.el.div(
+                            _contact_link("Support us on Ko-fi", "https://ko-fi.com/liviazaharia"),
+                            _contact_link("Email Anton about funding", "mailto:antonkulaga@gmail.com"),
+                            _contact_link("Email Livia about funding", "mailto:liviazaharia2020@gmail.com"),
+                            _contact_link(
+                                "Contribute on GitHub",
+                                "https://github.com/winternewt/materialized-enchancements",
                             ),
                             style={
                                 "display": "flex",
@@ -1803,18 +1896,30 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             rx.el.button(
                 rx.cond(
                     is_expanded,
-                    fomantic_icon("chevron-up", size=11, color="#9ca3af"),
-                    fomantic_icon("chevron-down", size=11, color="#9ca3af"),
+                    rx.el.span("[Hide]"),
+                    rx.el.span("[Details]"),
+                ),
+                rx.cond(
+                    is_expanded,
+                    fomantic_icon("chevron-up", size=11, color="#7c3aed"),
+                    fomantic_icon("chevron-down", size=11, color="#7c3aed"),
                 ),
                 on_click=ComposeState.toggle_gene_details(gene_sym),
+                title=rx.cond(is_expanded, "Hide gene details", "Show gene details"),
                 style={
-                    "background": "none",
-                    "border": "none",
+                    "background": "#f3f0ff",
+                    "border": "1px solid #d4c5f9",
+                    "borderRadius": "6px",
                     "cursor": "pointer",
                     "padding": "4px 8px",
                     "flexShrink": "0",
-                    "display": "flex",
+                    "display": "inline-flex",
                     "alignItems": "center",
+                    "gap": "4px",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "700",
+                    "color": "#6d28d9",
+                    "whiteSpace": "nowrap",
                 },
             ),
             style={"display": "flex", "alignItems": "center"},
@@ -3374,17 +3479,33 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             rx.el.button(
                 rx.cond(
                     is_expanded,
-                    fomantic_icon("chevron-up", size=12, color="#94a3b8"),
-                    fomantic_icon("chevron-down", size=12, color="#94a3b8"),
+                    rx.el.span("[Hide]"),
+                    rx.el.span("[Details]"),
+                ),
+                rx.cond(
+                    is_expanded,
+                    fomantic_icon("chevron-up", size=11, color="#c4b5fd"),
+                    fomantic_icon("chevron-down", size=11, color="#c4b5fd"),
                 ),
                 on_click=ComposeState.toggle_gene_details(gene_sym),
+                title=rx.cond(is_expanded, "Hide gene details", "Show gene details"),
                 style={
-                    "background": "transparent",
-                    "border": "none",
+                    "background": "rgba(124, 58, 237, 0.16)",
+                    "border": "1px solid rgba(167, 139, 250, 0.55)",
+                    "borderRadius": "6px",
                     "cursor": "pointer",
-                    "padding": "2px 4px",
+                    "padding": "5px 9px",
                     "marginLeft": "6px",
                     "flexShrink": "0",
+                    "display": "inline-flex",
+                    "alignItems": "center",
+                    "gap": "5px",
+                    "fontSize": "0.78rem",
+                    "fontWeight": "800",
+                    "letterSpacing": "0.03em",
+                    "color": "#e9d5ff",
+                    "whiteSpace": "nowrap",
+                    "minHeight": "32px",
                 },
             ),
             style={"display": "flex", "alignItems": "flex-start", "gap": "6px"},
@@ -3659,7 +3780,7 @@ def _pdb_viewer_scripts() -> rx.Component:
         rx.script(
             """
             (() => {
-                const installerVersion = "lazy-safe-render-2026-05-22";
+                const installerVersion = "compact-unavailable-2026-07-27";
                 if (window.__mePdbViewerInstalled === installerVersion) return;
                 window.__mePdbViewerInstalled = installerVersion;
 
@@ -3688,17 +3809,23 @@ def _pdb_viewer_scripts() -> rx.Component:
                     return rect.width >= 40 && rect.height >= 40;
                 };
 
+                const markUnavailable = (el) => {
+                    cleanupViewer(el, false);
+                    el.dataset.pdbInit = "failed";
+                    el.style.height = "auto";
+                    el.style.minHeight = "0";
+                    el.style.background = "transparent";
+                    el.style.border = "1px dashed rgba(148, 163, 184, 0.35)";
+                    el.innerHTML = '<div style="padding:8px 10px;color:#94a3b8;font-size:0.82rem;">Structure unavailable</div>';
+                };
+
                 const initViewer = (el) => {
                     if (el.dataset.pdbInit) return;
                     const src = el.dataset.pdbSrc;
                     if (!src || typeof $3Dmol === "undefined") return;
                     if (!isRenderable(el)) return;
                     el.dataset.pdbInit = "1";
-                    const fail = () => {
-                        cleanupViewer(el, false);
-                        el.dataset.pdbInit = "failed";
-                        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:0.82rem;">Structure unavailable</div>';
-                    };
+                    const fail = () => markUnavailable(el);
                     let viewer;
                     try {
                         viewer = $3Dmol.createViewer(el, {
@@ -3738,6 +3865,11 @@ def _pdb_viewer_scripts() -> rx.Component:
                         }
                     }, false);
                     const show = (pdb) => {
+                        const text = String(pdb || "");
+                        if (!text || (!text.includes("ATOM") && !text.includes("HETATM"))) {
+                            fail();
+                            return;
+                        }
                         try {
                             viewer.addModel(pdb, "pdb");
                             viewer.setStyle({}, {cartoon: {color: "spectrum"}});
@@ -3748,7 +3880,15 @@ def _pdb_viewer_scripts() -> rx.Component:
                         }
                     };
                     if (pdbCache[src]) { show(pdbCache[src]); }
-                    else { fetch(src).then(r => r.text()).then(pdb => { pdbCache[src] = pdb; show(pdb); }).catch(fail); }
+                    else {
+                        fetch(src).then((r) => {
+                            if (!r.ok) throw new Error("pdb fetch failed");
+                            return r.text();
+                        }).then((pdb) => {
+                            pdbCache[src] = pdb;
+                            show(pdb);
+                        }).catch(fail);
+                    }
                 };
 
                 const scanAll = () => {

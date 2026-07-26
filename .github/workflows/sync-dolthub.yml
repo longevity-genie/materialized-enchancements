@@ -1,0 +1,120 @@
+# Sync gene database from DoltHub → SQLite
+#
+# Polls DoltHub every 6 hours for changes to the main branch.
+# If the commit hash differs from the stored hash, clones the database,
+# exports all tables to data/enhancement.db (SQLite), and commits the result.
+#
+# Prerequisites:
+#   1. Create a Dolt database on DoltHub and set DOLTHUB_ORG / DOLTHUB_DB below
+#   2. For private databases, add a DOLTHUB_TOKEN repository secret
+#
+# Manual trigger: Actions → "Sync DoltHub → SQLite" → "Run workflow"
+
+name: Sync DoltHub → SQLite
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+env:
+  DOLTHUB_ORG: longevity-genie
+  DOLTHUB_DB: enhancement-bio
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check DoltHub for changes
+        id: check
+        run: |
+          REMOTE_HASH=$(curl -sf \
+            "https://www.dolthub.com/api/v1alpha1/${{ env.DOLTHUB_ORG }}/${{ env.DOLTHUB_DB }}/main" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('commit_hash',''))" \
+            2>/dev/null || echo "")
+
+          if [ -z "$REMOTE_HASH" ]; then
+            echo "Could not fetch DoltHub commit hash — skipping"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LOCAL_HASH=""
+          if [ -f data/.dolthub-hash ]; then
+            LOCAL_HASH=$(cat data/.dolthub-hash)
+          fi
+
+          echo "Remote: $REMOTE_HASH"
+          echo "Local:  $LOCAL_HASH"
+
+          if [ "$REMOTE_HASH" = "$LOCAL_HASH" ]; then
+            echo "No changes on DoltHub"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "DoltHub has new commits"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "hash=$REMOTE_HASH" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Dolt
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          sudo bash -c 'curl -L https://github.com/dolthub/dolt/releases/latest/download/install.sh | bash'
+          dolt version
+
+      - name: Clone database and export to SQLite
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          dolt clone "${{ env.DOLTHUB_ORG }}/${{ env.DOLTHUB_DB }}" /tmp/doltdb
+
+          pip install 'db-to-sqlite[mysql]'
+
+          cd /tmp/doltdb
+          dolt sql-server --port 3307 &
+          SERVER_PID=$!
+          sleep 5
+
+          db-to-sqlite \
+            "mysql://root@127.0.0.1:3307/${{ env.DOLTHUB_DB }}" \
+            "$GITHUB_WORKSPACE/data/enhancement.db" \
+            --all
+
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+      - name: Verify database
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          python3 -c "
+          import sqlite3
+          conn = sqlite3.connect('data/enhancement.db')
+          tables = [r[0] for r in conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()]
+          print(f'Tables: {tables}')
+          for t in tables:
+              c = conn.execute(f'SELECT COUNT(*) FROM \"{t}\"').fetchone()[0]
+              print(f'  {t}: {c} rows')
+          assert len(tables) >= 5, f'Expected at least 5 tables, got {len(tables)}'
+          conn.close()
+          print('Database verification passed')
+          "
+
+      - name: Commit changes
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          echo "${{ steps.check.outputs.hash }}" > data/.dolthub-hash
+
+          git config user.name "DoltHub Sync"
+          git config user.email "sync@enhancement.bio"
+          git add data/enhancement.db data/.dolthub-hash
+
+          if git diff --cached --quiet; then
+            echo "No file changes to commit"
+          else
+            git commit -m "sync: update database from DoltHub (${{ steps.check.outputs.hash }})"
+            git push
+          fi

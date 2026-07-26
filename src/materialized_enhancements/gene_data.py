@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import sqlite3
 from pathlib import Path
 from typing import TypedDict
 
@@ -9,13 +11,17 @@ from urllib.parse import quote as url_quote
 
 from materialized_enhancements.puzzle import HUMAN_SPECIES_ID, resolve_puzzle_svg
 
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "input"
+DB_PATH = Path(__file__).resolve().parents[2] / "data" / "enhancement.db"
 DATA_PATH = DATA_DIR / "gene_library.csv"
 SPECIES_PATH = DATA_DIR / "species.csv"
 GENE_SPECIES_PATH = DATA_DIR / "gene_species.csv"
 GENE_TESTING_PATH = DATA_DIR / "gene_testing.csv"
 GENE_CONFIDENCE_PATH = DATA_DIR / "gene_confidence.csv"
+
+USE_SQLITE: bool = DB_PATH.is_file()
 
 
 class SpeciesEntry(TypedDict):
@@ -126,6 +132,152 @@ class _ProteinInfo:
         self.has_alphafold = has_alphafold
 
 
+# ---------------------------------------------------------------------------
+# SQLite loaders — used when enhancement.db exists, producing identical
+# data structures to the CSV loaders below.
+# ---------------------------------------------------------------------------
+
+def _sqlite_conn() -> sqlite3.Connection:
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _sqlite_load_species_lookup(conn: sqlite3.Connection) -> dict[str, SpeciesEntry]:
+    rows = conn.execute("SELECT species_id, scientific_name, common_name, url FROM species").fetchall()
+    return {
+        r["species_id"]: SpeciesEntry(
+            species_id=r["species_id"],
+            scientific_name=r["scientific_name"],
+            common_name=r["common_name"],
+            url=r["url"] or "",
+        )
+        for r in rows
+    }
+
+
+def _sqlite_load_gene_species_map(conn: sqlite3.Connection) -> dict[str, list[str]]:
+    rows = conn.execute("SELECT gene_id, species_id FROM gene_species").fetchall()
+    result: dict[str, list[str]] = {}
+    for r in rows:
+        result.setdefault(r["gene_id"], []).append(r["species_id"])
+    return result
+
+
+def _sqlite_load_gene_confidence_map(conn: sqlite3.Connection) -> dict[str, list[ConfidenceEntry]]:
+    rows = conn.execute("SELECT gene_id, value, argument, description, is_primary FROM gene_confidence").fetchall()
+    result: dict[str, list[ConfidenceEntry]] = {}
+    for r in rows:
+        entry = ConfidenceEntry(
+            gene_id=r["gene_id"],
+            value=r["value"] or "",
+            argument=r["argument"] or "",
+            description=r["description"] or "",
+            primary=bool(r["is_primary"]),
+        )
+        result.setdefault(r["gene_id"], []).append(entry)
+    return result
+
+
+def _sqlite_load_protein_id_lookup(conn: sqlite3.Connection) -> dict[str, _ProteinInfo]:
+    rows = conn.execute(
+        "SELECT gene_id, protein_id, id_type, pdb_id, has_alphafold FROM gene_properties"
+    ).fetchall()
+    lookup: dict[str, _ProteinInfo] = {}
+    for r in rows:
+        pid = (r["protein_id"] or "").strip()
+        idt = (r["id_type"] or "").strip()
+        if pid and idt:
+            lookup[r["gene_id"]] = _ProteinInfo(
+                pid, idt, (r["pdb_id"] or "").strip(), bool(r["has_alphafold"]),
+            )
+    return lookup
+
+
+def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, str]]:
+    rows = conn.execute(
+        """SELECT gene_id, gene, manipulation, category, trait,
+                  narrative, short_description, mechanism, achievements,
+                  evidence_tier, translational_gaps, key_references, notes,
+                  secondary_categories
+           FROM genes"""
+    ).fetchall()
+    result: list[dict[str, str]] = []
+    for r in rows:
+        result.append({
+            "gene_id": r["gene_id"],
+            "gene": r["gene"],
+            "manipulation": r["manipulation"] or "",
+            "category": r["category"],
+            "trait": r["trait"],
+            "short_description": r["short_description"] or "",
+            "narrative": r["narrative"] or "",
+            "mechanism": r["mechanism"] or "",
+            "achievements": r["achievements"] or "",
+            "evidence_tier": r["evidence_tier"] or "",
+            "translational_gaps": r["translational_gaps"] or "",
+            "key_references": r["key_references"] or "",
+            "notes": r["notes"] or "",
+            "secondary_categories_raw": r["secondary_categories"] or "",
+            "category_detail": f"{r['category']} / {r['trait']}",
+            "description": r["narrative"] or "",
+            "enhancement": r["mechanism"] or "",
+            "paper_url": "",
+        })
+    import re
+    for row in result:
+        m = re.search(r"https?://[^\s|]+", row.get("key_references", ""))
+        row["paper_url"] = m.group(0) if m else ""
+    return result
+
+
+def _sqlite_load_gene_testing(conn: sqlite3.Connection) -> list[TestingEntry]:
+    rows = conn.execute(
+        """SELECT gene_id, host, tissue_or_system, intervention, delivery,
+                  integration, key_result, effect_size, positive,
+                  reference_short, doi, year
+           FROM gene_testing"""
+    ).fetchall()
+    return [
+        TestingEntry(
+            gene_id=r["gene_id"],
+            host=r["host"] or "",
+            tissue_or_system=r["tissue_or_system"] or "",
+            intervention=r["intervention"] or "",
+            delivery=r["delivery"] or "",
+            integration=r["integration"] or "",
+            key_result=r["key_result"] or "",
+            effect_size=r["effect_size"] or "",
+            positive=r["positive"] or "",
+            reference_short=r["reference_short"] or "",
+            doi=r["doi"] or "",
+            year=r["year"] or "",
+        )
+        for r in rows
+    ]
+
+
+def _sqlite_load_pricing(conn: sqlite3.Connection, library: list[GeneEntry]) -> pl.DataFrame:
+    rows = conn.execute("SELECT gene_id, gene_price FROM gene_properties").fetchall()
+    price_map = {r["gene_id"]: int(r["gene_price"]) for r in rows}
+    data = {
+        "gene_id": [e["gene_id"] for e in library],
+        "gene": [e["gene"] for e in library],
+        "category": [e["category"] for e in library],
+        "gene_price": [price_map.get(e["gene_id"], 0) for e in library],
+    }
+    df = pl.DataFrame(data)
+    missing = df.filter(pl.col("gene_price") <= 0)
+    if missing.height > 0:
+        missing_ids = ", ".join(sorted(set(missing["gene_id"].to_list())))
+        raise ValueError(f"Missing or zero gene_price for gene_id(s): {missing_ids}")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# CSV loaders — used as fallback when enhancement.db does not exist.
+# ---------------------------------------------------------------------------
+
 def _load_protein_id_lookup(path: Path = DATA_DIR / "gene_properties.csv") -> dict[str, _ProteinInfo]:
     """Load gene_id → _ProteinInfo from gene_properties.csv."""
     df = pl.read_csv(path)
@@ -148,7 +300,13 @@ def _load_protein_id_lookup(path: Path = DATA_DIR / "gene_properties.csv") -> di
     return lookup
 
 
-PROTEIN_ID_LOOKUP: dict[str, _ProteinInfo] = _load_protein_id_lookup()
+if USE_SQLITE:
+    logger.info("Loading gene data from %s", DB_PATH)
+    _db = _sqlite_conn()
+    PROTEIN_ID_LOOKUP: dict[str, _ProteinInfo] = _sqlite_load_protein_id_lookup(_db)
+else:
+    logger.info("Loading gene data from CSV files in %s", DATA_DIR)
+    PROTEIN_ID_LOOKUP = _load_protein_id_lookup()
 
 
 def _gene_protein_url(gene_id: str, gene_display: str) -> str:
@@ -254,33 +412,41 @@ def _load_gene_confidence_map(
     return result
 
 
-SPECIES_LOOKUP: dict[str, SpeciesEntry] = _load_species_lookup()
-GENE_SPECIES_MAP: dict[str, list[str]] = _load_gene_species_map()
-GENE_CONFIDENCE_MAP: dict[str, list[ConfidenceEntry]] = _load_gene_confidence_map()
+if USE_SQLITE:
+    SPECIES_LOOKUP: dict[str, SpeciesEntry] = _sqlite_load_species_lookup(_db)
+    GENE_SPECIES_MAP: dict[str, list[str]] = _sqlite_load_gene_species_map(_db)
+    GENE_CONFIDENCE_MAP: dict[str, list[ConfidenceEntry]] = _sqlite_load_gene_confidence_map(_db)
+else:
+    SPECIES_LOOKUP = _load_species_lookup()
+    GENE_SPECIES_MAP = _load_gene_species_map()
+    GENE_CONFIDENCE_MAP = _load_gene_confidence_map()
 
 
 def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
-    """Load and return the gene library from the CSV source of truth."""
-    df = (
-        pl.read_csv(path)
-        .rename(_LIBRARY_COLUMN_MAP)
-        .with_columns(
-            pl.col("gene_id").str.strip_chars(),
-            pl.col("gene").str.strip_chars(),
-            pl.col("manipulation").str.strip_chars(),
-            pl.col("category").str.strip_chars(),
-            pl.col("trait").str.strip_chars(),
-            pl.col("short_description").str.strip_chars(),
-            (pl.col("category") + " / " + pl.col("trait")).alias("category_detail"),
-            pl.col("narrative").alias("description"),
-            pl.col("mechanism").alias("enhancement"),
-            pl.col("key_references")
-            .str.extract(r"(https?://[^\s|]+)", 1)
-            .fill_null("")
-            .alias("paper_url"),
+    """Load and return the gene library from SQLite (if available) or CSV."""
+    if USE_SQLITE:
+        rows: list[GeneEntry] = _sqlite_load_gene_library(_db)  # type: ignore[assignment]
+    else:
+        df = (
+            pl.read_csv(path)
+            .rename(_LIBRARY_COLUMN_MAP)
+            .with_columns(
+                pl.col("gene_id").str.strip_chars(),
+                pl.col("gene").str.strip_chars(),
+                pl.col("manipulation").str.strip_chars(),
+                pl.col("category").str.strip_chars(),
+                pl.col("trait").str.strip_chars(),
+                pl.col("short_description").str.strip_chars(),
+                (pl.col("category") + " / " + pl.col("trait")).alias("category_detail"),
+                pl.col("narrative").alias("description"),
+                pl.col("mechanism").alias("enhancement"),
+                pl.col("key_references")
+                .str.extract(r"(https?://[^\s|]+)", 1)
+                .fill_null("")
+                .alias("paper_url"),
+            )
         )
-    )
-    rows: list[GeneEntry] = df.to_dicts()  # type: ignore[assignment]
+        rows = df.to_dicts()  # type: ignore[assignment]
     for row in rows:
         gid = row["gene_id"]
         sids = GENE_SPECIES_MAP.get(gid, [])
@@ -411,6 +577,8 @@ SPECIES_GENE_IDS: dict[str, set[str]] = _build_species_gene_ids(GENE_LIBRARY)
 
 
 def _load_gene_testing(path: Path = GENE_TESTING_PATH) -> list[TestingEntry]:
+    if USE_SQLITE:
+        return _sqlite_load_gene_testing(_db)
     df = pl.read_csv(path).fill_null("")
     return df.to_dicts()  # type: ignore[return-value]
 
@@ -490,7 +658,12 @@ def _build_pricing_table(
     return joined
 
 
-PRICING_TABLE: pl.DataFrame = _build_pricing_table(GENE_LIBRARY)
+if USE_SQLITE:
+    PRICING_TABLE: pl.DataFrame = _sqlite_load_pricing(_db, GENE_LIBRARY)
+    _db.close()
+    del _db
+else:
+    PRICING_TABLE = _build_pricing_table(GENE_LIBRARY)
 
 
 def _load_category_prices(pricing_table: pl.DataFrame) -> dict[str, int]:

@@ -4,6 +4,7 @@ assets/llms.txt
 assets/robots.txt
 assets/sitemap.xml
 *.db
+!data/enhancement.db
 .web
 *.py[cod]
 

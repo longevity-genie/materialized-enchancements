@@ -18,8 +18,10 @@ materialized-enhancements/          ← repo root
 │   ├── structures/                 ← PDB protein structures (Git LFS)
 │   └── stl/                        ← 3D-printable protein STLs + stl_report.csv (Git LFS)
 ├── data/
+│   ├── enhancement.db              ← SQLite database (synced from DoltHub, committed)
+│   ├── .dolthub-hash               ← latest DoltHub commit hash (used by sync action)
 │   ├── input/
-│   │   ├── gene_library.csv        ← canonical gene data (source of truth)
+│   │   ├── gene_library.csv        ← canonical gene data (CSV fallback)
 │   │   ├── species_svg_map.csv     ← species → silhouette SVG map (single source of truth)
 │   │   └── puzzle/
 │   │       └── ALL_ANIMALS.svg     ← single layered jigsaw composite (jigsaw route dormant)
@@ -31,7 +33,7 @@ materialized-enhancements/          ← repo root
     ├── materialized_enhancements.py ← Reflex entry-point re-export (required, see note below)
     ├── run.py                      ← entry point: exec `reflex run`
     ├── state.py                    ← AppState, ComposeState, JigsawState, CATEGORY_COLORS
-    ├── gene_data.py                ← CSV loader → GENE_LIBRARY, CATEGORY_TRAITS, ANIMAL_LIBRARY
+    ├── gene_data.py                ← SQLite/CSV loader → GENE_LIBRARY, CATEGORY_TRAITS, ANIMAL_LIBRARY
     ├── puzzle.py                   ← _SPECIES_PUZZLE_MAP / _SPECIES_LAYER_MAP (species → SVG filename)
     ├── components/
     │   └── layout.py               ← template, two_column_layout, fomantic_icon
@@ -129,11 +131,87 @@ Species fields are resolved at load time via `gene_species.csv` + `species.csv`:
 
 ---
 
+## Database Infrastructure (DoltHub → SQLite)
+
+The gene knowledge base is hosted on **[DoltHub](https://www.dolthub.com/repositories/longevity-genie/enhancement-bio)** (`longevity-genie/enhancement-bio`) — a version-controlled MySQL-compatible database that supports PRs, forks, diffs, and a browser SQL workbench. This is the primary interface for domain experts and curious visitors to browse, query, and propose changes to the gene data.
+
+### Data flow
+
+```
+DoltHub (longevity-genie/enhancement-bio)   ← canonical source, editable via SQL workbench / PRs
+    │
+    │  .github/workflows/sync-dolthub.yml
+    │  polls every 6h, syncs only when commit hash changes
+    ▼
+data/enhancement.db (SQLite)                ← committed to repo, used by app at runtime
+    │
+    │  gene_data.py: USE_SQLITE = DB_PATH.is_file()
+    ▼
+App loads from SQLite (preferred) or CSV fallback (data/input/*.csv)
+```
+
+### Key files
+
+- `data/enhancement.db` — SQLite database (7 tables, ~500 rows). Committed to repo (`.gitignore` has `!data/enhancement.db` exception). Preferred by `gene_data.py` when present.
+- `data/.dolthub-hash` — stores the latest DoltHub commit hash; the sync action skips work when unchanged.
+- `scripts/seed_db.py` — regenerates `enhancement.db` from the CSV files. Run with `uv run python scripts/seed_db.py`.
+- `.github/workflows/sync-dolthub.yml` — GitHub Action: polls DoltHub every 6h, clones, exports to SQLite via `db-to-sqlite` + `pymysql`, commits if changed.
+
+### SQLite schema (7 tables)
+
+| Table | PK | Rows | Description |
+|---|---|---|---|
+| `genes` | `gene_id` | 55 | Gene metadata (narrative, mechanism, evidence tier, references) |
+| `species` | `species_id` | 39 | Organism lookup (taxonomy, life-history) |
+| `gene_species` | `(gene_id, species_id)` | 61 | Many-to-many gene↔species join |
+| `gene_properties` | `gene_id` | 55 | Pricing, biophysical data, protein IDs |
+| `gene_confidence` | `id` (auto) | 93 | Confidence assessments per gene |
+| `gene_testing` | `id` (auto) | 161 | Experimental evidence records |
+| `species_svg_map` | `species_id` | 39 | Species → silhouette SVG mapping |
+
+All tables have foreign key constraints back to `genes` and/or `species`. The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
+
+### gene_data.py dual-loader
+
+`gene_data.py` detects `data/enhancement.db` at import time:
+- **`USE_SQLITE = True`**: opens one `sqlite3` connection, loads all tables via SQL, closes connection after module init completes. Zero Polars dependency for this path.
+- **`USE_SQLITE = False`**: falls back to the existing CSV/Polars loaders (unchanged).
+
+Both paths produce identical `GENE_LIBRARY`, `SPECIES_LOOKUP`, `ANIMAL_LIBRARY`, and all derived data structures. Field-by-field parity is verified.
+
+### Contributing data via DoltHub
+
+Scientists and domain experts can contribute without touching code:
+1. Fork `longevity-genie/enhancement-bio` on DoltHub
+2. Edit tables via the SQL workbench or `dolt clone` locally
+3. Open a DoltHub pull request with a description of the change
+4. Once merged, the GitHub Action syncs the update to the repo within 6h
+
+### Local development
+
+CSV files under `data/input/` remain the fallback for development without the database. To regenerate the SQLite from CSVs:
+
+```bash
+uv run python scripts/seed_db.py
+```
+
+To create/update the Dolt database locally and push to DoltHub:
+
+```bash
+dolt clone longevity-genie/enhancement-bio /tmp/enhancement-bio
+cd /tmp/enhancement-bio
+dolt sql   # make changes
+dolt add -A && dolt commit -m "description"
+dolt push origin main
+```
+
+---
+
 ## Data / Logic Separation
 
-- **Never hardcode domain data in Python modules.** Genes, categories, organisms, and any other domain data must live in `data/input/` as CSV/JSON/Parquet files and be loaded dynamically at module import time.
-- **Single source of truth for data**: `data/input/gene_library.csv` is the canonical gene library. All Python code reads from it via `gene_data.py`; never duplicate rows or field values in code.
-- **`gene_data.py` is a loader, not a store**: it reads the CSV with Polars, maps column names, and exposes typed lists/dicts. No business logic beyond column mapping and derived aggregates (counts, unique lists).
+- **Never hardcode domain data in Python modules.** Genes, categories, organisms, and any other domain data must live in `data/input/` as CSV/JSON/Parquet files (or `data/enhancement.db`) and be loaded dynamically at module import time.
+- **Single source of truth for data**: the DoltHub database `longevity-genie/enhancement-bio` is the canonical gene library, synced to `data/enhancement.db`. CSV files under `data/input/` serve as fallback. All Python code reads from `gene_data.py`; never duplicate rows or field values in code.
+- **`gene_data.py` is a loader, not a store**: it reads SQLite (preferred) or CSV with Polars, maps column names, and exposes typed lists/dicts. No business logic beyond column mapping and derived aggregates (counts, unique lists).
 - **Category metadata lives in `state.py`**: display colours, icons, and ordering for categories are the only thing allowed to be coded in Python (they are UI config, not domain data).
 - **When the CSV changes, code must not change**: adding/removing rows or editing gene fields should require zero Python edits.
 - **Species SVG mapping lives in `data/input/species_svg_map.csv`** (single source of truth), loaded by `puzzle.py` into `_SPECIES_PUZZLE_MAP` / `_SPECIES_LAYER_MAP`. Canonical silhouettes are `assets/species_svg/<species_id>.svg`. The gene-level override `_GENE_PUZZLE_OVERRIDE` (e.g., `epas1_tibetan`) bypasses the species map. The resolved path is stored as `puzzle_svg` on each `GeneEntry` at load time.
