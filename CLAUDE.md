@@ -1,5 +1,10 @@
 # Agent Guidelines
 
+> **Sync rule:** `CLAUDE.md` and `AGENTS.md` must always have identical content.
+> They are two names for the same document so that every AI coding agent — regardless
+> of vendor — finds and follows the same guidelines. If you edit one, copy the change
+> to the other. A pre-commit hook enforces this.
+
 This document outlines the coding standards and practices for **materialized-enhancements**.
 
 ---
