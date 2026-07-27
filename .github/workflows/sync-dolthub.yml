@@ -103,6 +103,17 @@ jobs:
           print('Database verification passed')
           "
 
+      - name: Regenerate CSV mirror
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          # data/db_backup/*.csv is tracked in git and is the offline fallback
+          # for gene_data.py. Without this step it silently drifts out of date
+          # against enhancement.db after every sync.
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          uv run python scripts/export_db_csv.py
+          uv run python scripts/export_db_csv.py --check
+
       - name: Commit changes
         if: steps.check.outputs.changed == 'true'
         run: |
@@ -110,7 +121,7 @@ jobs:
 
           git config user.name "DoltHub Sync"
           git config user.email "sync@enhancement.bio"
-          git add data/enhancement.db data/.dolthub-hash
+          git add data/enhancement.db data/.dolthub-hash data/db_backup
 
           if git diff --cached --quiet; then
             echo "No file changes to commit"

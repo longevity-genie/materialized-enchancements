@@ -182,15 +182,15 @@ data, change it in Dolt.
 
 | Table | PK | Rows | Description |
 |---|---|---|---|
-| `genes` | `gene_id` | 55+ | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
-| `species` | `species_id` | 39 | Organism lookup (taxonomy, life-history) |
-| `gene_species` | `(gene_id, species_id)` | 61 | Many-to-many gene↔species join |
-| `gene_properties` | `gene_id` | 55 | Pricing, biophysical data, protein IDs |
+| `genes` | `gene_id` | 75 | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
+| `species` | `species_id` | 52 | Organism lookup (taxonomy, life-history) |
+| `gene_species` | `(gene_id, species_id)` | 81 | Many-to-many gene↔species join |
+| `gene_properties` | `gene_id` | 75 | Pricing, biophysical data, protein IDs |
 | `gene_confidence` | `id` (auto) | 93 | Confidence assessments per gene |
-| `gene_testing` | `id` (auto) | 161 | Experimental evidence records |
-| `species_svg_map` | `species_id` | 39 | Species → silhouette SVG mapping |
-| `organizations` | `org_id` | 24 | Labs, companies, and clinics working on these genes |
-| `organization_genes` | `id` (auto) | 24 | What each organization offers/researches per gene |
+| `gene_testing` | `id` (auto) | 410 | Experimental evidence records (161 lab + 249 from ClinicalTrials.gov) |
+| `species_svg_map` | `species_id` | 52 | Species → silhouette SVG mapping |
+| `organizations` | `org_id` | 55 | Labs, companies, and clinics working on these genes |
+| `organization_genes` | `id` (auto) | 60 | What each organization offers/researches per gene |
 
 All tables have foreign key constraints back to `genes` and/or `species` (and `organization_genes` references both `organizations` and `genes`). The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
 
@@ -259,6 +259,47 @@ uv run python scripts/export_db_csv.py          # write data/db_backup/
 uv run python scripts/export_db_csv.py --check   # exit 1 if backup is stale
 ```
 
+#### Syncing Dolt → SQLite locally (without waiting for the GitHub Action)
+
+```bash
+cd data/dolt/enhancement-bio          # local working clone (gitignored)
+dolt checkout main && dolt pull
+dolt sql-server --port 3307 &         # leave running for the next command
+cd -
+.venv/bin/db-to-sqlite \
+  "mysql+pymysql://root@127.0.0.1:3307/enhancement-bio" \
+  data/enhancement.db --all
+kill %1                               # stop sql-server
+uv run python scripts/export_db_csv.py
+```
+
+**Use `mysql+pymysql://`, not `mysql://`.** SQLAlchemy defaults a bare
+`mysql://` URL to the `MySQLdb` driver, which is not installed; the venv ships
+`pymysql`. A bare `mysql://` fails with `ModuleNotFoundError: No module named
+'MySQLdb'` — and `db-to-sqlite` swallows it into a zero exit code, so the sync
+appears to succeed while the SQLite file is left untouched. Always verify row
+counts after syncing rather than trusting the exit status. (The GitHub Action
+avoids this by installing `db-to-sqlite[mysql]`.)
+
+**`db-to-sqlite` APPENDS to existing tables — it does not replace them.** If
+rows were deleted or replaced in Dolt, syncing onto an existing
+`data/enhancement.db` leaves the old rows behind and silently duplicates the
+rest. Drop the affected table first (or delete the whole `.db`) and let the sync
+recreate it:
+
+```bash
+sqlite3 data/enhancement.db "DROP TABLE IF EXISTS gene_testing;"   # then sync
+```
+
+Always finish by comparing counts table-by-table against Dolt, and check for
+duplicates on any table keyed by an external id:
+
+```sql
+SELECT COUNT(*) FROM (SELECT gene_id, reference_short, COUNT(*) c
+  FROM gene_testing WHERE reference_short LIKE 'NCT%' GROUP BY 1,2 HAVING c>1);
+-- must be 0
+```
+
 ### Dolt workflow for agents
 
 To prepare a Dolt data update (add genes, species, organizations, etc.):
@@ -284,12 +325,80 @@ To prepare a Dolt data update (add genes, species, organizations, etc.):
    dolt push origin <branch-name>
    ```
 6. Open a DoltHub pull request for review and merge.
-7. After merge, the GitHub Action syncs to `data/enhancement.db` within 6h, or manually export:
-   ```bash
-   dolt clone longevity-genie/enhancement-bio /tmp/enhancement-bio
-   cd /tmp/enhancement-bio && db-to-sqlite ... data/enhancement.db
-   uv run python scripts/export_db_csv.py
-   ```
+7. After merge, the GitHub Action syncs to `data/enhancement.db` within 6h, or
+   sync manually — see "Syncing Dolt → SQLite locally" above.
+
+The Action regenerates `data/db_backup/*.csv` as part of the sync (the
+"Regenerate CSV mirror" step) and commits `data/enhancement.db`,
+`data/.dolthub-hash` and `data/db_backup/` together. Until 2026-07 it committed
+only the `.db`, so the tracked CSV mirror silently drifted after every sync —
+if you edit that workflow, keep the export step or the drift returns.
+
+After a **manual** Dolt → SQLite sync, regenerate the mirror yourself:
+
+```bash
+uv run python scripts/export_db_csv.py && git add data/db_backup/
+```
+
+`export_db_csv.py --check` exits 1 when the mirror is stale.
+
+**Pushing requires two allowlisted hosts.** Dolt *reads* (clone/pull) come from
+a CloudFront domain, but *writes* upload to
+`dolthub-chunks-prod.s3.us-west-2.amazonaws.com`. Without the second one, `dolt
+push` prints a signed-URL `Forbidden` and **exits 0** — the push silently does
+nothing. Always confirm the remote actually moved:
+`dolt fetch origin && dolt diff main remotes/origin/main --stat` (empty = pushed).
+
+### Gene card copy (`genes.short_description`)
+
+`short_description` is the **game card** — the copy a visitor reads while
+spending credits in the gene-selection UI. Everything else (`narrative`,
+`mechanism`, `achievements`, `gene_testing`, `organizations`,
+`key_references`, `notes`) is the **[Details] panel**, shown on demand. Do not
+put deep science or hedged caveats on the card.
+
+House style — 4 sentences, ≤500 chars:
+1. what it does **in a body**, in plain physical terms (never open with the gene name)
+2. the single hardest number in the record
+3. where it stands **today** — trial, clinic, price, or "only ever done in `<organism>`"
+4. **one concrete tradeoff**
+
+The tradeoff must be a fact, not a mood. Banned: "unpredictable", "remains
+unclear", "requires careful control", "poorly understood", "more research is
+needed", "long-term effects unknown". Name the actual thing instead — which
+other tissue it hits, which cancer, which age group it stops working in.
+
+**Verify every number against that gene's own record before writing it.** A
+plausible figure recalled from memory is the main failure mode: a card once
+claimed a "30+ year" naked mole-rat lifespan when the sourced value in
+`species.max_longevity_years` was 31.
+
+### Clinical trial rows in `gene_testing`
+
+Registry trials live in `gene_testing` (there is no NCT column and the schema is
+frozen): **NCT id in `reference_short`, registry URL in `doi`**, `host='Human'`.
+The `intervention` column carries the tier:
+
+- existing verbs (`gene_therapy`, `recombinant_protein`, …) — the trial
+  **administers** the gene or its protein
+- `natural_variant` — studies allele carriers
+- `observational` — the gene is **measured** while the trial does something else
+  (exercise, supplement, unrelated drug); set
+  `delivery='n/a (gene not manipulated)'`
+
+Two traps when sourcing these, both of which produced wrong rows before being caught:
+
+1. **Direction.** A symbol search returns trials in the *opposite* therapeutic
+   direction. Searching VEGF returns anti-VEGF drugs (aflibercept, ranibizumab,
+   pazopanib) that **block** the target — the reverse of this library's
+   pro-angiogenic framing. Same trap for PCSK9, TP53, MGMT. Filter by direction
+   per gene.
+2. **Titles do not name the gene.** For FOXO3 only 1 of 14 relevant trials names
+   it in the title; the rest carry it in `secondary_outcomes`, `brief_summary` or
+   `detailed_description`. Match on the **full** trial record, not the title.
+
+Symbol matching alone cannot separate "this trial is about the gene" from "this
+trial mentions the gene" — classify each candidate on its content.
 
 ---
 
@@ -532,7 +641,13 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 ## Learned User Preferences
 
 - Avoid Pillow/PIL and other dated Python image libraries for export features; prefer contemporary in-browser rasterization (`html-to-image` + `jsPDF`) so no new Python deps are added.
-- When asked to build a feature on top of existing work, create a dedicated feature branch (e.g. `feature/share-report`) off `main` instead of committing to the current branch.
+- **Do not branch by default — commit to `main`.** Branches for every change
+  create more mess than they prevent on this repo. Reserve a feature branch
+  (e.g. `feature/share-report`) for substantial, risky, or long-running work
+  that the user explicitly wants reviewed before it lands; routine changes —
+  data syncs, content edits, doc updates, small fixes — go straight to `main`.
+  This applies to Dolt too: prefer committing on `main` in the working clone
+  and pushing, rather than opening a DoltHub PR for every data change.
 - Export PNG "square format" means reformatting the layout to a square card (e.g. 1080×1080) with the intended content, NOT padding the existing rectangular view to become square.
 - For the extended gene library UI, keep the narrative visible by default; put mechanism, evidence, references, notes, and numeric biophysical fields behind an accordion; never show internal ids such as `gene_id`.
 - In the sculpture compose gene list, do not style unchecked genes with strikethrough; use muted text and the checkbox only—strikethrough reads as rejecting the gene.
