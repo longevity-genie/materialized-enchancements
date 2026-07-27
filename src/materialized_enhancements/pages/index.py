@@ -1856,8 +1856,8 @@ def _manipulation_badge_dark(gene_item: rx.Var) -> rx.Component:
 
 
 def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
-    included = gene_item["included"]
     gene_sym = gene_item["gene"]
+    included = ComposeState.included_genes.contains(gene_sym)
     is_expanded = ComposeState.expanded_genes.contains(gene_sym)
     gene_price = gene_item["price"].to(int)
     cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
@@ -2695,7 +2695,7 @@ def _rpg_selected_gene_loadout() -> rx.Component:
         rx.cond(
             ComposeState.budget_spent > 0,
             rx.el.div(
-                rx.foreach(ComposeState.included_composition_genes, _rpg_selected_gene_chip),
+                rx.foreach(ComposeState.included_gene_chips, _rpg_selected_gene_chip),
                 rx.el.button(
                     fomantic_icon("times", size=12),
                     rx.el.span(" Deselect all", style={"marginLeft": "5px"}),
@@ -3027,6 +3027,53 @@ def _rpg_silhouette_marker(
     )
 
 
+def _debounced_personal_tag_input(
+    *,
+    input_id: str,
+    style: dict,
+) -> rx.Component:
+    """Client-buffered name field — syncs only after idle / blur / Enter.
+
+    Do not attach server ``on_key_down`` handlers here: every key would round-trip
+    over WebSocket and reintroduce dropped characters.
+    """
+    return rx.debounce_input(
+        rx.el.input(
+            id=input_id,
+            placeholder="Enhanced <Name>",
+            value=ComposeState.personal_tag,
+            on_change=ComposeState.set_personal_tag,
+            style=style,
+        ),
+        debounce_timeout=1500,
+        force_notify_on_blur=True,
+        force_notify_by_enter=True,
+    )
+
+
+def _personal_tag_enter_onboarding_script() -> rx.Component:
+    """Enter in the name field advances onboarding without per-keystroke server events."""
+    return rx.script(
+        """
+        (() => {
+            if (window.__meNameEnterOnboardingInstalled) return;
+            window.__meNameEnterOnboardingInstalled = true;
+            document.addEventListener('keydown', (event) => {
+                const target = event.target;
+                if (!target || target.id !== 'compose-personal-tag') return;
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                // Let react-debounce-input flush onChange via force_notify_by_enter first.
+                setTimeout(() => {
+                    const btn = document.getElementById('me-advance-name-onboarding');
+                    if (btn) btn.click();
+                }, 0);
+            }, true);
+        })();
+        """
+    )
+
+
 def _rpg_body_map_panel() -> rx.Component:
     return rx.el.div(
         rx.el.div(
@@ -3034,12 +3081,8 @@ def _rpg_body_map_panel() -> rx.Component:
                 rx.el.div(
                     _name_onboarding_tooltip(),
                     rx.el.div(
-                        rx.el.input(
-                            id="compose-personal-tag",
-                            placeholder="Enhanced <Name>",
-                            value=ComposeState.personal_tag,
-                            on_change=ComposeState.set_personal_tag,
-                            on_key_down=ComposeState.advance_name_onboarding_on_enter,
+                        _debounced_personal_tag_input(
+                            input_id="compose-personal-tag",
                             style={
                                 "flex": "1",
                                 "minWidth": "0",
@@ -3063,6 +3106,15 @@ def _rpg_body_map_panel() -> rx.Component:
                                 ),
                             },
                         ),
+                        rx.el.button(
+                            id="me-advance-name-onboarding",
+                            type="button",
+                            on_click=ComposeState.advance_name_onboarding_from_enter,
+                            style={"display": "none"},
+                            aria_hidden="true",
+                            tab_index=-1,
+                        ),
+                        _personal_tag_enter_onboarding_script(),
                         rx.upload(
                             rx.cond(
                                 ComposeState.has_report_portrait,
@@ -3459,9 +3511,9 @@ def _gene_structure_viewer(gene_item: rx.Var) -> rx.Component:
 
 
 def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
-    included = gene_item["included"]
     gene_sym = gene_item["gene"]
     gene_category = gene_item["category"]
+    included = ComposeState.included_genes.contains(gene_sym)
     is_expanded = ComposeState.expanded_genes.contains(gene_sym)
     gene_price = gene_item["price"].to(int)
     cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
@@ -3690,6 +3742,18 @@ def _rpg_gene_card_for_category(gene_item: rx.Var, category: str) -> rx.Componen
     )
 
 
+def _foreach_included_catalog_gene(row_fn) -> rx.Component:
+    """Render catalog rows for currently included genes without a reactive full-gene list."""
+    return rx.foreach(
+        ComposeState.gene_catalog,
+        lambda gene_item: rx.cond(
+            ComposeState.included_genes.contains(gene_item["gene"]),
+            row_fn(gene_item),
+            rx.fragment(),
+        ),
+    )
+
+
 def _rpg_category_gene_accordion(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
@@ -3778,7 +3842,7 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
         ),
         rx.el.div(
             rx.foreach(
-                ComposeState.all_composition_genes,
+                ComposeState.gene_catalog,
                 lambda gene_item: _rpg_gene_card_for_category(gene_item, category),
             ),
             class_name="me-rpg-category-gene-grid",
@@ -6576,14 +6640,11 @@ def _choice_section() -> rx.Component:
         rx.el.div(
             rx.el.label(
                 "Your name",
-                html_for="compose-personal-tag",
+                html_for="compose-personal-tag-materialize",
                 style={"fontSize": "0.9rem", "fontWeight": "600", "color": "#4b5563", "marginBottom": "6px", "display": "block"},
             ),
-            rx.el.input(
-                id="compose-personal-tag",
-                placeholder="Enhanced <Name>",
-                value=ComposeState.personal_tag,
-                on_change=ComposeState.set_personal_tag,
+            _debounced_personal_tag_input(
+                input_id="compose-personal-tag-materialize",
                 style={
                     "width": "100%",
                     "padding": "10px 14px",
@@ -6622,7 +6683,14 @@ def _choice_section() -> rx.Component:
                         },
                     ),
                     rx.el.div(
-                        rx.foreach(ComposeState.selected_genes, _gene_checkbox),
+                        rx.foreach(
+                            ComposeState.gene_catalog,
+                            lambda gene_item: rx.cond(
+                                ComposeState.selected_categories.contains(gene_item["category"]),
+                                _gene_checkbox(gene_item),
+                                rx.fragment(),
+                            ),
+                        ),
                         style={"display": "flex", "flexDirection": "column", "gap": "3px", "marginBottom": "12px"},
                     ),
                     rx.el.div(_materialize_hint_bubble("genes"), style={"position": "relative"}),
@@ -7674,7 +7742,7 @@ def _report_card() -> rx.Component:
                     "marginBottom": "6px",
                 },
             ),
-            rx.el.div(rx.foreach(ComposeState.included_composition_genes, _report_gene_row)),
+            rx.el.div(_foreach_included_catalog_gene(_report_gene_row)),
             style={"marginBottom": "14px"},
         ),
         rx.el.div(
@@ -8024,7 +8092,7 @@ def _report_png_card() -> rx.Component:
                 },
             ),
             rx.el.div(
-                rx.foreach(ComposeState.included_composition_genes, _png_gene_row),
+                _foreach_included_catalog_gene(_png_gene_row),
                 style={
                     "columnCount": "2",
                     "columnGap": "12px",
@@ -8323,7 +8391,7 @@ def _report_png_card_character() -> rx.Component:
             },
         ),
         rx.el.div(
-            rx.foreach(ComposeState.included_composition_genes, _char_gene_row),
+            _foreach_included_catalog_gene(_char_gene_row),
             style={
                 "columnCount": "2",
                 "columnGap": "16px",
@@ -8438,8 +8506,7 @@ def _report_pdf_long_content() -> rx.Component:
             "available in the Gene Library tab).",
             style={"fontSize": "0.82rem", "color": "#374151", "lineHeight": "1.6", "marginBottom": "10px"},
         ),
-        rx.foreach(
-            ComposeState.included_composition_genes,
+        _foreach_included_catalog_gene(
             lambda g: rx.el.div(
                 rx.el.div(
                     rx.cond(
