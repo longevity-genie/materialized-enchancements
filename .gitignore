@@ -253,3 +253,6 @@ tmp/
 
 # Claude
 .claude/
+
+# Local Dolt working clone of longevity-genie/enhancement-bio
+data/dolt/

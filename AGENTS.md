@@ -14,7 +14,7 @@ The gene knowledge base lives in **Dolt**, on DoltHub at
 `longevity-genie/enhancement-bio`. A GitHub Action syncs it to
 `data/enhancement.db` (SQLite), and that database is what the app loads at runtime.
 
-The CSV files under `data/input/` are a **git-readable backup and offline fallback**,
+The CSV files under `data/db_backup/` are a **git-readable backup and offline fallback**,
 not the source of truth. Editing them does not change the database, and a
 `data/enhancement.db` regenerated from Dolt will not contain your edits.
 

@@ -86,6 +86,13 @@ def library_gene_ids(gene_library: pl.DataFrame) -> set[str]:
 
 
 @pytest.fixture(scope="module")
+def playable_gene_ids(gene_library: pl.DataFrame) -> set[str]:
+    if "game_enabled" in gene_library.columns:
+        return set(gene_library.filter(pl.col("game_enabled") == 1)["gene_id"].to_list())
+    return set(gene_library["gene_id"].to_list())
+
+
+@pytest.fixture(scope="module")
 def species_ids(species: pl.DataFrame) -> set[str]:
     return set(species["species_id"].to_list())
 
@@ -183,21 +190,21 @@ class TestCompleteness:
         )
 
     def test_every_gene_has_confidence(
-        self, library_gene_ids: set[str], gene_confidence: pl.DataFrame
+        self, playable_gene_ids: set[str], gene_confidence: pl.DataFrame
     ) -> None:
         has_conf = set(gene_confidence["gene_id"].to_list())
-        missing = library_gene_ids - has_conf
+        missing = playable_gene_ids - has_conf
         assert not missing, (
-            f"Genes in gene_library.csv with no row in gene_confidence.csv: {sorted(missing)}"
+            f"Playable genes with no row in gene_confidence.csv: {sorted(missing)}"
         )
 
     def test_every_gene_has_testing(
-        self, library_gene_ids: set[str], gene_testing: pl.DataFrame
+        self, playable_gene_ids: set[str], gene_testing: pl.DataFrame
     ) -> None:
         has_test = set(gene_testing["gene_id"].to_list())
-        missing = library_gene_ids - has_test
+        missing = playable_gene_ids - has_test
         assert not missing, (
-            f"Genes in gene_library.csv with no row in gene_testing.csv: {sorted(missing)}"
+            f"Playable genes with no row in gene_testing.csv: {sorted(missing)}"
         )
 
     def test_no_orphan_species(
@@ -359,10 +366,10 @@ class TestLoaderIntegration:
 
         assert len(ANIMAL_LIBRARY) > 0
 
-    def test_every_gene_has_price(self) -> None:
-        from materialized_enhancements.gene_data import GENE_LIBRARY, GENE_PRICES
+    def test_every_playable_gene_has_price(self) -> None:
+        from materialized_enhancements.gene_data import GAME_GENE_LIBRARY, GENE_PRICES
 
-        for g in GENE_LIBRARY:
+        for g in GAME_GENE_LIBRARY:
             assert g["gene"] in GENE_PRICES, (
                 f"Gene '{g['gene']}' ({g['gene_id']}) has no price in GENE_PRICES"
             )
