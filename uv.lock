@@ -499,6 +499,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "reflex" },
     { name = "reflex-components-radix" },
+    { name = "reflex-mui-datagrid" },
 ]
 
 [package.dev-dependencies]
@@ -520,6 +521,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "reflex", specifier = "==0.9.7" },
     { name = "reflex-components-radix", specifier = "==0.9.6" },
+    { name = "reflex-mui-datagrid", specifier = ">=0.3.8" },
 ]
 
 [package.metadata.requires-dev]
@@ -1211,6 +1213,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5f/74/ec46bf9aad72946aed393e1913e9e5604c5621564fcf03c6d1372b8ed222/reflex_hosting_cli-0.1.67.tar.gz", hash = "sha256:079de3d8cefd78c68ca89afa8f686f7406dd81f605ab9895e48f71006ca2e636", size = 43542, upload-time = "2026-06-17T23:51:12.322Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/55/29/9551cd87c0fb4fb0d0bfd2b5b7bddeae06fe2b94334fc09b705e2f41f0d1/reflex_hosting_cli-0.1.67-py3-none-any.whl", hash = "sha256:7f9c4701180b70556565b124fd4dde0a6b7cb454959d9a3de59c451c35cec82b", size = 53451, upload-time = "2026-06-17T23:51:13.213Z" },
+]
+
+[[package]]
+name = "reflex-mui-datagrid"
+version = "0.3.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "polars" },
+    { name = "reflex" },
+    { name = "reflex-components-core" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/32/38/341da550fa15241f38f20c1dac58e21a928c68f05dc3645b73db374895d5/reflex_mui_datagrid-0.3.8.tar.gz", hash = "sha256:c0900cf3f1b11876d86fcfe3dd4ddbd73c0d87e04b4867a29c8de2ae27597026", size = 65515, upload-time = "2026-06-14T12:50:38.787Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/50/45318562de7cae691d507829d5d06363560d69cd6c3f4d3c9b541d51c007/reflex_mui_datagrid-0.3.8-py3-none-any.whl", hash = "sha256:2c6a4ad62d3ae85327442ea93fcc316e8676c1d8426ec7c9f815fe50c9f1c451", size = 70553, upload-time = "2026-06-14T12:50:37.285Z" },
 ]
 
 [[package]]

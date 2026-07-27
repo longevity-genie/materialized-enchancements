@@ -19,7 +19,10 @@ from materialized_enhancements.env import (
     DONATION_URL,
     GITHUB_PROJECT_URL,
 )
-from materialized_enhancements.pages.knowledgebase import knowledgebase_layout
+from materialized_enhancements.pages.knowledgebase import (
+    KnowledgebaseState,
+    knowledgebase_layout,
+)
 from materialized_enhancements.state import (
     CATEGORY_COLORS,
     CATEGORY_DESCRIPTIONS,
@@ -10335,7 +10338,8 @@ def about_page() -> rx.Component:
     image=_page_image_url(),
     description=_page_description("/knowledgebase"),
     meta=_page_meta("/knowledgebase"),
+    on_load=[KnowledgebaseState.initialize],
 )
 def knowledgebase_page() -> rx.Component:
-    """Enhancement knowledgebase — evidence-first gene explorer."""
+    """Enhancement knowledgebase — searchable genes / experiments / orgs explorer."""
     return _tab_page("/knowledgebase", knowledgebase_layout())

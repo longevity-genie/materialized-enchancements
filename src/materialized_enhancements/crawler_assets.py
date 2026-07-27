@@ -67,9 +67,9 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/knowledgebase",
         title="Enhancement Knowledgebase",
         description=(
-            "Browse 55 gene enhancements from 39 species, organized by evidence level — "
-            "from clinical trials and commercially available therapies to early research. "
-            "Each entry includes experimental testing data, mechanisms, and references."
+            "The world's most comprehensive open knowledgebase on genetic enhancement — "
+            "curated genes across species, experimental and clinical evidence, and the "
+            "labs and clinics building them. Searchable, version-controlled, and open source."
         ),
         changefreq="weekly",
         priority=0.9,
