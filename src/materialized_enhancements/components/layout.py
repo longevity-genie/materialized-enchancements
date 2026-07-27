@@ -65,6 +65,8 @@ def fomantic_icon(
         "close": "close",
         "check": "check",
         "times": "times",
+        "info circle": "info circle",
+        "minus": "minus",
     }
 
     fomantic_name = mapping.get(name, name)
