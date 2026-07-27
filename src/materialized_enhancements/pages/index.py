@@ -7,10 +7,11 @@ from materialized_enhancements.artex import artex_publish_button
 from materialized_enhancements.crawler_assets import OG_PREVIEW_SIZE, OG_PREVIEW_URL_PATH, PUBLIC_ROUTES
 from materialized_enhancements.env import public_app_url
 from materialized_enhancements.gene_data import (
-    CATEGORY_COUNTS,
     CATEGORY_PRICES,
+    GAME_CATEGORY_COUNTS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
+    GENE_TESTING,
     UNIQUE_CATEGORIES,
 )
 from materialized_enhancements.env import (
@@ -18,6 +19,7 @@ from materialized_enhancements.env import (
     DONATION_URL,
     GITHUB_PROJECT_URL,
 )
+from materialized_enhancements.pages.knowledgebase import knowledgebase_layout
 from materialized_enhancements.state import (
     CATEGORY_COLORS,
     CATEGORY_DESCRIPTIONS,
@@ -295,27 +297,12 @@ def _landing_tab() -> rx.Component:
     def _team_member(
         name: str,
         role: str,
-        image_src: str,
-        image_alt: str,
+        image_src: str | None = None,
+        image_alt: str | None = None,
         link_href: str | None = None,
     ) -> rx.Component:
-        photo: rx.Component = rx.el.img(
-            src=image_src,
-            alt=image_alt,
-            loading="lazy",
-            decoding="async",
-            style=_team_photo,
-        )
         name_label: rx.Component = rx.el.strong(name)
         if link_href:
-            photo = rx.el.a(
-                photo,
-                href=link_href,
-                target="_blank",
-                rel="noopener noreferrer",
-                aria_label=f"{name} profile",
-                style=_team_photo_link,
-            )
             name_label = rx.el.strong(
                 rx.el.a(
                     name,
@@ -325,13 +312,32 @@ def _landing_tab() -> rx.Component:
                     style=_a,
                 ),
             )
+        text = rx.el.p(
+            name_label,
+            f" — {role}",
+            style=_team_text,
+        )
+        if not image_src:
+            return rx.el.div(text, style=_team_member_card)
+        photo: rx.Component = rx.el.img(
+            src=image_src,
+            alt=image_alt or name,
+            loading="lazy",
+            decoding="async",
+            style=_team_photo,
+        )
+        if link_href:
+            photo = rx.el.a(
+                photo,
+                href=link_href,
+                target="_blank",
+                rel="noopener noreferrer",
+                aria_label=f"{name} profile",
+                style=_team_photo_link,
+            )
         return rx.el.div(
             photo,
-            rx.el.p(
-                name_label,
-                f" — {role}",
-                style=_team_text,
-            ),
+            text,
             style=_team_member_card,
         )
 
@@ -489,35 +495,43 @@ def _landing_tab() -> rx.Component:
                             },
                         ),
                         rx.el.p(
-                            "What you see today is an early version. We have a long list of features we would "
-                            "love to add, and most of them are limited by funding and hands rather than by ideas:",
+                            rx.fragment(
+                                "Early version — ideas exceed funding and hands. Have a feature request? ",
+                                rx.el.a(
+                                    "Open a GitHub issue",
+                                    href="https://github.com/winternewt/materialized-enchancements/issues",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    style=_a,
+                                ),
+                                ".",
+                            ),
                             style={**_p_body, "marginBottom": "10px"},
                         ),
                         rx.el.ul(
                             _roadmap_item(
                                 "A deeper enhancement knowledge base",
-                                "many more genes and variants, richer evidence summaries, side effects and "
-                                "trade-offs, and clearer explanations of what is actually known versus speculated.",
+                                "more genes and variants, richer evidence, side effects, and clearer known-vs-speculated notes.",
+                            ),
+                            _roadmap_item(
+                                "Plasmid generation for selected genes",
+                                "design and export plasmids carrying the enhancement genes you chose.",
                             ),
                             _roadmap_item(
                                 "A map of who is working on this",
-                                "companies, clinics, and labs developing or offering gene therapies, so visitors "
-                                "can see where the real-world pipeline stands for each enhancement.",
+                                "companies, clinics, and labs offering or developing gene therapies for each enhancement.",
                             ),
                             _roadmap_item(
                                 "A printable human 3D model of your enhanced state",
-                                "instead of an abstract form, a full figure that visibly reflects the traits you "
-                                "chose — the enhancements rendered on a body you can print and hold.",
+                                "a full figure that visibly reflects the traits you chose, not only an abstract form.",
                             ),
                             _roadmap_item(
                                 "More art and fabrication options",
-                                "additional generative models plugged into the same biological input engine, "
-                                "better print quality, and wearable variants.",
+                                "more generative models on the same biological engine, better prints, and wearables.",
                             ),
                             _roadmap_item(
                                 "Exhibition and classroom mode",
-                                "guided walkthroughs, translations, and offline-friendly builds so museums, "
-                                "schools, and science festivals can run it without us being in the room.",
+                                "guided walkthroughs, translations, and offline builds for museums and festivals.",
                             ),
                             style={
                                 "margin": "0 0 12px 0",
@@ -526,12 +540,8 @@ def _landing_tab() -> rx.Component:
                             },
                         ),
                         rx.el.p(
-                            "All of this takes research time, compute, printing materials, and travel to venues. "
-                            "The project is open source and free to use, so donations, grants, sponsorships, "
-                            "in-kind support (printing, hosting, hardware), and volunteer contributions are what "
-                            "decide how much of this list actually gets built. If any of it matters to you, "
-                            "supporting the project directly moves it forward — and if you represent a foundation, "
-                            "lab, or company interested in funding a specific feature, please get in touch.",
+                            "Donations, grants, sponsorships, in-kind support, and volunteers decide how much of "
+                            "this list gets built. Funding a specific feature? Get in touch.",
                             style={**_p_body, "marginBottom": "12px"},
                         ),
                         rx.el.div(
@@ -539,8 +549,8 @@ def _landing_tab() -> rx.Component:
                             _contact_link("Email Anton about funding", "mailto:antonkulaga@gmail.com"),
                             _contact_link("Email Livia about funding", "mailto:liviazaharia2020@gmail.com"),
                             _contact_link(
-                                "Contribute on GitHub",
-                                "https://github.com/winternewt/materialized-enchancements",
+                                "Request a feature on GitHub",
+                                "https://github.com/winternewt/materialized-enchancements/issues",
                             ),
                             style={
                                 "display": "flex",
@@ -555,35 +565,6 @@ def _landing_tab() -> rx.Component:
                             "background": "rgba(15, 23, 42, 0.54)",
                             "boxShadow": "0 14px 34px rgba(2, 6, 23, 0.18)",
                             "margin": "0 0 18px 0",
-                        },
-                    ),
-                    rx.el.p(
-                        "Ready? Pick your enhancement categories, select genes, and materialize your character.",
-                        style={
-                            "fontSize": "1.35rem",
-                            "lineHeight": "1.55",
-                            "fontWeight": "600",
-                            "color": "#1f2937",
-                            "marginBottom": "18px",
-                            "maxWidth": "38rem",
-                        },
-                    ),
-                    rx.el.div(
-                        rx.el.a(
-                            fomantic_icon("atom", size=16),
-                            rx.el.span(
-                                " Materialize genetic enhancement",
-                                style={"marginLeft": "8px", "fontWeight": "600"},
-                            ),
-                            href="/",
-                            class_name="ui primary button",
-                            style={"fontSize": "1.05rem", "padding": "14px 26px", "margin": "4px 0"},
-                        ),
-                        style={
-                            "display": "flex",
-                            "flexWrap": "wrap",
-                            "gap": "8px",
-                            "marginBottom": "4px",
                         },
                     ),
                     class_name="me-about-main",
@@ -607,18 +588,18 @@ def _landing_tab() -> rx.Component:
                         style=_sidebar_card,
                     ),
                     rx.el.div(
-                        rx.el.div("Team", style=_sidebar_title),
+                        rx.el.div("Core team", style=_sidebar_title),
                         rx.el.div(
                             _team_member(
                                 "Newton Winter",
-                                "web app, jigsaw generation, geometry optimization, devops, biology, UI",
+                                "web app, RPG interface, geometry optimization, devops, biology, UI",
                                 "/images/team/newton_winter.webp",
                                 "Newton Winter",
                                 "https://github.com/winternewt",
                             ),
                             _team_member(
                                 "Anton Kulaga",
-                                "concept, biology, UI design, generative video, 3D printing",
+                                "concept, biology, knowledge base, UI design, generative video, 3D printing",
                                 "/images/team/anton_kulaga.jpg",
                                 "Anton Kulaga",
                                 "https://github.com/antonkulaga",
@@ -630,6 +611,13 @@ def _landing_tab() -> rx.Component:
                                 "Livia Zaharia",
                                 "http://livia.glucosedao.org/",
                             ),
+                            style=_team_grid,
+                        ),
+                        style=_sidebar_card,
+                    ),
+                    rx.el.div(
+                        rx.el.div("Contributors", style=_sidebar_title),
+                        rx.el.div(
                             _team_member(
                                 "Marko Prakhov-Donets",
                                 "video editing",
@@ -637,43 +625,12 @@ def _landing_tab() -> rx.Component:
                                 "Marko Prakhov-Donets",
                                 "https://linktr.ee/markelkori",
                             ),
+                            _team_member(
+                                "Laura Radulescu",
+                                "UI fixes, fast gene removal, materialize pop-ups",
+                                link_href="https://github.com/LauraR20",
+                            ),
                             style=_team_grid,
-                        ),
-                        style=_sidebar_card,
-                    ),
-                    rx.el.div(
-                        rx.el.div("Collaborate or report a mistake", style=_sidebar_title),
-                        rx.el.p(
-                            "This project is open source and the gene library is a living research artifact. "
-                            "If you know a missing enhancement gene, spot an annotation mistake, want to plug in "
-                            "a new generative model, or want to collaborate on an exhibition, please reach out.",
-                            style={
-                                "color": "#cbd5e1",
-                                "fontSize": "0.93rem",
-                                "lineHeight": "1.55",
-                                "margin": "0 0 12px 0",
-                            },
-                        ),
-                        rx.el.div(
-                            _contact_link(
-                                "Open a GitHub issue",
-                                "https://github.com/winternewt/materialized-enchancements/issues",
-                            ),
-                            _contact_link("Email Livia", "mailto:liviazaharia2020@gmail.com"),
-                            _contact_link(
-                                "Livia on LinkedIn",
-                                "https://www.linkedin.com/in/livia-zaharia-4b1425a0/",
-                            ),
-                            _contact_link("Email Anton", "mailto:antonkulaga@gmail.com"),
-                            _contact_link(
-                                "Anton on LinkedIn",
-                                "https://www.linkedin.com/in/antonkulaga/",
-                            ),
-                            style={
-                                "display": "flex",
-                                "flexWrap": "wrap",
-                                "gap": "8px",
-                            },
                         ),
                         style=_sidebar_card,
                     ),
@@ -788,7 +745,7 @@ def _category_button(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     tooltip = _category_tooltip(category)
-    total_count = CATEGORY_COUNTS.get(category, 0)
+    total_count = GAME_CATEGORY_COUNTS.get(category, 0)
     total_price = CATEGORY_PRICES.get(category, 0)
     active_count = ComposeState.active_gene_counts[category]
     active_price = ComposeState.active_category_prices[category]
@@ -1497,6 +1454,138 @@ def _gene_testing_table(testing_entries: rx.Var) -> rx.Component:
     )
 
 
+def _org_type_label(org_type: rx.Var) -> rx.Component:
+    return rx.match(
+        org_type,
+        ("biotech_company", rx.el.span("Company", style={"color": "#34d399", "fontWeight": "700", "fontSize": "0.68rem", "textTransform": "uppercase"})),
+        ("clinic", rx.el.span("Clinic", style={"color": "#fbbf24", "fontWeight": "700", "fontSize": "0.68rem", "textTransform": "uppercase"})),
+        ("clinical_trial_sponsor", rx.el.span("Trial sponsor", style={"color": "#60a5fa", "fontWeight": "700", "fontSize": "0.68rem", "textTransform": "uppercase"})),
+        ("academic_lab", rx.el.span("Lab", style={"color": "#94a3b8", "fontWeight": "700", "fontSize": "0.68rem", "textTransform": "uppercase"})),
+        rx.el.span(org_type, style={"fontSize": "0.68rem", "color": "#94a3b8"}),
+    )
+
+
+def _org_entry_row(entry: rx.Var) -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            _org_type_label(entry["org_type"]),
+            rx.cond(
+                entry["website"] != "",
+                rx.el.a(
+                    entry["org_name"],
+                    href=entry["website"],
+                    target="_blank",
+                    style={"color": "#c4b5fd", "fontWeight": "600", "fontSize": "0.82rem", "marginLeft": "6px", "textDecoration": "none"},
+                ),
+                rx.el.span(entry["org_name"], style={"fontWeight": "600", "fontSize": "0.82rem", "marginLeft": "6px", "color": "#e2e8f0"}),
+            ),
+            style={"display": "flex", "alignItems": "center", "gap": "2px", "flexWrap": "wrap"},
+        ),
+        rx.el.div(
+            rx.el.span(
+                entry["stage"],
+                style={
+                    "display": "inline-block",
+                    "padding": "1px 6px",
+                    "background": "rgba(124, 58, 237, 0.18)",
+                    "border": "1px solid rgba(196, 181, 253, 0.3)",
+                    "borderRadius": "8px",
+                    "color": "#c4b5fd",
+                    "fontSize": "0.7rem",
+                    "fontWeight": "600",
+                },
+            ),
+            rx.cond(
+                entry["delivery_method"] != "",
+                rx.el.span(entry["delivery_method"], style={"fontSize": "0.76rem", "color": "#94a3b8", "marginLeft": "6px"}),
+                rx.fragment(),
+            ),
+            rx.cond(
+                entry["price_usd"] != "",
+                rx.el.span(
+                    entry["price_usd"],
+                    style={"fontSize": "0.78rem", "color": "#34d399", "fontWeight": "700", "marginLeft": "8px"},
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                entry["trial_id"] != "",
+                rx.el.a(
+                    entry["trial_id"],
+                    href=rx.cond(
+                        entry["trial_id"].contains("NCT"),
+                        "https://clinicaltrials.gov/study/" + entry["trial_id"],
+                        "#",
+                    ),
+                    target="_blank",
+                    style={"fontSize": "0.72rem", "color": "#60a5fa", "marginLeft": "8px"},
+                ),
+                rx.fragment(),
+            ),
+            style={"display": "flex", "alignItems": "center", "gap": "4px", "flexWrap": "wrap", "marginTop": "2px"},
+        ),
+        rx.cond(
+            entry["evidence_summary"] != "",
+            rx.el.p(
+                entry["evidence_summary"],
+                style={"fontSize": "0.76rem", "color": "#cbd5e1", "margin": "2px 0 0 0", "lineHeight": "1.4"},
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            entry["source_url"] != "",
+            rx.el.a(
+                fomantic_icon("external-link", size=9, color="#94a3b8"),
+                " source",
+                href=entry["source_url"],
+                target="_blank",
+                style={"fontSize": "0.68rem", "color": "#94a3b8", "textDecoration": "none", "display": "inline-flex", "alignItems": "center", "gap": "2px", "marginTop": "2px"},
+            ),
+            rx.fragment(),
+        ),
+        style={
+            "padding": "8px 12px",
+            "borderBottom": "1px solid rgba(148, 163, 184, 0.15)",
+        },
+    )
+
+
+def _gene_organizations_section(org_entries: rx.Var) -> rx.Component:
+    return rx.cond(
+        org_entries.length() > 0,
+        rx.el.div(
+            rx.el.div(
+                fomantic_icon("building", size=12, color="#94a3b8"),
+                rx.el.span(
+                    " Labs & Therapies",
+                    style={"marginLeft": "4px"},
+                ),
+                style={
+                    "fontSize": "0.82rem",
+                    "fontWeight": "800",
+                    "color": "#94a3b8",
+                    "margin": "8px 0 4px 0",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(org_entries, _org_entry_row),
+                style={
+                    "border": "1px solid rgba(148, 163, 184, 0.2)",
+                    "borderRadius": "6px",
+                    "overflow": "hidden",
+                    "background": "rgba(15, 23, 42, 0.3)",
+                },
+            ),
+            style={"padding": "4px 14px 10px 36px"},
+        ),
+        rx.fragment(),
+    )
+
+
 def _gene_key_reference_segment(seg: rx.Var) -> rx.Component:
     return rx.cond(
         seg["kind"] == "link",
@@ -1772,6 +1861,10 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
     is_expanded = ComposeState.expanded_genes.contains(gene_sym)
     gene_price = gene_item["price"].to(int)
     cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
+    # genes.game_enabled = 0: readable in the library, but not selectable yet
+    # (its 3D-model inputs are not populated). Locked takes priority over price.
+    locked = ~gene_item["playable"].to(bool)
+    disabled = locked | cannot_afford
 
     return rx.el.div(
         # Header row: checkbox + labels + expand toggle
@@ -1780,14 +1873,19 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 rx.el.input(
                     type="checkbox",
                     checked=included,
-                    disabled=cannot_afford,
+                    disabled=disabled,
                     on_change=ComposeState.toggle_gene(gene_sym),
+                    title=rx.cond(
+                        locked,
+                        "In the knowledge base only — not yet available to add",
+                        "",
+                    ),
                     style={
                         "marginRight": "6px",
                         "accentColor": "#7c3aed",
-                        "cursor": rx.cond(cannot_afford, "not-allowed", "pointer"),
+                        "cursor": rx.cond(disabled, "not-allowed", "pointer"),
                         "flexShrink": "0",
-                        "opacity": rx.cond(cannot_afford, "0.45", "1"),
+                        "opacity": rx.cond(disabled, "0.45", "1"),
                     },
                 ),
                 rx.el.span(
@@ -1951,6 +2049,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                 _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
                 _gene_testing_table(gene_item["testing_entries"]),
+                _gene_organizations_section(gene_item["org_entries"]),
                 _gene_selection_text_block("Highest evidence tier", gene_item["evidence_tier"]),
                 _gene_selection_text_block("Translational gaps", gene_item["translational_gaps"]),
                 rx.cond(
@@ -2137,7 +2236,7 @@ def _rpg_category_stat_row(category: str) -> rx.Component:
     tooltip = _category_tooltip(category)
     count = ComposeState.active_gene_counts[category]
     spent = ComposeState.active_category_prices[category]
-    total_count = CATEGORY_COUNTS.get(category, 0)
+    total_count = GAME_CATEGORY_COUNTS.get(category, 0)
     return rx.el.a(
         rx.el.div(
             rx.el.div(
@@ -3597,7 +3696,7 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
     count = ComposeState.active_gene_counts[category]
     spent = ComposeState.active_category_prices[category]
     is_selected = ComposeState.selected_categories.contains(category)
-    total_count = CATEGORY_COUNTS.get(category, 0)
+    total_count = GAME_CATEGORY_COUNTS.get(category, 0)
 
     return rx.el.details(
         rx.el.summary(
@@ -9315,7 +9414,7 @@ def _sculpture_tab() -> rx.Component:
 
 # ── Tab navigation ───────────────────────────────────────────────────────────
 
-_RPG_ROUTES: set[str] = {"/", "/materialization", "/about"}
+_RPG_ROUTES: set[str] = {"/", "/materialization", "/about", "/knowledgebase"}
 
 
 def _tab_link(route: str, icon: str, label: str, active_route: str) -> rx.Component:
@@ -9353,6 +9452,7 @@ def _tab_menu(active_route: str) -> rx.Component:
                 _disabled_materialization_tab(),
             )
         ),
+        _tab_link("/knowledgebase", "book", "Knowledgebase", active_route),
         _tab_link("/about", "home", "About", active_route),
         rx.el.div(
             rx.el.div(
@@ -10152,3 +10252,15 @@ def materialization_page() -> rx.Component:
 def about_page() -> rx.Component:
     """About / landing page — fully static, SSR-friendly."""
     return _tab_page("/about", _rpg_about_layout())
+
+
+@rx.page(
+    route="/knowledgebase",
+    title=_page_title("/knowledgebase"),
+    image=_page_image_url(),
+    description=_page_description("/knowledgebase"),
+    meta=_page_meta("/knowledgebase"),
+)
+def knowledgebase_page() -> rx.Component:
+    """Enhancement knowledgebase — evidence-first gene explorer."""
+    return _tab_page("/knowledgebase", knowledgebase_layout())

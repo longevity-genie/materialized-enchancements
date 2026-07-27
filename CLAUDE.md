@@ -20,11 +20,20 @@ materialized-enhancements/          ← repo root
 ├── data/
 │   ├── enhancement.db              ← SQLite database (synced from DoltHub, committed)
 │   ├── .dolthub-hash               ← latest DoltHub commit hash (used by sync action)
+│   ├── db_backup/                  ← generated CSV mirror of enhancement.db (scripts/export_db_csv.py)
+│   │   ├── gene_library.csv        ← gene metadata
+│   │   ├── species.csv             ← species lookup
+│   │   ├── gene_species.csv        ← gene↔species join
+│   │   ├── gene_properties.csv     ← biophysical data, pricing, protein IDs
+│   │   ├── gene_confidence.csv     ← confidence assessments
+│   │   ├── gene_testing.csv        ← experimental evidence
+│   │   ├── species_svg_map.csv     ← species → silhouette SVG map
+│   │   ├── organizations.csv       ← labs, companies, clinics
+│   │   └── organization_genes.csv  ← what each org does per gene
 │   ├── input/
-│   │   ├── gene_library.csv        ← canonical gene data (CSV fallback)
-│   │   ├── species_svg_map.csv     ← species → silhouette SVG map (single source of truth)
-│   │   └── puzzle/
-│   │       └── ALL_ANIMALS.svg     ← single layered jigsaw composite (jigsaw route dormant)
+│   │   ├── puzzle/
+│   │   │   └── ALL_ANIMALS.svg     ← single layered jigsaw composite (jigsaw route dormant)
+│   │   └── sculpture_mapping_spec.md ← design doc for sculpture parameters
 │   ├── interim/                    ← intermediate processing
 │   └── output/                     ← generated art outputs, parquets, public report artifacts (gitignored)
 └── src/materialized_enhancements/
@@ -145,31 +154,61 @@ DoltHub (longevity-genie/enhancement-bio)   ← canonical source, editable via S
     ▼
 data/enhancement.db (SQLite)                ← committed to repo, used by app at runtime
     │
-    │  gene_data.py: USE_SQLITE = DB_PATH.is_file()
+    │  scripts/export_db_csv.py
     ▼
-App loads from SQLite (preferred) or CSV fallback (data/input/*.csv)
+data/db_backup/*.csv                        ← generated git-readable mirror (diffable in PRs)
 ```
+
+**Data priority**: Dolt → SQLite → CSV backup. The app loads from SQLite when
+`data/enhancement.db` exists (`gene_data.USE_SQLITE = True`); otherwise it falls
+back to the CSVs in `data/db_backup/` via Polars. CSVs are **generated output** —
+hand-editing them changes nothing; the next export overwrites the edit. To change
+data, change it in Dolt.
 
 ### Key files
 
-- `data/enhancement.db` — SQLite database (7 tables, ~500 rows). Committed to repo (`.gitignore` has `!data/enhancement.db` exception). Preferred by `gene_data.py` when present.
+- `data/enhancement.db` — SQLite database (9 tables, ~500+ rows). Committed to repo (`.gitignore` has `!data/enhancement.db` exception). Preferred by `gene_data.py` when present.
 - `data/.dolthub-hash` — stores the latest DoltHub commit hash; the sync action skips work when unchanged.
-- `scripts/seed_db.py` — regenerates `enhancement.db` from the CSV files. Run with `uv run python scripts/seed_db.py`.
+- `scripts/export_db_csv.py` — regenerates `data/db_backup/*.csv` from `enhancement.db`. Run with `uv run python scripts/export_db_csv.py`. Use `--check` to verify CSVs match the DB without writing.
+- `scripts/seed_db.py` — regenerates `enhancement.db` from the CSV backup files. Run with `uv run python scripts/seed_db.py`. Use this to bootstrap the DB when no Dolt sync is available.
 - `.github/workflows/sync-dolthub.yml` — GitHub Action: polls DoltHub every 6h, clones, exports to SQLite via `db-to-sqlite` + `pymysql`, commits if changed.
 
-### SQLite schema (7 tables)
+### SQLite schema (9 tables)
 
 | Table | PK | Rows | Description |
 |---|---|---|---|
-| `genes` | `gene_id` | 55 | Gene metadata (narrative, mechanism, evidence tier, references) |
+| `genes` | `gene_id` | 55+ | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
 | `species` | `species_id` | 39 | Organism lookup (taxonomy, life-history) |
 | `gene_species` | `(gene_id, species_id)` | 61 | Many-to-many gene↔species join |
 | `gene_properties` | `gene_id` | 55 | Pricing, biophysical data, protein IDs |
 | `gene_confidence` | `id` (auto) | 93 | Confidence assessments per gene |
 | `gene_testing` | `id` (auto) | 161 | Experimental evidence records |
 | `species_svg_map` | `species_id` | 39 | Species → silhouette SVG mapping |
+| `organizations` | `org_id` | 24 | Labs, companies, and clinics working on these genes |
+| `organization_genes` | `id` (auto) | 24 | What each organization offers/researches per gene |
 
-All tables have foreign key constraints back to `genes` and/or `species`. The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
+All tables have foreign key constraints back to `genes` and/or `species` (and `organization_genes` references both `organizations` and `genes`). The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
+
+### Organizations model
+
+The `organizations` table tracks entities that work on genes in the library — from academic labs that published foundational research to companies selling commercial gene therapy. The `type` column distinguishes:
+
+- **`academic_lab`** — university/institute lab that published experimental results (e.g., Church Lab, Dubal Lab)
+- **`biotech_company`** — company developing or selling gene therapies (e.g., Minicircle, Unlimited Bio, Verve Therapeutics)
+- **`clinic`** — facility where treatments are administered (e.g., GARM Clinic in Prospera)
+- **`clinical_trial_sponsor`** — organization sponsoring a registered clinical trial
+
+The `organization_genes` join table records what each organization does with a specific gene: stage (`preclinical`, `phase_1`, `commercial`, etc.), delivery method, pricing (if commercial), regulatory status, and whether evidence is peer-reviewed. One organization can have multiple entries for the same gene (e.g., commercial offering + registered trial).
+
+Key fields on `organizations`:
+- `jurisdiction` — special regulatory zone (e.g., `Prospera ZEDE`, `LARTA`, `Colombia`) when distinct from country
+- `key_people` — notable PI or leadership
+
+Key fields on `organization_genes`:
+- `stage` — `preclinical`, `phase_1`, `phase_1_2`, `phase_1b`, `phase_2`, `phase_3`, `pilot`, `commercial`
+- `regulatory_status` — `academic`, `fda_ind`, `fda_ind_planned`, `fda_orphan_drug`, `fda_conditional`, `registered_trial`, `unregulated`
+- `trial_id` — ClinicalTrials.gov NCT number when applicable
+- `peer_reviewed` — whether published results exist in peer-reviewed journals
 
 ### gene_data.py dual-loader
 
@@ -178,6 +217,19 @@ All tables have foreign key constraints back to `genes` and/or `species`. The sc
 - **`USE_SQLITE = False`**: falls back to the existing CSV/Polars loaders (unchanged).
 
 Both paths produce identical `GENE_LIBRARY`, `SPECIES_LOOKUP`, `ANIMAL_LIBRARY`, and all derived data structures. Field-by-field parity is verified.
+
+### `game_enabled` flag
+
+The `genes` table has a `game_enabled INTEGER NOT NULL DEFAULT 1` column. It separates "in the knowledge base" from "playable in the enhancement game":
+
+- **`GENE_LIBRARY`** — all genes (knowledge base, full dataset)
+- **`GAME_GENE_LIBRARY`** — subset where `game_enabled = 1` (used by the game UI)
+- **`PLAYABLE_GENE_NAMES`** — frozenset for O(1) membership checks
+- **`GAME_CATEGORY_COUNTS`** — gene counts per category for game balance
+
+New genes are added with `game_enabled = 0` until their `gene_properties` biophysical columns (protein_mass_kda, exon_count, gravy_score, etc.) are populated — these drive the sculpture pipeline and would produce degenerate geometry if NULL.
+
+The choke point is `ComposeState.included_genes` in `state.py`: `toggle_gene()` and `toggle_gene_from_library()` guard with `is_playable_gene()`, and `_prune_included_genes()` filters against `GAME_GENE_LIBRARY`. Budget, counts, and report paths use `GAME_CATEGORY_COUNTS` / `GAME_GENE_LIBRARY`.
 
 ### Contributing data via DoltHub
 
@@ -189,38 +241,67 @@ Scientists and domain experts can contribute without touching code:
 
 ### Local development
 
-CSV files under `data/input/` remain the fallback for development without the database. To regenerate the SQLite from CSVs:
+CSV files under `data/db_backup/` are the fallback for development without the database. To regenerate the SQLite from CSVs:
 
 ```bash
 uv run python scripts/seed_db.py
 ```
 
-To create/update the Dolt database locally and push to DoltHub:
+To export the current SQLite back to CSVs (e.g., after a Dolt sync):
 
 ```bash
-dolt clone longevity-genie/enhancement-bio /tmp/enhancement-bio
-cd /tmp/enhancement-bio
-dolt sql   # make changes
-dolt add -A && dolt commit -m "description"
-dolt push origin main
+uv run python scripts/export_db_csv.py          # write data/db_backup/
+uv run python scripts/export_db_csv.py --check   # exit 1 if backup is stale
 ```
+
+### Dolt workflow for agents
+
+To prepare a Dolt data update (add genes, species, organizations, etc.):
+
+1. Clone the DoltHub repo locally:
+   ```bash
+   dolt clone longevity-genie/enhancement-bio /tmp/enhancement-bio
+   cd /tmp/enhancement-bio
+   ```
+2. Create a feature branch:
+   ```bash
+   dolt checkout -b <branch-name>
+   ```
+3. Apply SQL changes (INSERT/UPDATE/ALTER) via `dolt sql` or `dolt sql < update.sql`.
+4. Verify foreign key integrity:
+   ```sql
+   SELECT gs.gene_id FROM gene_species gs LEFT JOIN genes g ON gs.gene_id = g.gene_id WHERE g.gene_id IS NULL;
+   -- (repeat for all FK relationships — must return 0 rows)
+   ```
+5. Commit and push:
+   ```bash
+   dolt add -A && dolt commit -m "description"
+   dolt push origin <branch-name>
+   ```
+6. Open a DoltHub pull request for review and merge.
+7. After merge, the GitHub Action syncs to `data/enhancement.db` within 6h, or manually export:
+   ```bash
+   dolt clone longevity-genie/enhancement-bio /tmp/enhancement-bio
+   cd /tmp/enhancement-bio && db-to-sqlite ... data/enhancement.db
+   uv run python scripts/export_db_csv.py
+   ```
 
 ---
 
 ## Data / Logic Separation
 
-- **Never hardcode domain data in Python modules.** Genes, categories, organisms, and any other domain data must live in `data/input/` as CSV/JSON/Parquet files (or `data/enhancement.db`) and be loaded dynamically at module import time.
-- **Single source of truth for data**: the DoltHub database `longevity-genie/enhancement-bio` is the canonical gene library, synced to `data/enhancement.db`. CSV files under `data/input/` serve as fallback. All Python code reads from `gene_data.py`; never duplicate rows or field values in code.
+- **Never hardcode domain data in Python modules.** Genes, categories, organisms, and any other domain data must live in `data/enhancement.db` (or `data/db_backup/*.csv` as fallback) and be loaded dynamically at module import time.
+- **Single source of truth for data**: the DoltHub database `longevity-genie/enhancement-bio` is the canonical gene library, synced to `data/enhancement.db`. CSV files under `data/db_backup/` are generated backup and offline fallback. All Python code reads from `gene_data.py`; never duplicate rows or field values in code.
 - **`gene_data.py` is a loader, not a store**: it reads SQLite (preferred) or CSV with Polars, maps column names, and exposes typed lists/dicts. No business logic beyond column mapping and derived aggregates (counts, unique lists).
 - **Category metadata lives in `state.py`**: display colours, icons, and ordering for categories are the only thing allowed to be coded in Python (they are UI config, not domain data).
 - **When the CSV changes, code must not change**: adding/removing rows or editing gene fields should require zero Python edits.
-- **Species SVG mapping lives in `data/input/species_svg_map.csv`** (single source of truth), loaded by `puzzle.py` into `_SPECIES_PUZZLE_MAP` / `_SPECIES_LAYER_MAP`. Canonical silhouettes are `assets/species_svg/<species_id>.svg`. The gene-level override `_GENE_PUZZLE_OVERRIDE` (e.g., `epas1_tibetan`) bypasses the species map. The resolved path is stored as `puzzle_svg` on each `GeneEntry` at load time.
+- **Species SVG mapping lives in the `species_svg_map` table** (SQLite preferred, `data/db_backup/species_svg_map.csv` fallback), loaded by `puzzle.py` into `_SPECIES_PUZZLE_MAP` / `_SPECIES_LAYER_MAP`. Canonical silhouettes are `assets/species_svg/<species_id>.svg`. The gene-level override `_GENE_PUZZLE_OVERRIDE` (e.g., `epas1_tibetan`) bypasses the species map. The resolved path is stored as `puzzle_svg` on each `GeneEntry` at load time.
 
 ### Species SVG Resolution
 
 Species silhouettes are **single-source**: exactly one SVG per species at
 `assets/species_svg/<species_id>.svg`, served by Reflex at `/species_svg/...`.
-The species → SVG mapping is the CSV `data/input/species_svg_map.csv`; `puzzle.py`
+The species → SVG mapping is the `species_svg_map` table (SQLite, fallback `data/db_backup/species_svg_map.csv`); `puzzle.py`
 loads it into `_SPECIES_PUZZLE_MAP` (UI/reports) and `_SPECIES_LAYER_MAP` (the
 dormant jigsaw composer). Provenance and per-file licensing are documented in
 [`docs/species_svg_attribution.md`](docs/species_svg_attribution.md).
@@ -240,7 +321,7 @@ human exception is its `0_base` layer, handled separately by `build_jigsaw_svg`.
 
 **When adding a new species:**
 
-1. Add a row to `data/input/species_svg_map.csv` with its `phylopic_uuid`, taxonomy,
+1. Add a row to the `species_svg_map` table in Dolt (or `data/db_backup/species_svg_map.csv` for local dev) with its `phylopic_uuid`, taxonomy,
    `license`, and (only if a matching Inkscape layer exists in `ALL_ANIMALS.svg`) its
    `jigsaw_layer`.
 2. Run `uv run python scripts/download_phylopic.py --species <species_id>` to fetch the
@@ -260,7 +341,7 @@ Each gene can have an associated protein structure displayed as an interactive 3
 - `gene_data.py:resolve_structure_pdb()` resolves `gene_id` → local PDB filename
 - **Priority**: experimental PDB (`{PDB_ID}.pdb`, e.g., `1MKK.pdb`) preferred over AlphaFold predictions (`{UNIPROT_ID}_predicted.pdb`, e.g., `Q92819_predicted.pdb`)
 - **Search directories** (in order): `assets/structures/` → `data/input/structures/`
-- Protein metadata (PDB IDs, UniProt IDs) comes from `data/input/gene_properties.csv`
+- Protein metadata (PDB IDs, UniProt IDs) comes from `gene_properties` table (SQLite) or `data/db_backup/gene_properties.csv`
 - The resolved filename is stored as `structure_pdb` on `GeneEntry` at load time
 - Files in `assets/structures/` are tracked via Git LFS and served by Reflex at `/structures/`
 
@@ -470,6 +551,6 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - Published generated reports are stored under `data/output/public/reports/<slug>/` and served at `/generated/reports/<slug>/`. The folder contains public download files plus a crawler-friendly `index.html`; never commit generated contents. Current public/canonical site links should use `https://enhancement.bio`, not the retired `materialized-enhancements.longevity-genie.info` host.
 - PDF export: do not rasterize `#me-report-pdf-long` per A4 page (balloons file size). Use jsPDF `text()` / `splitTextToSize()` from DOM rows; page 1 is built in `renderCoverPageA4()` from hidden inputs and `window.__reportViews`, and report JS should use canonical origin only for public share URLs while loading local static assets from the current browser origin.
 - **Testing the Materialization page always requires `uv run preselect`** — it starts the server AND opens a URL with pre-filled genes, categories, and a personal tag. Without pre-filled selections there is nothing to share/export/generate. Never test share, report, or model features with `uv run start` (empty selection). Use `uv run preselect --dev` for dev mode.
-- Gene/sculpture inputs use `data/input/gene_library.csv`, `data/input/species.csv`, `data/input/gene_species.csv`, and `data/input/gene_properties.csv` (see `gene_data.py` / `sculpture.py`); there is no in-repo command that generates `gene_properties*`. UniProt accessions in `gene_properties.csv` drive AlphaFold URLs assembled in `gene_data.py`; `data/input/structures/*.pdb` files are local/gitignored and should stay untracked.
+- Gene/sculpture inputs load from `data/enhancement.db` (SQLite, preferred) or CSV fallback from `data/db_backup/` (see `gene_data.py` / `sculpture.py`). UniProt accessions in `gene_properties` drive AlphaFold URLs assembled in `gene_data.py`; `data/input/structures/*.pdb` files are local/gitignored and should stay untracked.
 - Dev server / LAN: `python-dotenv` loads repo-root `.env` in `rxconfig.py` and `src/materialized_enhancements/run.py` before config. Backend bind defaults to `0.0.0.0` via `BACKEND_BIND_HOST` (or `REFLEX_BACKEND_HOST` when set). `vite_allowed_hosts` is permissive by default so `http://<LAN-IP>:3000` works; optionally restrict with `BACKEND_VITE_ALLOWED_HOSTS`. For phones on Wi‑Fi, `API_URL` may need the machine LAN IP and backend port, not `localhost`.
 - Mobile USB debugging: connect an Android phone with USB debugging enabled, run `adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8000 tcp:8000` to forward ports, then `adb shell svc power stayon usb` to prevent auto-lock during debugging. Open Chrome on the phone at `localhost:3000`. Take screenshots with `adb exec-out screencap -p > /tmp/screenshot.png`. For Chrome DevTools MCP access, also run `adb forward tcp:9222 localabstract:chrome_devtools_remote`. Mobile CSS uses `@media (hover: none) and (pointer: coarse)` for touch-device detection; ensure Chrome is in mobile site mode (not "Request desktop site") when testing.

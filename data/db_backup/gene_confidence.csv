@@ -1,0 +1,94 @@
+gene_id,value,argument,description,primary
+acomys_regen,Medium,,,true
+afp_fish,Low,lifespan direct,No direct lifespan effect expected,false
+afp_fish,Low-Medium,frost-tolerance crops,,false
+afp_fish,Medium-High,cryopreservation,,true
+apoe_edit,High,,,true
+aqp1,High,mammalian baseline,Well-established mammalian aquaporin biology,true
+aqp1,N/A,species-specific enhancement,Enhancement is species-specific; not directly translatable,false
+cahs_d,High,yeast/in vitro,Strong evidence in yeast and in vitro systems,true
+cahs_d,Medium,human cell protection,"Modest protection, osmotic-shock-specific, not true drying",false
+cbp_gecko,High,source biology,,true
+cbp_gecko,High,gene transfer won't produce setae,Morphogenetic barrier prevents setae formation via gene transfer,false
+chrna1_mongoose,High,venom resistance mechanism,13+ independent convergent evolution events validate the single-aa edit,false
+chrna1_mongoose,Medium,human base editing,No CRISPR/base-editing demonstration yet; natural variants only,false
+cirbp,Medium-High,,,true
+clock_bmal1_dolphin,Medium-Low,,,true
+cltx,Very High,tumor targeting,Phase I/II human clinical trials completed; FDA orphan drug designation,false
+cpdp_potoroo,High,UV protection in mouse,Transgenic mice showed powerful skin cancer resistance,false
+cpdp_potoroo,Medium-High,human mRNA delivery,Marsupial photolyase mRNA functional in human keratinocytes (Boros 2013),false
+cry4a_robin,Low,in vivo function,,false
+cry4a_robin,Medium,biochem,,true
+dsup,Medium,,,true
+epas1_tibetan,High,population signal + direction,Clear population signal with consistent direction,true
+epas1_tibetan,Medium,single causal variant unmapped,Specific causal variant not yet identified,false
+fgf21_stgfbr2,Medium-High,,,true
+fluc,High,autonomous plants,,false
+fluc,Low-Medium,autonomous mammals,,false
+fluc,Very High,luciferin-dependent,,true
+foxo3,High,association,Strong population-level genetic association,true
+foxo3,Low,gain-of-function transfer,Uncertain whether gain-of-function variants can be transferred,false
+fst344,Medium-High,,,true
+gfp,Very High,technical,,true
+greenland_shark_repair,Low,,,true
+has2_nmr,Medium-High,,,true
+hsf1_pv,Medium-High,,,true
+kcnma1_skate,Low,electroreception transfer,Completely novel sensory modality; no mammalian neural circuitry exists,false
+kcnma1_skate,Medium,channel characterization,BK channel well-studied; skate variant expressed in human HEK293 cells,false
+klotho,High,KL-VS cognition,Cognitive enhancement via KL-VS variant,false
+klotho,High,mouse lifespan,Single study in mice,true
+klotho,Medium,therapeutic protein,,false
+lin28a,High,young-mouse repair,Strong evidence in young mouse tissue repair,true
+lin28a,Low,adult limb/organ regeneration,No evidence for adult limb or organ regeneration,false
+masp1,Low-Medium,human tissue expression,No human tissue expression; spinning requires shear forces not available in vivo,false
+masp1,Medium-High,recombinant silk production,Expressed in 7+ organisms including transgenic goats and silkworms,false
+mb_seal,Low,translational/lifespan,,false
+mb_seal,Medium,ZMb mechanism,,true
+melanin_pathway,High,passive ROS/shielding,,true
+melanin_pathway,Low,radiosynthesis hypothesis,Radiosynthesis claim poorly supported,false
+melanin_pathway,Medium,"tyrosinase-CHO, single study",,false
+mgmt_p140k,High,"feasibility, safety",,true
+mgmt_p140k,Medium,efficacy magnitude,"Small n, historical controls",false
+mstn_ko,High,,,true
+pcsk9_edit,High,,,true
+piezo2,High,mechanosensation biology,2021 Nobel Prize for Piezo discovery; human LOF mutations confirm essential role in touch/proprioception,false
+piezo2,Low,gain-of-function enhancement,No overexpression studies; GOF mutations cause distal arthrogryposis in humans,false
+pif,Low,vertebrate translation,Nacre uses aragonite; vertebrate bone uses hydroxyapatite — different mineral system,false
+pif,Medium,nacre formation role,RNAi + CRISPR validated in pearl oyster; essential for nacre,false
+pot1_turritopsis,Low,rejuvenation translation,Poor translational outlook for rejuvenation,false
+pot1_turritopsis,Low-Medium,narrow biochem claim,Limited biochemical evidence,true
+ppri_ppra,Medium,overall,One-lab mouse data; moderate effect; not independently replicated,true
+prestin_echo,Declining,ultrasonic-hearing link,Confidence in ultrasonic-hearing connection is declining,false
+prestin_echo,Medium,biophysics,,true
+pvlea,Medium,,,true
+pvpimt,Medium,,,true
+rbm3,High,neuroprotection in mouse,Nature 2015 with survival data in two disease models,false
+rbm3,Medium,independent replication,All key data from single laboratory (MRC Prion Unit),false
+reflectin,Low,mammalian camouflage translation,,false
+reflectin,Medium-High,narrow claim,,true
+resilin,Low,vertebrate tissue integration,No expression in any vertebrate tissue; cross-linking mechanism untested in vivo,false
+resilin,Medium,biomaterial properties,90-97% resilience demonstrated in recombinant material; active tissue engineering R&D,false
+scn4aa,Low,any enhancement translation,,false
+scn4aa,Medium-High,mechanistic,,true
+smedwi,High,planarian requirement,Essential for planarian regeneration,true
+smedwi,Low,mammalian regeneration transfer,Unlikely to transfer regeneration to mammals,false
+sod2,Low,longevity,,true
+sting_bat,High,mechanism,Well-characterized molecular mechanism,true
+sting_bat,Low-Medium,human translation,,false
+sting_bat,Medium,aging phenotype,"Female-only, small cohort",false
+sws1_bird,Medium,spectral tuning mechanism,Well-characterized 2-3 aa substitution mechanism; no mammalian in-vivo test of UV-shifted opsin,false
+tapetum,High,native function,,true
+tapetum,N/A,engineering never attempted,No engineering attempts to evaluate,false
+tdr1,Medium,,,true
+tert,High,mouse,Strong mouse lifespan data,true
+tert,Low,safe human translation,Safety for human translation uncertain,false
+tmc1,High,hearing restoration,Multiple independent mouse gene therapy studies; clinical pipeline active,false
+tmc1,Low-Medium,hearing enhancement beyond normal,No study tests TMC1 overexpression above wild-type levels,false
+tp53_elephant,High,phenotype,Strong phenotypic evidence in elephants,true
+tp53_elephant,Medium,heterologous causation,Less certain about cross-species causal mechanism,false
+tp53_rtg9,High,transcription-independent mechanism,Demonstrated in human cancer cells,true
+tp53_rtg9,Low,physiological elephant relevance,Never tested in elephant cells,false
+tps_pv,Medium-High,,,true
+trpa1_viper,High,channel biophysics,,true
+trpa1_viper,Medium,full behavioral IR mapping,,false
+vegf_therapy,Medium,,,true

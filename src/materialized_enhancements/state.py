@@ -20,14 +20,18 @@ from materialized_enhancements.gene_data import (
     CATEGORY_MIN_GENE_PRICES,
     CATEGORY_TRAITS,
     DEFAULT_BUDGET,
+    GAME_GENE_LIBRARY,
     GENE_LIBRARY,
+    GENE_ORG_MAP,
     GENE_PRICES,
+    ORG_BY_ID,
     SPECIES_GENE_IDS,
     SPECIES_LOOKUP,
     STL_DIR,
     STL_REPORT,
     UNIQUE_CATEGORIES,
     _DIFFICULTY_ORDER,
+    is_playable_gene,
     species_wikipedia_url,
 )
 from materialized_enhancements.puzzle import HUMAN_SPECIES_ID, build_jigsaw_svg
@@ -146,7 +150,9 @@ class SculptureSelectedGene(TypedDict):
     puzzle_src: str
     species_page_url: str
     included: bool
+    playable: bool
     price: int
+    org_entries: list[dict[str, str]]
     protein_length_aa: str
     protein_mass_kda: str
     exon_count: str
@@ -178,6 +184,34 @@ def _gene_props_flat(gene: str, gene_id: str) -> dict[str, str]:
         v = raw.get(key)
         out[key] = "" if v is None else str(v)
     return out
+
+
+def _gene_org_display_entries(gene_id: str) -> list[dict[str, str]]:
+    """Build a flat list of organization display dicts for a gene, sorted: commercial first."""
+    og_list = GENE_ORG_MAP.get(gene_id, [])
+    if not og_list:
+        return []
+    entries: list[dict[str, str]] = []
+    for og in og_list:
+        org = ORG_BY_ID.get(og["org_id"])
+        if not org:
+            continue
+        price_str = f"${og['price_usd']:,}" if og.get("price_usd") else ""
+        entries.append({
+            "org_name": org["name"],
+            "org_type": org["type"],
+            "stage": og["stage"],
+            "delivery_method": og.get("delivery_method", ""),
+            "price_usd": price_str,
+            "regulatory_status": og.get("regulatory_status", ""),
+            "trial_id": og.get("trial_id", ""),
+            "website": org.get("website", ""),
+            "source_url": og.get("source_url", ""),
+            "evidence_summary": og.get("evidence_summary", ""),
+        })
+    type_order = {"biotech_company": 0, "clinic": 1, "clinical_trial_sponsor": 2, "academic_lab": 3}
+    entries.sort(key=lambda e: type_order.get(e["org_type"], 9))
+    return entries
 
 
 def _gene_row_price_cr(gene: dict[str, Any]) -> int:
@@ -1091,6 +1125,9 @@ class ComposeState(rx.State):
         if gene in self.included_genes:
             self.included_genes = [g for g in self.included_genes if g != gene]
         else:
+            if not is_playable_gene(gene):
+                # Knowledge-base-only gene (genes.game_enabled = 0).
+                return
             spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
             add_price = int(GENE_PRICES.get(gene, 0))
             if spent + add_price > DEFAULT_BUDGET:
@@ -1114,6 +1151,10 @@ class ComposeState(rx.State):
             if not remaining_in_category:
                 self.selected_categories = [c for c in self.selected_categories if c != category]
             self._recompute_params()
+            return
+
+        if not is_playable_gene(gene):
+            # Knowledge-base-only gene (genes.game_enabled = 0): readable, not selectable.
             return
 
         spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
@@ -1162,8 +1203,16 @@ class ComposeState(rx.State):
         self.hovered_gene_category = ""
 
     def _prune_included_genes(self) -> None:
-        """Drop included genes that are no longer in any selected category."""
-        active = {g["gene"] for g in GENE_LIBRARY if g["category"] in self.selected_categories}
+        """Drop included genes no longer in a selected category, or no longer playable.
+
+        The playability check is the backstop for selections restored from an
+        older share link: a gene that has since been staged out of the game
+        (genes.game_enabled = 0) must not come back through a saved report.
+        """
+        active = {
+            g["gene"] for g in GAME_GENE_LIBRARY
+            if g["category"] in self.selected_categories
+        }
         self.included_genes = [g for g in self.included_genes if g in active]
 
     def _shrink_included_genes_to_budget(self) -> None:
@@ -2345,7 +2394,9 @@ class ComposeState(rx.State):
                 "puzzle_src": f"/{quote(g['puzzle_svg'])}" if g["puzzle_svg"] else "",
                 "species_page_url": g.get("species_page_url", ""),
                 "included": g["gene"] in self.included_genes,
+                "playable": bool(g["game_enabled"]),
                 "price": price,
+                "org_entries": _gene_org_display_entries(g["gene_id"]),
                 **_gene_props_flat(g["gene"], g["gene_id"]),
             }
             rows.append(row)
@@ -2516,10 +2567,13 @@ class ComposeState(rx.State):
         ]
         genes = [
             str(gene) for gene in artifact.get("included_genes", [])
-            if any(entry["gene"] == str(gene) for entry in GENE_LIBRARY)
+            if any(entry["gene"] == str(gene) for entry in GAME_GENE_LIBRARY)
         ]
         if not genes:
-            genes = [entry["gene"] for entry in GENE_LIBRARY if entry["category"] in categories]
+            genes = [
+                entry["gene"] for entry in GAME_GENE_LIBRARY
+                if entry["category"] in categories
+            ]
 
         self.personal_tag = str(artifact.get("name", "")).strip()
         self.selected_categories = categories
@@ -2599,7 +2653,7 @@ class ComposeState(rx.State):
                 logger.warning("apply_shared_report: invalid genes param")
             else:
                 valid_genes = {
-                    g["gene"] for g in GENE_LIBRARY
+                    g["gene"] for g in GAME_GENE_LIBRARY
                     if g["category"] in cats
                 }
                 if isinstance(genes_payload, list):
@@ -2612,7 +2666,7 @@ class ComposeState(rx.State):
         self.personal_tag = tag
         self.selected_categories = cats
         self.included_genes = selected_genes or [
-            g["gene"] for g in GENE_LIBRARY if g["category"] in cats
+            g["gene"] for g in GAME_GENE_LIBRARY if g["category"] in cats
         ]
         self._recompute_params()
         yield ComposeState.materialize

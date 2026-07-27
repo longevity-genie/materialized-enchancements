@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate PhyloPic-sourced species silhouettes from the canonical CSV map.
 
-``data/input/species_svg_map.csv`` is the single source of truth. For every row
+``data/db_backup/species_svg_map.csv`` is the single source of truth. For every row
 whose ``ui_svg_type == "phylopic"`` this downloads the recorded PhyloPic image
 (by ``phylopic_uuid``) as ``assets/species_svg/<species_id>.svg``.
 
@@ -27,7 +27,7 @@ import polars as pl
 import typer
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SVG_MAP_CSV = REPO_ROOT / "data" / "input" / "species_svg_map.csv"
+SVG_MAP_CSV = REPO_ROOT / "data" / "db_backup" / "species_svg_map.csv"
 SPECIES_SVG_DIR = REPO_ROOT / "assets" / "species_svg"
 CHECK_DIR = REPO_ROOT / "data" / "interim" / "phylopic_check"
 

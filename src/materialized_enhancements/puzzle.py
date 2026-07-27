@@ -4,32 +4,62 @@ Manages puzzle-piece SVGs for each source species and composes them
 into a combined jigsaw SVG showing the human silhouette with selected
 species layers.
 
-Species → silhouette mapping is loaded from ``data/input/species_svg_map.csv``
-(single source of truth). Canonical per-species SVG files live in
-``assets/species_svg/``; the single layered jigsaw composite is
-``data/input/puzzle/ALL_ANIMALS.svg``.
+Species → silhouette mapping is loaded from the SQLite database (preferred)
+or ``data/db_backup/species_svg_map.csv`` (fallback). Canonical per-species
+SVG files live in ``assets/species_svg/``; the single layered jigsaw composite
+is ``data/input/puzzle/ALL_ANIMALS.svg``.
 """
 
 from __future__ import annotations
 
+import sqlite3
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import polars as pl
 
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "input"
-PUZZLE_DIR = DATA_DIR / "puzzle"
+_INPUT_DIR = Path(__file__).resolve().parents[2] / "data" / "input"
+PUZZLE_DIR = _INPUT_DIR / "puzzle"
 ALL_ANIMALS_SVG_PATH = PUZZLE_DIR / "ALL_ANIMALS.svg"
 
 HUMAN_SPECIES_ID = "homo_sapiens"
 
 # ---------------------------------------------------------------------------
-# CSV-driven species → SVG mapping (single source of truth)
+# Species → SVG mapping. The DoltHub-synced database is the source of truth;
+# data/db_backup/species_svg_map.csv is the fallback for development without it.
+#
+# This module cannot import gene_data (gene_data imports puzzle), so it opens
+# its own short-lived read-only connection instead.
 # ---------------------------------------------------------------------------
 
-_SVG_MAP_PATH = DATA_DIR / "species_svg_map.csv"
-SPECIES_SVG_DF: pl.DataFrame = pl.read_csv(_SVG_MAP_PATH)
+_SVG_MAP_PATH = Path(__file__).resolve().parents[2] / "data" / "db_backup" / "species_svg_map.csv"
+_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "enhancement.db"
+
+_SVG_MAP_COLUMNS = (
+    "species_id", "common_name", "scientific_name", "kingdom", "phylum",
+    "class_", "order_", "family", "ui_svg_path", "ui_svg_type", "jigsaw_layer",
+    "phylopic_uuid", "phylopic_title", "license", "similar_to", "flag", "notes",
+)
+
+
+def _load_species_svg_df() -> pl.DataFrame:
+    """Species → SVG map from SQLite when present, else from the fallback CSV."""
+    if not _DB_PATH.is_file():
+        return pl.read_csv(_SVG_MAP_PATH)
+    conn = sqlite3.connect(str(_DB_PATH))
+    try:
+        cols = ", ".join(_SVG_MAP_COLUMNS)
+        rows = conn.execute(f"SELECT {cols} FROM species_svg_map").fetchall()
+    finally:
+        conn.close()
+    return pl.DataFrame(
+        [dict(zip(_SVG_MAP_COLUMNS, row)) for row in rows],
+        schema={c: pl.Utf8 for c in _SVG_MAP_COLUMNS},
+    )
+
+
+SPECIES_SVG_DF: pl.DataFrame = _load_species_svg_df()
 
 SPECIES_SVG_MAP: dict[str, dict[str, str]] = {
     row["species_id"]: row

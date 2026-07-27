@@ -63,6 +63,17 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         changefreq="monthly",
         priority=0.8,
     ),
+    CrawlerRoute(
+        path="/knowledgebase",
+        title="Enhancement Knowledgebase",
+        description=(
+            "Browse 55 gene enhancements from 39 species, organized by evidence level — "
+            "from clinical trials and commercially available therapies to early research. "
+            "Each entry includes experimental testing data, mechanisms, and references."
+        ),
+        changefreq="weekly",
+        priority=0.9,
+    ),
 )
 
 
@@ -128,7 +139,7 @@ def build_llms_txt() -> str:
 
 - Site: {_canonical_base_url()}
 - Repository: https://github.com/winternewt/materialized-enchancements
-- Data source: `data/input/gene_library.csv` loaded by `materialized_enhancements.gene_data`
+- Data source: `data/enhancement.db` (SQLite) loaded by `materialized_enhancements.gene_data`
 
 ## Public Pages
 

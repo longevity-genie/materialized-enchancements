@@ -1,7 +1,7 @@
-"""Data consistency tests — validate CSV "database" integrity.
+"""Data consistency tests — validate CSV backup integrity.
 
-All checks run against the real CSV files in data/input/.
-No mocks, no fakes.
+All checks run against the CSV files in data/db_backup/ (generated from
+data/enhancement.db via scripts/export_db_csv.py). No mocks, no fakes.
 """
 
 from __future__ import annotations
@@ -11,14 +11,14 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "input"
+CSV_DIR = Path(__file__).resolve().parents[1] / "data" / "db_backup"
 
-GENE_LIBRARY_PATH = DATA_DIR / "gene_library.csv"
-SPECIES_PATH = DATA_DIR / "species.csv"
-GENE_SPECIES_PATH = DATA_DIR / "gene_species.csv"
-GENE_PROPERTIES_PATH = DATA_DIR / "gene_properties.csv"
-GENE_CONFIDENCE_PATH = DATA_DIR / "gene_confidence.csv"
-GENE_TESTING_PATH = DATA_DIR / "gene_testing.csv"
+GENE_LIBRARY_PATH = CSV_DIR / "gene_library.csv"
+SPECIES_PATH = CSV_DIR / "species.csv"
+GENE_SPECIES_PATH = CSV_DIR / "gene_species.csv"
+GENE_PROPERTIES_PATH = CSV_DIR / "gene_properties.csv"
+GENE_CONFIDENCE_PATH = CSV_DIR / "gene_confidence.csv"
+GENE_TESTING_PATH = CSV_DIR / "gene_testing.csv"
 
 VALID_CATEGORIES = {
     "Stress Resistance",

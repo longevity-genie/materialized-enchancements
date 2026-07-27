@@ -1,0 +1,53 @@
+species_id,scientific_name,common_name,genus,species,kingdom,phylum,class,order,family,max_longevity_years,adult_weight_g,metabolic_rate_w,body_mass_g,temperature_k,female_maturity_days,male_maturity_days,gestation_days,imr_per_year,mrdt_years,url
+acomys_cahirinus,Acomys cahirinus,Cairo spiny mouse,Acomys,cahirinus,Animalia,Chordata,Mammalia,Rodentia,Muridae,5.5,45,,,,60,60,38,,,https://en.wikipedia.org/wiki/Cairo_spiny_mouse
+adineta_vaga,Adineta vaga,Bdelloid Rotifer,Adineta,vaga,Animalia,Rotifera,Bdelloidea,Philodinida,Adinetidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Bdelloid_rotifer
+aequorea_victoria,Aequorea victoria,Crystal jellyfish,Aequorea,victoria,Animalia,Cnidaria,Hydrozoa,Leptothecata,Aequoreidae,0.5,,,,,,,,,,https://en.wikipedia.org/wiki/Aequorea_victoria
+ambystoma_mexicanum,Ambystoma mexicanum,Axolotl,Ambystoma,mexicanum,Animalia,Chordata,Amphibia,Caudata,Ambystomatidae,17,,,,,548,548,18,,,https://en.wikipedia.org/wiki/Axolotl
+balaena_mysticetus,Balaena mysticetus,Bowhead whale,Balaena,mysticetus,Animalia,Chordata,Mammalia,Cetacea,Balaenidae,211,100000000,,,,8212,8212,396,,,https://en.wikipedia.org/wiki/Bowhead_whale
+bos_taurus,Bos taurus,Cattle (Belgian Blue),Bos,taurus,Animalia,Chordata,Mammalia,Artiodactyla,Bovidae,20,900000,,,,548,548,285,,,https://en.wikipedia.org/wiki/Cattle
+canis_familiaris,Canis familiaris,Dog (Whippet),Canis,familiaris,Animalia,Chordata,Mammalia,Carnivora,Canidae,24,13600,,,,365,365,63,,,https://en.wikipedia.org/wiki/Dog
+chrysomallon_squamiferum,Chrysomallon squamiferum,Scaly-foot Snail,Chrysomallon,squamiferum,Animalia,Mollusca,Gastropoda,Neomphalida,Peltospiridae,,,,,,,,,,,https://en.wikipedia.org/wiki/Chrysomallon_squamiferum
+cladosporium_sphaerospermum,Cladosporium sphaerospermum,Chernobyl fungus,Cladosporium,sphaerospermum,Fungi,Ascomycota,Dothideomycetes,Cladosporiales,Cladosporiaceae,,,,,298,,,,,,https://en.wikipedia.org/wiki/Cladosporium_sphaerospermum
+crotalus_atrox,Crotalus atrox,Western diamondback rattlesnake,Crotalus,atrox,Animalia,Chordata,Reptilia,Squamata,Viperidae,27,6700,,,,1095,1095,167,,,https://en.wikipedia.org/wiki/Western_diamondback_rattlesnake
+cyclorana_platycephala,Cyclorana platycephala,Water-holding frog,Cyclorana,platycephala,Animalia,Chordata,Amphibia,Anura,Hylidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Water-holding_frog
+cynops_pyrrhogaster,Cynops pyrrhogaster,Japanese Fire-Belly Newt,Cynops,pyrrhogaster,Animalia,Chordata,Amphibia,Urodela,Salamandridae,25,,,,,,,,,,https://en.wikipedia.org/wiki/Japanese_fire_belly_newt
+dama_dama,Dama dama,Fallow Deer,Dama,dama,Animalia,Chordata,Mammalia,Artiodactyla,Cervidae,20,,,,,,,,,,https://en.wikipedia.org/wiki/Fallow_deer
+danio_rerio,Danio rerio,Zebrafish,Danio,rerio,Animalia,Chordata,Actinopterygii,Cypriniformes,Danionidae,5,,,,,,,,,,https://en.wikipedia.org/wiki/Zebrafish
+deinococcus_radiodurans,Deinococcus radiodurans,Conan the Bacterium,Deinococcus,radiodurans,Bacteria,Deinococcota,Deinococci,Deinococcales,Deinococcaceae,,9.5e-13,,9.5e-13,303,,,,,,https://en.wikipedia.org/wiki/Deinococcus_radiodurans
+desmodus_rotundus,Desmodus rotundus,Common Vampire Bat,Desmodus,rotundus,Animalia,Chordata,Mammalia,Chiroptera,Phyllostomidae,12,,,,,,,,,,https://en.wikipedia.org/wiki/Common_vampire_bat
+diretmus_argenteus,Diretmus argenteus,Silver Spinyfin,Diretmus,argenteus,Animalia,Chordata,Actinopterygii,Trachichthyiformes,Diretmidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Diretmus_argenteus
+dosidicus_gigas,Dosidicus gigas,Humboldt Squid,Dosidicus,gigas,Animalia,Mollusca,Cephalopoda,Oegopsida,Ommastrephidae,2,,,,,,,,,,https://en.wikipedia.org/wiki/Humboldt_squid
+drosophila_melanogaster,Drosophila melanogaster,Fruit Fly,Drosophila,melanogaster,Animalia,Arthropoda,Insecta,Diptera,Drosophilidae,0.25,0.001,,,,,,,,,https://en.wikipedia.org/wiki/Drosophila_melanogaster
+electrophorus_electricus,Electrophorus electricus,Electric eel,Electrophorus,electricus,Animalia,Chordata,Teleostei,Gymnotiformes,Electrophoridae,12.6,,,,,,,,,,https://en.wikipedia.org/wiki/Electric_eel
+erithacus_rubecula,Erithacus rubecula,European robin,Erithacus,rubecula,Animalia,Chordata,Aves,Passeriformes,Muscicapidae,19.3,17.3,0.281,17.6,,365,365,,0.02,1.6,https://en.wikipedia.org/wiki/European_robin
+euplectella_aspergillum,Euplectella aspergillum,Venus Flower Basket Sponge,Euplectella,aspergillum,Animalia,Porifera,Hexactinellida,Lyssacinosida,Euplectellidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Euplectella_aspergillum
+felis_catus,Felis catus,Cat,Felis,catus,Animalia,Chordata,Mammalia,Carnivora,Felidae,30,3900,,,311.25,289,304,65,,,https://en.wikipedia.org/wiki/Cat
+gekko_japonicus,Gekko japonicus,Japanese gecko,Gekko,japonicus,Animalia,Chordata,Reptilia,Squamata,Gekkonidae,23.5,54.13,,,,,,,,,https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=146911
+glaciozyma_antarctica,Glaciozyma antarctica,Antarctic Yeast,Glaciozyma,antarctica,Fungi,Basidiomycota,Tremellomycetes,Cystofilobasidiales,Mrakiaceae,,,,,,,,,,,https://en.wikipedia.org/wiki/Glaciozyma_antarctica
+herpestes_ichneumon,Herpestes ichneumon,Egyptian Mongoose,Herpestes,ichneumon,Animalia,Chordata,Mammalia,Carnivora,Herpestidae,20,3500,,,,,,,,,https://en.wikipedia.org/wiki/Egyptian_mongoose
+heterocephalus_glaber,Heterocephalus glaber,Naked mole-rat,Heterocephalus,glaber,Animalia,Chordata,Mammalia,Rodentia,Bathyergidae,31,35,0.128,35.3,305.25,228,,70,,,https://en.wikipedia.org/wiki/Naked_mole-rat
+homarus_americanus,Homarus americanus,American lobster,Homarus,americanus,Animalia,Arthropoda,Malacostraca,Decapoda,Nephropidae,100,,,,,,,,,,https://en.wikipedia.org/wiki/American_lobster
+homo_sapiens,Homo sapiens,Human,Homo,sapiens,Animalia,Chordata,Mammalia,Primates,Hominidae,122.5,62035,82.78,70000,310.15,4745,5110,280,0.0002,8,https://en.wikipedia.org/wiki/Human
+hoplostethus_atlanticus,Hoplostethus atlanticus,Orange Roughy,Hoplostethus,atlanticus,Animalia,Chordata,Actinopterygii,Trachichthyiformes,Trachichthyidae,250,,,,,,,,,,https://en.wikipedia.org/wiki/Orange_roughy
+leiurus_quinquestriatus,Leiurus quinquestriatus,Deathstalker Scorpion,Leiurus,quinquestriatus,Animalia,Arthropoda,Arachnida,Scorpiones,Buthidae,8,,,,,,,,,,https://en.wikipedia.org/wiki/Leiurus_quinquestriatus
+leptonychotes_weddellii,Leptonychotes weddellii,Weddell seal,Leptonychotes,weddellii,Animalia,Chordata,Mammalia,Carnivora,Phocidae,,425000,,,,1365,1642,304,,,https://en.wikipedia.org/wiki/Weddell_seal
+leucoraja_erinacea,Leucoraja erinacea,Little Skate,Leucoraja,erinacea,Animalia,Chordata,Chondrichthyes,Rajiformes,Rajidae,20,700,,,,,,,,,https://en.wikipedia.org/wiki/Little_skate
+loxodonta_africana,Loxodonta africana,African elephant,Loxodonta,africana,Animalia,Chordata,Mammalia,Proboscidea,Elephantidae,65,4800000,,,309.35,4018,3650,670,0.002,8,https://en.wikipedia.org/wiki/African_bush_elephant
+malapterurus_electricus,Malapterurus electricus,Electric Catfish,Malapterurus,electricus,Animalia,Chordata,Actinopterygii,Siluriformes,Malapteruridae,10,,,,,,,,,,https://en.wikipedia.org/wiki/Electric_catfish
+melopsittacus_undulatus,Melopsittacus undulatus,Budgerigar,Melopsittacus,undulatus,Animalia,Chordata,Aves,Psittaciformes,Psittaculidae,21,30,,,,,,,,,https://en.wikipedia.org/wiki/Budgerigar
+mus_musculus,Mus musculus,Mouse,Mus,musculus,Animalia,Chordata,Mammalia,Rodentia,Muridae,4,20.5,0.271,18,310.05,42,42,19,0.01,0.3,https://en.wikipedia.org/wiki/House_mouse
+myroides_profundi,Myroides profundi,Deep-sea Bacterium,Myroides,profundi,Bacteria,Bacteroidota,Flavobacteriia,Flavobacteriales,Flavobacteriaceae,,,,,,,,,,,
+photinus_pyralis,Photinus pyralis,Firefly,Photinus,pyralis,Animalia,Arthropoda,Insecta,Coleoptera,Lampyridae,,,,,,,,,,,https://en.wikipedia.org/wiki/Photinus_pyralis
+pinctada_fucata,Pinctada fucata,Akoya Pearl Oyster,Pinctada,fucata,Animalia,Mollusca,Bivalvia,Ostreida,Pteriidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Pinctada_fucata
+polypedilum_vanderplanki,Polypedilum vanderplanki,Sleeping chironomid,Polypedilum,vanderplanki,Animalia,Arthropoda,Insecta,Diptera,Chironomidae,0.5,0.002,,,,,,,,,https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=319348
+potorous_tridactylus,Potorous tridactylus,Long-nosed Potoroo,Potorous,tridactylus,Animalia,Chordata,Mammalia,Diprotodontia,Potoroidae,12,1100,,,,,,,,,https://en.wikipedia.org/wiki/Long-nosed_potoroo
+pseudopleuronectes_americanus,Pseudopleuronectes americanus,Winter flounder,Pseudopleuronectes,americanus,Animalia,Chordata,Teleostei,Pleuronectiformes,Pleuronectidae,14,1980,,,,1022,1034,,,,https://en.wikipedia.org/wiki/Winter_flounder
+pteropus_alecto,Pteropus alecto,Black flying fox,Pteropus,alecto,Animalia,Chordata,Mammalia,Chiroptera,Pteropodidae,20.3,672.1,,,,,,,,,https://en.wikipedia.org/wiki/Black_flying_fox
+ramazzottius_varieornatus,Ramazzottius varieornatus,Tardigrade,Ramazzottius,varieornatus,Animalia,Tardigrada,Eutardigrada,Parachela,Ramazzottiidae,0.096,,,,,,,,,,https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=947166
+schmidtea_mediterranea,Schmidtea mediterranea,Planarian,Schmidtea,mediterranea,Animalia,Platyhelminthes,Trepaxonemata,Neoophora,Dugesiidae,,,,,,,,,,999,https://en.wikipedia.org/wiki/Schmidtea_mediterranea
+sepia_officinalis,Sepia officinalis,Common cuttlefish,Sepia,officinalis,Animalia,Mollusca,Cephalopoda,Sepiida,Sepiidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Common_cuttlefish
+somniosus_microcephalus,Somniosus microcephalus,Greenland shark,Somniosus,microcephalus,Animalia,Chordata,Chondrichthyes,Squaliformes,Somniosidae,392,,,,,56940,,,,,https://en.wikipedia.org/wiki/Greenland_shark
+trichonephila_clavipes,Trichonephila clavipes,Golden Silk Orbweaver,Trichonephila,clavipes,Animalia,Arthropoda,Arachnida,Araneae,Araneidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Trichonephila_clavipes
+turritopsis_dohrnii,Turritopsis dohrnii,Immortal jellyfish,Turritopsis,dohrnii,Animalia,Cnidaria,Hydrozoa,Anthoathecatae,Oceanidae,,,,,,,,,,,https://en.wikipedia.org/wiki/Turritopsis_dohrnii
+tursiops_truncatus,Tursiops truncatus,Bottlenose dolphin,Tursiops,truncatus,Animalia,Chordata,Mammalia,Cetacea,Delphinidae,51.6,200000,,,,2831,3689,365,,,https://en.wikipedia.org/wiki/Common_bottlenose_dolphin
+urocitellus_parryii,Urocitellus parryii,Arctic Ground Squirrel,Urocitellus,parryii,Animalia,Chordata,Mammalia,Rodentia,Sciuridae,10,750,,,,,,,,,https://en.wikipedia.org/wiki/Arctic_ground_squirrel

@@ -22,7 +22,7 @@ from materialized_enhancements.gene_data import GENE_LIBRARY, UNIQUE_CATEGORIES
 def test_public_crawler_routes_match_current_pages() -> None:
     paths = [route.path for route in PUBLIC_ROUTES]
 
-    assert paths == ["/", "/materialization", "/about"]
+    assert paths == ["/", "/materialization", "/about", "/knowledgebase"]
 
 
 def test_sitemap_uses_current_materialization_route(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -13,13 +13,13 @@ from materialized_enhancements.puzzle import HUMAN_SPECIES_ID, resolve_puzzle_sv
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "input"
+CSV_DIR = Path(__file__).resolve().parents[2] / "data" / "db_backup"
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "enhancement.db"
-DATA_PATH = DATA_DIR / "gene_library.csv"
-SPECIES_PATH = DATA_DIR / "species.csv"
-GENE_SPECIES_PATH = DATA_DIR / "gene_species.csv"
-GENE_TESTING_PATH = DATA_DIR / "gene_testing.csv"
-GENE_CONFIDENCE_PATH = DATA_DIR / "gene_confidence.csv"
+DATA_PATH = CSV_DIR / "gene_library.csv"
+SPECIES_PATH = CSV_DIR / "species.csv"
+GENE_SPECIES_PATH = CSV_DIR / "gene_species.csv"
+GENE_TESTING_PATH = CSV_DIR / "gene_testing.csv"
+GENE_CONFIDENCE_PATH = CSV_DIR / "gene_confidence.csv"
 
 USE_SQLITE: bool = DB_PATH.is_file()
 
@@ -42,6 +42,7 @@ class ConfidenceEntry(TypedDict):
 class GeneEntry(TypedDict):
     gene_id: str
     gene: str
+    game_enabled: bool
     manipulation: str
     species_ids: list[str]
     species_common_names: str
@@ -98,6 +99,36 @@ class TestingEntry(TypedDict):
     reference_short: str
     doi: str
     year: str
+
+
+class OrganizationEntry(TypedDict):
+    org_id: str
+    name: str
+    type: str
+    country: str
+    jurisdiction: str
+    city: str
+    website: str
+    founded_year: int
+    key_people: str
+    description: str
+    source_url: str
+
+
+class OrgGeneEntry(TypedDict):
+    org_id: str
+    gene_id: str
+    stage: str
+    delivery_method: str
+    target_organism: str
+    price_usd: int | None
+    year_started: int | None
+    regulatory_status: str
+    peer_reviewed: bool
+    trial_id: str
+    evidence_summary: str
+    notes: str
+    source_url: str
 
 
 _LIBRARY_COLUMN_MAP: dict[str, str] = {
@@ -194,15 +225,15 @@ def _sqlite_load_protein_id_lookup(conn: sqlite3.Connection) -> dict[str, _Prote
     return lookup
 
 
-def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, str]]:
+def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, object]]:
     rows = conn.execute(
         """SELECT gene_id, gene, manipulation, category, trait,
                   narrative, short_description, mechanism, achievements,
                   evidence_tier, translational_gaps, key_references, notes,
-                  secondary_categories
+                  secondary_categories, game_enabled
            FROM genes"""
     ).fetchall()
-    result: list[dict[str, str]] = []
+    result: list[dict[str, object]] = []
     for r in rows:
         result.append({
             "gene_id": r["gene_id"],
@@ -219,6 +250,7 @@ def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, str]]:
             "key_references": r["key_references"] or "",
             "notes": r["notes"] or "",
             "secondary_categories_raw": r["secondary_categories"] or "",
+            "game_enabled": bool(r["game_enabled"]),
             "category_detail": f"{r['category']} / {r['trait']}",
             "description": r["narrative"] or "",
             "enhancement": r["mechanism"] or "",
@@ -226,7 +258,7 @@ def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, str]]:
         })
     import re
     for row in result:
-        m = re.search(r"https?://[^\s|]+", row.get("key_references", ""))
+        m = re.search(r"https?://[^\s|]+", str(row.get("key_references", "")))
         row["paper_url"] = m.group(0) if m else ""
     return result
 
@@ -257,6 +289,57 @@ def _sqlite_load_gene_testing(conn: sqlite3.Connection) -> list[TestingEntry]:
     ]
 
 
+def _sqlite_load_organizations(conn: sqlite3.Connection) -> list[OrganizationEntry]:
+    rows = conn.execute(
+        """SELECT org_id, name, type, country, jurisdiction, city,
+                  website, founded_year, key_people, description, source_url
+           FROM organizations"""
+    ).fetchall()
+    return [
+        OrganizationEntry(
+            org_id=r["org_id"],
+            name=r["name"] or "",
+            type=r["type"] or "",
+            country=r["country"] or "",
+            jurisdiction=r["jurisdiction"] or "",
+            city=r["city"] or "",
+            website=r["website"] or "",
+            founded_year=r["founded_year"] or 0,
+            key_people=r["key_people"] or "",
+            description=r["description"] or "",
+            source_url=r["source_url"] or "",
+        )
+        for r in rows
+    ]
+
+
+def _sqlite_load_org_genes(conn: sqlite3.Connection) -> list[OrgGeneEntry]:
+    rows = conn.execute(
+        """SELECT org_id, gene_id, stage, delivery_method, target_organism,
+                  price_usd, year_started, regulatory_status, peer_reviewed,
+                  trial_id, evidence_summary, notes, source_url
+           FROM organization_genes"""
+    ).fetchall()
+    return [
+        OrgGeneEntry(
+            org_id=r["org_id"],
+            gene_id=r["gene_id"],
+            stage=r["stage"] or "",
+            delivery_method=r["delivery_method"] or "",
+            target_organism=r["target_organism"] or "",
+            price_usd=r["price_usd"],
+            year_started=r["year_started"],
+            regulatory_status=r["regulatory_status"] or "",
+            peer_reviewed=bool(r["peer_reviewed"]),
+            trial_id=r["trial_id"] or "",
+            evidence_summary=r["evidence_summary"] or "",
+            notes=r["notes"] or "",
+            source_url=r["source_url"] or "",
+        )
+        for r in rows
+    ]
+
+
 def _sqlite_load_pricing(conn: sqlite3.Connection, library: list[GeneEntry]) -> pl.DataFrame:
     rows = conn.execute("SELECT gene_id, gene_price FROM gene_properties").fetchall()
     price_map = {r["gene_id"]: int(r["gene_price"]) for r in rows}
@@ -278,7 +361,7 @@ def _sqlite_load_pricing(conn: sqlite3.Connection, library: list[GeneEntry]) -> 
 # CSV loaders — used as fallback when enhancement.db does not exist.
 # ---------------------------------------------------------------------------
 
-def _load_protein_id_lookup(path: Path = DATA_DIR / "gene_properties.csv") -> dict[str, _ProteinInfo]:
+def _load_protein_id_lookup(path: Path = CSV_DIR / "gene_properties.csv") -> dict[str, _ProteinInfo]:
     """Load gene_id → _ProteinInfo from gene_properties.csv."""
     df = pl.read_csv(path)
     cols = ["gene_id", "protein_id", "id_type"]
@@ -305,7 +388,7 @@ if USE_SQLITE:
     _db = _sqlite_conn()
     PROTEIN_ID_LOOKUP: dict[str, _ProteinInfo] = _sqlite_load_protein_id_lookup(_db)
 else:
-    logger.info("Loading gene data from CSV files in %s", DATA_DIR)
+    logger.info("Loading gene data from CSV files in %s", CSV_DIR)
     PROTEIN_ID_LOOKUP = _load_protein_id_lookup()
 
 
@@ -336,7 +419,7 @@ def _gene_pdb_url(gene_id: str) -> str:
 
 
 ASSETS_STRUCTURES_DIR = Path(__file__).resolve().parents[2] / "assets" / "structures"
-STRUCTURES_DIRS = [ASSETS_STRUCTURES_DIR, DATA_DIR / "structures"]
+STRUCTURES_DIRS = [ASSETS_STRUCTURES_DIR, Path(__file__).resolve().parents[2] / "data" / "input" / "structures"]
 
 
 def resolve_structure_pdb(gene_id: str) -> str:
@@ -449,6 +532,8 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
         rows = df.to_dicts()  # type: ignore[assignment]
     for row in rows:
         gid = row["gene_id"]
+        # CSV fallback has no game_enabled column: everything in the CSV is playable.
+        row["game_enabled"] = bool(row.get("game_enabled", True))
         sids = GENE_SPECIES_MAP.get(gid, [])
         row["species_ids"] = sids
         common_names = [SPECIES_LOOKUP[s]["common_name"] for s in sids if s in SPECIES_LOOKUP]
@@ -563,6 +648,26 @@ UNIQUE_TRAITS: list[str] = get_unique_traits(GENE_LIBRARY)
 CATEGORY_TRAITS: dict[str, list[str]] = build_category_traits(GENE_LIBRARY)
 ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
 
+# ---------------------------------------------------------------------------
+# Playable subset — genes.game_enabled separates "in the knowledge base" from
+# "participates in the game right now". A gene is staged out of the game while
+# its gene_properties biophysical columns (the sculpture inputs) are still
+# empty, or whenever a curator wants it readable but not yet selectable.
+#
+# GENE_LIBRARY stays the full knowledge base: the gene accordion, species
+# pages, and crawler/SEO copy must keep showing every curated gene.
+# GAME_GENE_LIBRARY and PLAYABLE_GENE_NAMES drive selection, budget, and
+# 3D-model generation.
+# ---------------------------------------------------------------------------
+GAME_GENE_LIBRARY: list[GeneEntry] = [g for g in GENE_LIBRARY if g["game_enabled"]]
+PLAYABLE_GENE_NAMES: frozenset[str] = frozenset(g["gene"] for g in GAME_GENE_LIBRARY)
+GAME_CATEGORY_COUNTS: dict[str, int] = build_category_counts(GAME_GENE_LIBRARY)
+
+
+def is_playable_gene(gene_display_name: str) -> bool:
+    """True when a gene may take part in the game (selection, budget, model)."""
+    return gene_display_name in PLAYABLE_GENE_NAMES
+
 
 def _build_species_gene_ids(library: list[GeneEntry]) -> dict[str, set[str]]:
     """Reverse map: species_id → set of gene_ids belonging to that species."""
@@ -600,12 +705,53 @@ for _g in GENE_LIBRARY:
 
 
 # ---------------------------------------------------------------------------
+# Organizations
+# ---------------------------------------------------------------------------
+
+def _load_organizations() -> list[OrganizationEntry]:
+    if USE_SQLITE:
+        return _sqlite_load_organizations(_db)
+    return []
+
+
+def _load_org_genes() -> list[OrgGeneEntry]:
+    if USE_SQLITE:
+        return _sqlite_load_org_genes(_db)
+    return []
+
+
+def _build_org_gene_map(
+    org_genes: list[OrgGeneEntry],
+) -> dict[str, list[OrgGeneEntry]]:
+    result: dict[str, list[OrgGeneEntry]] = {}
+    for entry in org_genes:
+        result.setdefault(entry["org_id"], []).append(entry)
+    return result
+
+
+def _build_gene_org_map(
+    org_genes: list[OrgGeneEntry],
+) -> dict[str, list[OrgGeneEntry]]:
+    result: dict[str, list[OrgGeneEntry]] = {}
+    for entry in org_genes:
+        result.setdefault(entry["gene_id"], []).append(entry)
+    return result
+
+
+ORG_LIBRARY: list[OrganizationEntry] = _load_organizations()
+ORG_GENE_LIST: list[OrgGeneEntry] = _load_org_genes()
+ORG_BY_ID: dict[str, OrganizationEntry] = {o["org_id"]: o for o in ORG_LIBRARY}
+ORG_GENE_MAP: dict[str, list[OrgGeneEntry]] = _build_org_gene_map(ORG_GENE_LIST)
+GENE_ORG_MAP: dict[str, list[OrgGeneEntry]] = _build_gene_org_map(ORG_GENE_LIST)
+
+
+# ---------------------------------------------------------------------------
 # Budget system — prices resolved by gene_id from gene_properties.csv.
 # CATEGORY_PRICES sums all genes in a category (UI: max spend if every gene is on).
 # CATEGORY_MIN_GENE_PRICES is the cheapest gene in each category (gate for selecting
 # a category: user only needs room for one gene, not the full category total).
 # ---------------------------------------------------------------------------
-GENE_PRICES_PATH = DATA_DIR / "gene_properties.csv"
+GENE_PRICES_PATH = CSV_DIR / "gene_properties.csv"
 
 DEFAULT_BUDGET: int = 100
 
@@ -658,12 +804,15 @@ def _build_pricing_table(
     return joined
 
 
+# Pricing covers the playable subset only: CATEGORY_PRICES is displayed as the
+# "max spend if every gene in this category is on", which must not count genes
+# the player cannot select.
 if USE_SQLITE:
-    PRICING_TABLE: pl.DataFrame = _sqlite_load_pricing(_db, GENE_LIBRARY)
+    PRICING_TABLE: pl.DataFrame = _sqlite_load_pricing(_db, GAME_GENE_LIBRARY)
     _db.close()
     del _db
 else:
-    PRICING_TABLE = _build_pricing_table(GENE_LIBRARY)
+    PRICING_TABLE = _build_pricing_table(GAME_GENE_LIBRARY)
 
 
 def _load_category_prices(pricing_table: pl.DataFrame) -> dict[str, int]:
@@ -693,10 +842,15 @@ CATEGORY_MIN_GENE_PRICES: dict[str, int] = _category_min_gene_prices(PRICING_TAB
 
 
 def _build_animal_prices(animals: list[AnimalEntry]) -> dict[str, int]:
-    """Sum gene prices per species."""
+    """Sum gene prices per species, counting playable genes only.
+
+    ANIMAL_LIBRARY spans the whole knowledge base, so a species may list genes
+    that are not currently in the game (genes.game_enabled = 0) and therefore
+    carry no entry in GENE_PRICES. Those contribute nothing to the species cost.
+    """
     prices: dict[str, int] = {}
     for a in animals:
-        prices[a["species_id"]] = sum(GENE_PRICES[g] for g in a["genes"])
+        prices[a["species_id"]] = sum(GENE_PRICES.get(g, 0) for g in a["genes"])
     return prices
 
 

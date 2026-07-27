@@ -12,7 +12,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "input"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "db_backup"
 DEFAULT_OUT = Path(__file__).resolve().parents[1] / "data" / "enhancement.db"
 
 SCHEMA_SQL = """\
@@ -33,7 +33,10 @@ CREATE TABLE IF NOT EXISTS genes (
     translational_gaps  TEXT NOT NULL DEFAULT '',
     key_references      TEXT NOT NULL DEFAULT '',
     notes               TEXT NOT NULL DEFAULT '',
-    secondary_categories TEXT NOT NULL DEFAULT ''
+    secondary_categories TEXT NOT NULL DEFAULT '',
+    -- Playability flag: 0 = in the knowledge base but not in the game yet.
+    -- The CSV fallback has no such column, so everything seeded from CSV is playable.
+    game_enabled        INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS species (
@@ -132,11 +135,45 @@ CREATE TABLE IF NOT EXISTS species_svg_map (
     notes           TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS organizations (
+    org_id              TEXT PRIMARY KEY,
+    name                TEXT NOT NULL,
+    type                TEXT NOT NULL DEFAULT '',
+    country             TEXT NOT NULL DEFAULT '',
+    jurisdiction        TEXT NOT NULL DEFAULT '',
+    city                TEXT NOT NULL DEFAULT '',
+    website             TEXT NOT NULL DEFAULT '',
+    founded_year        INTEGER,
+    key_people          TEXT NOT NULL DEFAULT '',
+    description         TEXT NOT NULL DEFAULT '',
+    source_url          TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS organization_genes (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    org_id              TEXT NOT NULL REFERENCES organizations(org_id),
+    gene_id             TEXT NOT NULL REFERENCES genes(gene_id),
+    stage               TEXT NOT NULL DEFAULT '',
+    delivery_method     TEXT NOT NULL DEFAULT '',
+    target_organism     TEXT NOT NULL DEFAULT '',
+    price_usd           INTEGER,
+    year_started        INTEGER,
+    regulatory_status   TEXT NOT NULL DEFAULT '',
+    peer_reviewed       INTEGER NOT NULL DEFAULT 0,
+    trial_id            TEXT NOT NULL DEFAULT '',
+    evidence_summary    TEXT NOT NULL DEFAULT '',
+    notes               TEXT NOT NULL DEFAULT '',
+    source_url          TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_gene_species_gene ON gene_species(gene_id);
 CREATE INDEX IF NOT EXISTS idx_gene_species_species ON gene_species(species_id);
 CREATE INDEX IF NOT EXISTS idx_gene_confidence_gene ON gene_confidence(gene_id);
 CREATE INDEX IF NOT EXISTS idx_gene_testing_gene ON gene_testing(gene_id);
 CREATE INDEX IF NOT EXISTS idx_genes_category ON genes(category);
+CREATE INDEX IF NOT EXISTS idx_org_genes_org ON organization_genes(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_genes_gene ON organization_genes(gene_id);
+CREATE INDEX IF NOT EXISTS idx_organizations_type ON organizations(type);
 """
 
 
@@ -357,6 +394,62 @@ def seed_database(db_path: Path, data_dir: Path = DATA_DIR) -> None:
         ],
     )
     print(f"  species_svg_map: {len(rows)} rows")
+
+    org_csv = data_dir / "organizations.csv"
+    if org_csv.exists():
+        rows = _read_csv(org_csv)
+        conn.executemany(
+            """INSERT INTO organizations (org_id, name, type, country, jurisdiction,
+               city, website, founded_year, key_people, description, source_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (
+                    _safe(r, "org_id"),
+                    _safe(r, "name"),
+                    _safe(r, "type"),
+                    _safe(r, "country"),
+                    _safe(r, "jurisdiction"),
+                    _safe(r, "city"),
+                    _safe(r, "website"),
+                    _int_or_none(r, "founded_year"),
+                    _safe(r, "key_people"),
+                    _safe(r, "description"),
+                    _safe(r, "source_url"),
+                )
+                for r in rows
+            ],
+        )
+        print(f"  organizations: {len(rows)} rows")
+
+    og_csv = data_dir / "organization_genes.csv"
+    if og_csv.exists():
+        rows = _read_csv(og_csv)
+        conn.executemany(
+            """INSERT INTO organization_genes (org_id, gene_id, stage,
+               delivery_method, target_organism, price_usd, year_started,
+               regulatory_status, peer_reviewed, trial_id,
+               evidence_summary, notes, source_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (
+                    _safe(r, "org_id"),
+                    _safe(r, "gene_id"),
+                    _safe(r, "stage"),
+                    _safe(r, "delivery_method"),
+                    _safe(r, "target_organism"),
+                    _int_or_none(r, "price_usd"),
+                    _int_or_none(r, "year_started"),
+                    _safe(r, "regulatory_status"),
+                    1 if _safe(r, "peer_reviewed").upper() == "TRUE" else 0,
+                    _safe(r, "trial_id"),
+                    _safe(r, "evidence_summary"),
+                    _safe(r, "notes"),
+                    _safe(r, "source_url"),
+                )
+                for r in rows
+            ],
+        )
+        print(f"  organization_genes: {len(rows)} rows")
 
     conn.commit()
 

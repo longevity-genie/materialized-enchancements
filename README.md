@@ -426,9 +426,13 @@ Protein structure files (`assets/structures/*.pdb`) and 3D-printable STL meshes 
 ## Team
 
 - **Newton Winter** — web app, RPG interface, geometry optimization, devops, biology, UI — [GitHub @winternewt](https://github.com/winternewt)
-- **Anton Kulaga** — concept, biology, UI design, generative video, 3D printing — [GitHub @antonkulaga](https://github.com/antonkulaga)
+- **Anton Kulaga** — concept, biology, knowledge base, UI design, generative video, 3D printing — [GitHub @antonkulaga](https://github.com/antonkulaga)
 - **Livia Zaharia** — parametric geometry, personalized enhancement report, 3D printing — [livia.glucosedao.org](http://livia.glucosedao.org/)
+
+### Contributors
+
 - **Marko Prakhov-Donets** — video editing
+- **Laura Radulescu** — UI fixes (overlapping info, icon alignment), fast gene removal, materialize pop-ups — [GitHub @LauraR20](https://github.com/LauraR20)
 
 Started at CODAME ART+TECH 『 The New Human 』 in Milano, now developed by the joint [GlucoseDAO](https://glucosedao.org) and [Longevity Genie](https://longevity-genie.info) team.
 
