@@ -182,15 +182,15 @@ data, change it in Dolt.
 
 | Table | PK | Rows | Description |
 |---|---|---|---|
-| `genes` | `gene_id` | 75 | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
-| `species` | `species_id` | 52 | Organism lookup (taxonomy, life-history) |
-| `gene_species` | `(gene_id, species_id)` | 81 | Many-to-many gene↔species join |
-| `gene_properties` | `gene_id` | 75 | Pricing, biophysical data, protein IDs |
-| `gene_confidence` | `id` (auto) | 93 | Confidence assessments per gene |
-| `gene_testing` | `id` (auto) | 410 | Experimental evidence records (161 lab + 249 from ClinicalTrials.gov) |
+| `genes` | `gene_id` | 109 | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
+| `species` | `species_id` | 71 | Organism lookup (taxonomy, life-history) |
+| `gene_species` | `(gene_id, species_id)` | 115 | Many-to-many gene↔species join |
+| `gene_properties` | `gene_id` | 109 | Pricing, biophysical data, protein IDs |
+| `gene_confidence` | `id` (auto) | 195 | Confidence assessments per gene |
+| `gene_testing` | `id` (auto) | 1023 | Experimental evidence records (294 lab + 729 from ClinicalTrials.gov) |
 | `species_svg_map` | `species_id` | 52 | Species → silhouette SVG mapping |
-| `organizations` | `org_id` | 55 | Labs, companies, and clinics working on these genes |
-| `organization_genes` | `id` (auto) | 60 | What each organization offers/researches per gene |
+| `organizations` | `org_id` | 108 | Labs, companies, and clinics working on these genes |
+| `organization_genes` | `id` (auto) | 114 | What each organization offers/researches per gene |
 
 All tables have foreign key constraints back to `genes` and/or `species` (and `organization_genes` references both `organizations` and `genes`). The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
 

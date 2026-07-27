@@ -80,16 +80,16 @@ The gene library is more than game data — it is a curated knowledge base of re
 
 Whether you are a researcher studying gene transfer, a biohacker evaluating enhancement options, or a transhumanist tracking which therapies are already available in alternative jurisdictions — the database gives you structured, evidence-graded data to work from. We are expanding it to include providers and clinics offering gene therapies today.
 
-55 genes · 6 parent categories · 39 source species spanning microbes, animals, fungi, humans, and archaic-human ancestry.
+109 genes · 6 parent categories · 71 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,023 experimental evidence records · 729 registered clinical trials · 108 organizations (69 academic labs, 36 biotech companies, 3 clinics) · 850 unique DOI-linked references.
 
 | Category | Genes | Example organisms |
 |---|---|---|
-| Environmental Adaptation | 12 | Sperm whale, Arctic ground squirrel, Egyptian mongoose |
-| Longevity & Genome | 11 | Greenland shark, Bowhead whale, Naked mole-rat |
-| Stress Resistance | 8 | Tardigrade, Deinococcus, Sleeping chironomid |
-| Regeneration | 8 | Axolotl, Planarian, Spiny mouse |
-| Perception | 8 | Little skate, Budgerigar, Pit viper |
-| Expression | 8 | Golden silk orbweaver, Deathstalker scorpion, Firefly |
+| Longevity & Genome | 25 | Greenland shark, Naked mole-rat, African elephant, Orange roughy |
+| Environmental Adaptation | 19 | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium |
+| Expression | 17 | Crystal jellyfish, Golden silk orbweaver, Humboldt squid, Venus flower basket sponge |
+| Stress Resistance | 16 | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon |
+| Regeneration | 16 | Axolotl, Planarian, Spiny mouse, Immortal jellyfish, American lobster |
+| Perception | 16 | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin |
 
 Each gene has an **evidence tier** (T2–T6), a **confidence level**, quantified achievements with citations, and honest notes about limitations, contradictions, and translational gaps.
 
@@ -167,9 +167,9 @@ The app enforces at startup:
 - Every `species_id` referenced in `gene_species.csv` must exist in `species.csv`
 
 <details>
-<summary><strong>Database schema</strong> (7 tables, entity-relationship diagram)</summary>
+<summary><strong>Database schema</strong> (9 tables, entity-relationship diagram)</summary>
 
-Gene data lives in a relational database with 7 tables (hosted on [DoltHub](https://www.dolthub.com/repositories/longevity-genie/enhancement-bio), synced to SQLite, with CSV fallback under `data/input/`).
+Gene data lives in a relational database with 9 tables (hosted on [DoltHub](https://www.dolthub.com/repositories/longevity-genie/enhancement-bio), synced to SQLite, with CSV fallback under `data/db_backup/`).
 
 #### Entity-relationship overview
 
@@ -221,8 +221,26 @@ Gene data lives in a relational database with 7 tables (hosted on [DoltHub](http
                     │ phylopic_uuid   │
                     └─────────────────┘
 
-All 7 tables are connected through two hubs:
+                    ┌──────────────────┐
+                    │  organizations   │
+                    │──────────────────│
+                    │ org_id           │
+                    │ name, type       │
+                    │ country, url     │
+                    └────────┬─────────┘
+                             │
+                             ▼
+                    organization_genes
+                    ┌─────────────────┐
+                    │ org_id (FK)     │──► organizations
+                    │ gene_id (FK)   │──► genes
+                    │ stage, delivery │
+                    │ trial_id        │
+                    └─────────────────┘
+
+All 9 tables are connected through two hubs:
   genes ← gene_species → species
+  genes ← organization_genes → organizations
 ```
 
 #### Table: `genes` — gene metadata (source of truth)
