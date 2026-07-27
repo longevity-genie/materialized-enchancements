@@ -214,6 +214,68 @@ def _gene_org_display_entries(gene_id: str) -> list[dict[str, str]]:
     return entries
 
 
+_EMPTY_CONFIDENCE_PRIMARY: dict[str, Any] = {
+    "gene_id": "",
+    "value": "",
+    "argument": "",
+    "description": "",
+    "primary": False,
+}
+
+
+def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> SculptureSelectedGene:
+    """Build a gene card row from DB-backed GENE_LIBRARY data.
+
+    ``included`` is only for selected-gene payloads. The static catalog always
+    uses ``included=False``; the UI derives selection from ``included_genes``.
+    """
+    prop_row = resolve_gene_properties_row(g["gene"], g["gene_id"])
+    price = int(prop_row.get("gene_price", 0))
+    puzzle_svg = g["puzzle_svg"]
+    return {
+        "gene_id": g["gene_id"],
+        "gene": g["gene"],
+        "manipulation": g["manipulation"],
+        "manipulation_icon": _manipulation_icon_key(str(g["manipulation"])),
+        "trait": g["trait"],
+        "category": g["category"],
+        "category_detail": g["category_detail"],
+        "secondary_categories": list(g.get("secondary_categories", [])),
+        "species_common_names": g["species_common_names"],
+        "species_scientific_names": g["species_scientific_names"],
+        "short_description": g["short_description"],
+        "narrative": g["narrative"],
+        "mechanism": g["mechanism"],
+        "achievements": g["achievements"],
+        "evidence_tier": g["evidence_tier"],
+        "confidence_entries": g.get("confidence_entries", []),
+        "confidence_primary": g.get("confidence_primary", _EMPTY_CONFIDENCE_PRIMARY),
+        "confidence_details": g.get("confidence_details", []),
+        "confidence_summary": _confidence_summary(g.get("confidence_entries", [])),
+        "confidence_bucket": _confidence_bucket_from_entries(g.get("confidence_entries", [])),
+        "testing_entries": g.get("testing_entries", []),
+        "translational_gaps": g["translational_gaps"],
+        "key_references": g["key_references"],
+        "key_reference_segments": _split_key_references_with_links(str(g.get("key_references", ""))),
+        "notes": g["notes"],
+        "description": g["description"],
+        "enhancement": g["enhancement"],
+        "paper_url": g["paper_url"],
+        "gene_url": g.get("gene_url", ""),
+        "alphafold_url": g.get("alphafold_url", ""),
+        "pdb_url": g.get("pdb_url", ""),
+        "structure_pdb": g.get("structure_pdb", ""),
+        "puzzle_svg": puzzle_svg,
+        "puzzle_src": f"/{quote(puzzle_svg)}" if puzzle_svg else "",
+        "species_page_url": g.get("species_page_url", ""),
+        "included": included,
+        "playable": bool(g["game_enabled"]),
+        "price": price,
+        "org_entries": _gene_org_display_entries(g["gene_id"]),
+        **_gene_props_flat(g["gene"], g["gene_id"]),
+    }
+
+
 def _gene_row_price_cr(gene: dict[str, Any]) -> int:
     return int(
         resolve_gene_properties_row(str(gene["gene"]), str(gene.get("gene_id", ""))).get(
@@ -415,6 +477,16 @@ def _confidence_summary(entries: list[dict[str, str]]) -> str:
         else:
             parts.append(v)
     return "; ".join(parts)
+
+
+# DB-backed catalog snapshot for the process lifetime (gene_data loads SQLite/CSV).
+# Not a reactive @rx.var: selection updates use included_genes only.
+COMPOSITION_GENE_CATALOG: list[SculptureSelectedGene] = [
+    build_composition_gene_row(g, included=False) for g in GENE_LIBRARY
+]
+COMPOSITION_GENE_BY_NAME: dict[str, SculptureSelectedGene] = {
+    row["gene"]: row for row in COMPOSITION_GENE_CATALOG
+}
 
 
 CATEGORY_COLORS: dict[str, str] = {
@@ -979,6 +1051,9 @@ class ComposeState(rx.State):
     selected_categories: list[str] = []
     included_genes: list[str] = []
     expanded_genes: list[str] = []
+    # Full DB-backed gene library for UI cards. Loaded once per process from
+    # gene_data (SQLite/CSV); never rewritten on selection toggles.
+    gene_catalog: list[SculptureSelectedGene] = COMPOSITION_GENE_CATALOG
     hovered_gene_category: str = ""
     mobile_change_overlay_gene: str = ""
     mobile_change_overlay_category: str = ""
@@ -1503,8 +1578,16 @@ class ComposeState(rx.State):
         yield rx.call_script(self._onboarding_storage_script())
         yield rx.call_script(_mobile_onboarding_scroll_script(next_step))
 
+    def advance_name_onboarding_from_enter(self):  # type: ignore[return]
+        """Advance name onboarding after Enter (client filters keys; no per-keystroke events)."""
+        if self.onboarding_step_index != 1:
+            return
+        if not self.personal_tag.strip():
+            return
+        yield from self.advance_onboarding()
+
     def advance_name_onboarding_on_enter(self, key: str, _key_info: dict[str, Any]):  # type: ignore[return]
-        """Move past the name tooltip when the user confirms a non-empty name."""
+        """Deprecated path — kept for compatibility; prefer advance_name_onboarding_from_enter."""
         if key != "Enter" or self.onboarding_step_index != 1:
             return
         if not self.personal_tag.strip():
@@ -2219,7 +2302,7 @@ class ComposeState(rx.State):
                 tag = self.personal_tag.strip() or "anonymous"
                 cats = list(self.selected_categories)
                 traits = list(self.selected_traits)
-                included_genes = [g["gene"] for g in self.included_composition_genes]
+                included_genes = list(self.included_genes)
                 organisms = [
                     {"common_name": a["common_name"], "scientific_name": a["scientific_name"], "superpower": a["superpower"], "traits_csv": a["traits_csv"]}
                     for a in self.selected_animals
@@ -2351,68 +2434,26 @@ class ComposeState(rx.State):
         return traits
 
     @rx.var
-    def all_composition_genes(self) -> list[SculptureSelectedGene]:
-        """All gene cards with current inclusion state, used by the RPG selector."""
+    def included_gene_chips(self) -> list[dict[str, str]]:
+        """Lean selected-gene rows for profile chips (no narratives over the wire)."""
+        out: list[dict[str, str]] = []
+        for name in self.included_genes:
+            row = COMPOSITION_GENE_BY_NAME.get(name)
+            if row is None:
+                continue
+            out.append({"gene": row["gene"], "category": row["category"]})
+        return out
+
+    def _included_composition_gene_rows(self) -> list[SculptureSelectedGene]:
+        """Server-side helper: full rows for currently included genes (reports/email)."""
         rows: list[SculptureSelectedGene] = []
-        for g in GENE_LIBRARY:
-            prop_row = resolve_gene_properties_row(g["gene"], g["gene_id"])
-            price = int(prop_row.get("gene_price", 0))
-            row: SculptureSelectedGene = {
-                "gene_id": g["gene_id"],
-                "gene": g["gene"],
-                "manipulation": g["manipulation"],
-                "manipulation_icon": _manipulation_icon_key(str(g["manipulation"])),
-                "trait": g["trait"],
-                "category": g["category"],
-                "category_detail": g["category_detail"],
-                "secondary_categories": g.get("secondary_categories", []),
-                "species_common_names": g["species_common_names"],
-                "species_scientific_names": g["species_scientific_names"],
-                "short_description": g["short_description"],
-                "narrative": g["narrative"],
-                "mechanism": g["mechanism"],
-                "achievements": g["achievements"],
-                "evidence_tier": g["evidence_tier"],
-                "confidence_entries": g.get("confidence_entries", []),
-                "confidence_primary": g.get("confidence_primary", {"gene_id": "", "value": "", "argument": "", "description": "", "primary": False}),
-                "confidence_details": g.get("confidence_details", []),
-                "confidence_summary": _confidence_summary(g.get("confidence_entries", [])),
-                "confidence_bucket": _confidence_bucket_from_entries(g.get("confidence_entries", [])),
-                "testing_entries": g.get("testing_entries", []),
-                "translational_gaps": g["translational_gaps"],
-                "key_references": g["key_references"],
-                "key_reference_segments": _split_key_references_with_links(str(g.get("key_references", ""))),
-                "notes": g["notes"],
-                "description": g["description"],
-                "enhancement": g["enhancement"],
-                "paper_url": g["paper_url"],
-                "gene_url": g.get("gene_url", ""),
-                "alphafold_url": g.get("alphafold_url", ""),
-                "pdb_url": g.get("pdb_url", ""),
-                "structure_pdb": g.get("structure_pdb", ""),
-                "puzzle_svg": g["puzzle_svg"],
-                "puzzle_src": f"/{quote(g['puzzle_svg'])}" if g["puzzle_svg"] else "",
-                "species_page_url": g.get("species_page_url", ""),
-                "included": g["gene"] in self.included_genes,
-                "playable": bool(g["game_enabled"]),
-                "price": price,
-                "org_entries": _gene_org_display_entries(g["gene_id"]),
-                **_gene_props_flat(g["gene"], g["gene_id"]),
-            }
-            rows.append(row)
+        for name in self.included_genes:
+            row = COMPOSITION_GENE_BY_NAME.get(name)
+            if row is None:
+                continue
+            selected: SculptureSelectedGene = {**row, "included": True}
+            rows.append(selected)
         return rows
-
-    @rx.var
-    def selected_genes(self) -> list[SculptureSelectedGene]:
-        return [
-            g for g in self.all_composition_genes
-            if g["category"] in self.selected_categories
-        ]
-
-    @rx.var
-    def included_composition_genes(self) -> list[SculptureSelectedGene]:
-        """Genes the user explicitly checked — for reports and exports (not full category lists)."""
-        return [g for g in self.selected_genes if g["included"]]
 
     @rx.var
     def selected_animals(self) -> list[dict]:
@@ -2495,13 +2536,13 @@ class ComposeState(rx.State):
     @rx.var
     def export_gene_names_csv(self) -> str:
         """Comma-separated gene symbols for report export (included genes only)."""
-        return ", ".join(g["gene"] for g in self.included_composition_genes)
+        return ", ".join(self.included_genes)
 
     @rx.var
     def export_composition_genes_json(self) -> str:
         """Included genes for PNG/PDF summary (browser reads as JSON)."""
         payload: list[dict[str, Any]] = []
-        for g in self.included_composition_genes:
+        for g in self._included_composition_gene_rows():
             payload.append(
                 {
                     "gene": g["gene"],
