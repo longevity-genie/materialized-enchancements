@@ -1580,7 +1580,7 @@ def _gene_organizations_section(org_entries: rx.Var) -> rx.Component:
                     "background": "rgba(15, 23, 42, 0.3)",
                 },
             ),
-            style={"padding": "4px 14px 10px 36px"},
+            style={"margin": "8px 0"},
         ),
         rx.fragment(),
     )
@@ -3637,6 +3637,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                     _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                     _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
                     _gene_testing_table(gene_item["testing_entries"]),
+                    _gene_organizations_section(gene_item["org_entries"]),
                     _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
                     _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
                     _rpg_gene_side_text("Notes", gene_item["notes"]),
