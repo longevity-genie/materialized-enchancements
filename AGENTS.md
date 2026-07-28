@@ -124,7 +124,7 @@ Species fields are resolved at load time via `gene_species.csv` + `species.csv`:
 ### Primary vs Secondary Categories
 
 - Each gene has exactly one **primary category** — the `Category` CSV column. This is used for budget accounting, sculpture/model generation, bitmask encoding, and gene counting.
-- A gene may optionally have **secondary categories** — additional parent category names listed in the `Secondary Categories` CSV column (pipe-separated). These are display-only: the gene appears in secondary category accordions with a badge, but budget, sculpture parameters, and counts always use the primary.
+- A gene may optionally have **secondary categories** — additional parent category names listed in the `Secondary Categories` CSV column (pipe-separated). These are display-only for accounting: the gene appears in secondary category accordions with a badge, and RPG body-map markers / accordion headers (`active_display_gene_counts`, `active_compact_gene_names_by_category`, `GAME_CATEGORY_DISPLAY_COUNTS`) include secondary membership so selecting CIRBP under Stress Resistance updates the shield. Budget, sculpture parameters, bitmask encoding, and primary `active_gene_counts` / `GAME_CATEGORY_COUNTS` always use the primary only.
 - **Model generation is unaffected by secondary categories** — `sculpture.py` filters genes by `g["category"] in selected_categories` using only the primary.
 
 ### Derived data structures (gene_data.py)
@@ -211,6 +211,26 @@ data, change it in Dolt.
 | `organization_genes` | `id` (auto) | 114 | What each organization offers/researches per gene |
 
 All tables have foreign key constraints back to `genes` and/or `species` (and `organization_genes` references both `organizations` and `genes`). The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
+
+### `gene_confidence.is_primary` = mammalian enhancement potential
+
+The UI signal bars and the bold Confidence pill read **`confidence_primary`** (= the row with `is_primary = 1`). That primary must answer: *how confident are we this helps a mammal / human body?* — not *how solid is the native-organism story?*
+
+**Primary value tiers (strict):**
+- **Very High** — tested **and works in humans**: human genetics with a clear phenotype, approved/marketed therapy, or **peer-reviewed** human clinical efficacy for the claimed indication (e.g. Klotho KL-VS genetics; Mendell AAV1-FST344 in BMD/IBM; FDA apoC-III drugs).
+- **High** — tested in **mammals** (mouse/ferret/etc. in vivo) **or** human disease GT with **mixed/unsettled** efficacy — but **not** independently shown to work for the enhancement claim.
+- **Not Very High:** unregulated commercial / Prospera / BioViva / Libella gene-therapy *sales or exposure* without peer-reviewed proof of benefit (TERT commercial, Minicircle FST wellness, Unlimited Bio VEGF package, Minicircle Klotho plasmid). Put those as **Medium** secondary details (`enhancement clinic sales` / `efficacy unproven`); do not promote them to primary.
+- Everything else (cells-only, biomaterial, source-organism insect/plant/yeast/planarian, biochem reconstitution) is **at most Medium** as primary — never High/Very High.
+
+**Audit rule for agents:** when reviewing confidence / commercial / human-testing evidence, **never use SQL `LIMIT`**. Truncated result sets have already caused missed obvious genes (Klotho, VEGF, FST, TERT). Always join full `gene_confidence` primaries against all of `organization_genes` (especially `stage='commercial'`) and human-positive `gene_testing` rows with no row cap.
+
+Examples:
+- **Primary** — mammal/human translation. SMEDWI → `Low` / `mammalian regeneration transfer`. Resilin → `Low` / `vertebrate tissue integration` (never Medium biomaterial properties). GFP reporter → `High` / mammalian use (not Very High — not a human clinical enhancer). PCSK9 / NGF / APOC3 → `Very High` (works in humans).
+- **Details** — source-organism certainty (planarian LOF High, fern High, yeast High, biomaterial resilience, etc.) stays as secondary rows. Game cards show **primary only**; secondary rows appear under Details / report.
+
+Never set `is_primary` on a High planarian/plant/yeast/insect claim when a Low mammal/human-translation row exists — visitors then see High for genes that cannot transfer. Mouse/human genetics as primary with a separate Low therapeutic-translation detail is fine (different axes).
+
+`confidence_bucket` / summaries must also follow the primary row — never pick the highest value across all confidence entries (that re-promoted biomaterial Medium over vertebrate Low).
 
 ### Organizations model
 

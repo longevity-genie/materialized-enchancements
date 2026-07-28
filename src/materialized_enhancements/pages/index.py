@@ -9,6 +9,7 @@ from materialized_enhancements.env import public_app_url
 from materialized_enhancements.gene_data import (
     CATEGORY_PRICES,
     GAME_CATEGORY_COUNTS,
+    GAME_CATEGORY_DISPLAY_COUNTS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
     GENE_TESTING,
@@ -1226,7 +1227,16 @@ def _confidence_detail_line(entry: rx.Var) -> rx.Component:
     )
 
 
-def _gene_confidence_section(primary: rx.Var, details: rx.Var) -> rx.Component:
+def _gene_confidence_section(
+    primary: rx.Var,
+    details: rx.Var,
+    show_details: bool = False,
+) -> rx.Component:
+    """Show the mammal/human-facing primary confidence pill.
+
+    Secondary rows (biomaterial, source-organism, biochem) stay out of the
+    game card by default — pass show_details=True only in expanded/report views.
+    """
     val_lower = primary["value"].lower()
     pill = rx.el.span(
         primary["value"],
@@ -1253,6 +1263,18 @@ def _gene_confidence_section(primary: rx.Var, details: rx.Var) -> rx.Component:
         ),
         rx.fragment(),
     )
+    detail_block = (
+        rx.cond(
+            details.length() > 0,
+            rx.el.div(
+                rx.foreach(details, _confidence_detail_line),
+                style={"marginLeft": "8px", "marginTop": "2px"},
+            ),
+            rx.fragment(),
+        )
+        if show_details
+        else rx.fragment()
+    )
     return rx.cond(
         primary["value"] != "",
         rx.el.div(
@@ -1273,14 +1295,7 @@ def _gene_confidence_section(primary: rx.Var, details: rx.Var) -> rx.Component:
                 primary_desc,
                 style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "2px"},
             ),
-            rx.cond(
-                details.length() > 0,
-                rx.el.div(
-                    rx.foreach(details, _confidence_detail_line),
-                    style={"marginLeft": "8px", "marginTop": "2px"},
-                ),
-                rx.fragment(),
-            ),
+            detail_block,
             style={"display": "flex", "flexDirection": "column", "gap": "2px"},
         ),
         rx.fragment(),
@@ -2207,6 +2222,14 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
         rx.cond(
             is_expanded,
                 rx.el.div(
+                    rx.el.div(
+                        _gene_confidence_section(
+                            gene_item["confidence_primary"],
+                            gene_item["confidence_details"],
+                            show_details=True,
+                        ),
+                        style={"margin": "0 14px 6px 36px"},
+                    ),
                     _gene_selection_text_block("Full description", gene_item["narrative"]),
                     _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                     rx.el.div(
@@ -2402,9 +2425,9 @@ def _rpg_category_stat_row(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     tooltip = _category_tooltip(category)
-    count = ComposeState.active_gene_counts[category]
-    spent = ComposeState.active_category_prices[category]
-    total_count = GAME_CATEGORY_COUNTS.get(category, 0)
+    count = ComposeState.active_display_gene_counts[category]
+    spent = ComposeState.active_display_category_prices[category]
+    total_count = GAME_CATEGORY_DISPLAY_COUNTS.get(category, 0)
     return rx.el.a(
         rx.el.div(
             rx.el.div(
@@ -3033,7 +3056,7 @@ def _rpg_silhouette_marker(
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     tooltip = _category_tooltip(category)
-    count = ComposeState.active_gene_counts[category]
+    count = ComposeState.active_display_gene_counts[category]
     is_selected = ComposeState.selected_categories.contains(category)
     is_affordable = ComposeState.affordable_categories.contains(category)
     is_enabled = is_selected | is_affordable
@@ -3389,7 +3412,7 @@ def _rpg_body_map_panel() -> rx.Component:
 
 def _mobile_overlay_body_marker(category: str, top: str, left: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
-    count = ComposeState.active_gene_counts[category]
+    count = ComposeState.active_display_gene_counts[category]
     return rx.el.div(
         rx.cond(
             count > 0,
@@ -3863,6 +3886,11 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             rx.cond(
                 is_expanded,
                 rx.el.div(
+                    _gene_confidence_section(
+                        gene_item["confidence_primary"],
+                        gene_item["confidence_details"],
+                        show_details=True,
+                    ),
                     _gene_selection_text_block("Full description", gene_item["narrative"]),
                     _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                     _gene_organizations_section(gene_item["org_entries"]),
@@ -3936,11 +3964,11 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
     color = CATEGORY_COLORS.get(category, "#7c3aed")
     icon_name = CATEGORY_ICONS.get(category, "star")
     tooltip = _category_tooltip(category)
-    count = ComposeState.active_gene_counts[category]
-    spent = ComposeState.active_category_prices[category]
+    count = ComposeState.active_display_gene_counts[category]
+    spent = ComposeState.active_display_category_prices[category]
     is_selected = ComposeState.selected_categories.contains(category)
     is_open = ComposeState.gene_library_open_category == category
-    total_count = GAME_CATEGORY_COUNTS.get(category, 0)
+    total_count = GAME_CATEGORY_DISPLAY_COUNTS.get(category, 0)
 
     gene_grid = rx.el.div(
         rx.foreach(
@@ -7539,7 +7567,11 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
             style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "4px"},
         ),
         rx.el.div(
-            _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
+            _gene_confidence_section(
+                gene_item["confidence_primary"],
+                gene_item["confidence_details"],
+                show_details=True,
+            ),
             _gene_tested_on_row(gene_item["testing_entries"]),
             _gene_testing_table(gene_item["testing_entries"]),
             rx.cond(
@@ -8396,10 +8428,9 @@ def _report_png_card() -> rx.Component:
 def _char_body_marker(category: str, top: str, left: str) -> rx.Component:
     """Static body-map marker for the character card — colored dot with count badge."""
     color = CATEGORY_COLORS.get(category, "#7c3aed")
-    is_selected = ComposeState.selected_categories.contains(category)
-    count = ComposeState.active_gene_counts[category]
+    count = ComposeState.active_display_gene_counts[category]
     return rx.cond(
-        is_selected,
+        count > 0,
         rx.el.div(
             rx.el.div(
                 style={

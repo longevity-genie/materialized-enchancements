@@ -31,6 +31,7 @@ from materialized_enhancements.gene_data import (
     STL_REPORT,
     UNIQUE_CATEGORIES,
     _DIFFICULTY_ORDER,
+    gene_display_categories,
     is_playable_gene,
     species_wikipedia_url,
 )
@@ -512,8 +513,6 @@ _VALUE_TO_BUCKET: dict[str, str] = {
     "n/a": "unknown",
 }
 
-_BUCKET_RANK = {"high": 0, "medium_high": 1, "medium": 2, "low": 3, "unknown": 4}
-
 
 _NULL_EFFECT_PATTERNS: set[str] = {
     "no effect", "null effect", "no benefit", "no improvement",
@@ -529,25 +528,29 @@ def _is_null_effect(argument: str) -> bool:
 
 
 def _confidence_bucket_from_entries(entries: list[dict[str, str]]) -> str:
-    """Pick the highest-confidence bucket from entries with positive effect claims only."""
+    """Bucket from the mammal/human-facing primary row only.
+
+    Never pick the highest value across all rows — biomaterial/source-organism
+    High/Medium must not outrank a Low mammalian-translation primary.
+    """
     if not entries:
         return "unknown"
-    best = "unknown"
-    for e in entries:
-        if _is_null_effect(e.get("argument", "")):
-            continue
-        b = _VALUE_TO_BUCKET.get(e.get("value", "").strip().lower(), "unknown")
-        if _BUCKET_RANK.get(b, 4) < _BUCKET_RANK.get(best, 4):
-            best = b
-    return best
+    primaries = [e for e in entries if e.get("primary")]
+    chosen = primaries[0] if primaries else entries[0]
+    if _is_null_effect(chosen.get("argument", "")):
+        return "unknown"
+    return _VALUE_TO_BUCKET.get(chosen.get("value", "").strip().lower(), "unknown")
 
 
 def _confidence_summary(entries: list[dict[str, str]]) -> str:
-    """Build a short display string from structured confidence entries."""
+    """Build a short display string; primary (mammal-facing) row first."""
     if not entries:
         return ""
+    primaries = [e for e in entries if e.get("primary")]
+    rest = [e for e in entries if not e.get("primary")]
+    ordered = primaries + rest if primaries else entries
     parts: list[str] = []
-    for e in entries:
+    for e in ordered:
         v = e.get("value", "").strip()
         arg = e.get("argument", "").strip()
         if arg:
@@ -1353,12 +1356,17 @@ class ComposeState(rx.State):
         if gene not in self.included_genes:
             return
         self.included_genes = [g for g in self.included_genes if g != gene]
+        # Chips can appear under a secondary category; budget/selection still keys off primary.
+        primary = next(
+            (g["category"] for g in GAME_GENE_LIBRARY if g["gene"] == gene),
+            category,
+        )
         remaining_in_category = [
-            g for g in GENE_LIBRARY
-            if g["category"] == category and g["gene"] in self.included_genes
+            g for g in GAME_GENE_LIBRARY
+            if g["category"] == primary and g["gene"] in self.included_genes
         ]
         if not remaining_in_category:
-            self.selected_categories = [c for c in self.selected_categories if c != category]
+            self.selected_categories = [c for c in self.selected_categories if c != primary]
         self._recompute_params()
 
     def deselect_all_genes(self):  # type: ignore[return]
@@ -2921,44 +2929,86 @@ class ComposeState(rx.State):
 
     @rx.var
     def active_gene_counts(self) -> dict[str, int]:
-        """Per-category count of explicitly included genes in the current selection."""
+        """Per-category count of included genes by primary category (budget / materialize)."""
         counts: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
-        for g in GENE_LIBRARY:
-            if g["category"] not in self.selected_categories:
-                continue
-            if g["gene"] not in self.included_genes:
+        included = set(self.included_genes)
+        selected = set(self.selected_categories)
+        for g in GAME_GENE_LIBRARY:
+            if g["gene"] not in included:
                 continue
             cat = g["category"]
+            if cat not in selected:
+                continue
             counts[cat] = counts.get(cat, 0) + 1
+        return counts
+
+    @rx.var
+    def active_display_gene_counts(self) -> dict[str, int]:
+        """Per-category included-gene counts for RPG accordion / body-map badges.
+
+        Counts primary plus secondary membership so a gene like CIRBP updates
+        both Environmental Adaptation and Stress Resistance markers.
+        """
+        counts: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
+        included = set(self.included_genes)
+        selected = set(self.selected_categories)
+        for g in GAME_GENE_LIBRARY:
+            if g["gene"] not in included:
+                continue
+            if g["category"] not in selected:
+                continue
+            for cat in gene_display_categories(g):
+                if cat in counts:
+                    counts[cat] = counts[cat] + 1
         return counts
 
     @rx.var
     def active_compact_gene_names_by_category(self) -> dict[str, list[dict[str, str]]]:
         """Per-category compact active gene labels for the body-map marker chips."""
         names: dict[str, list[dict[str, str]]] = {c: [] for c in UNIQUE_CATEGORIES}
-        for g in GENE_LIBRARY:
-            if g["category"] not in self.selected_categories:
+        included = set(self.included_genes)
+        selected = set(self.selected_categories)
+        for g in GAME_GENE_LIBRARY:
+            if g["gene"] not in included:
                 continue
-            if g["gene"] not in self.included_genes:
+            if g["category"] not in selected:
                 continue
-            cat = g["category"]
-            names.setdefault(cat, []).append(
-                {"gene": g["gene"], "label": _compact_gene_symbol(g["gene"])}
-            )
+            chip = {"gene": g["gene"], "label": _compact_gene_symbol(g["gene"])}
+            for cat in gene_display_categories(g):
+                if cat in names:
+                    names[cat].append(chip)
         return names
 
     @rx.var
     def active_category_prices(self) -> dict[str, int]:
-        """Per-category sum of included gene prices for selected categories."""
+        """Per-category sum of included gene prices by primary category."""
         totals: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
-        for g in GENE_LIBRARY:
-            if g["category"] not in self.selected_categories:
-                continue
-            if g["gene"] not in self.included_genes:
+        included = set(self.included_genes)
+        selected = set(self.selected_categories)
+        for g in GAME_GENE_LIBRARY:
+            if g["gene"] not in included:
                 continue
             cat = g["category"]
+            if cat not in selected:
+                continue
+            totals[cat] = totals.get(cat, 0) + _gene_row_price_cr(g)
+        return totals
+
+    @rx.var
+    def active_display_category_prices(self) -> dict[str, int]:
+        """Per-category included-gene credit sums for RPG accordion headers."""
+        totals: dict[str, int] = {c: 0 for c in UNIQUE_CATEGORIES}
+        included = set(self.included_genes)
+        selected = set(self.selected_categories)
+        for g in GAME_GENE_LIBRARY:
+            if g["gene"] not in included:
+                continue
+            if g["category"] not in selected:
+                continue
             price = _gene_row_price_cr(g)
-            totals[cat] = totals.get(cat, 0) + price
+            for cat in gene_display_categories(g):
+                if cat in totals:
+                    totals[cat] = totals[cat] + price
         return totals
 
     @rx.var

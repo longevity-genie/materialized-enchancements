@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import polars as pl
 
@@ -549,11 +549,14 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
         row["pdb_url"] = _gene_pdb_url(gid)
         row["structure_pdb"] = resolve_structure_pdb(gid)
         conf_list = [dict(c) for c in GENE_CONFIDENCE_MAP.get(gid, [])]
-        row["confidence_entries"] = conf_list
         primaries = [c for c in conf_list if c["primary"]]
+        details = [c for c in conf_list if not c["primary"]]
+        # Primary (mammal/human enhancement potential) always first so any
+        # entries[0] fallback cannot surface biomaterial/source-organism rows.
+        row["confidence_entries"] = primaries + details if primaries else conf_list
         empty_conf: ConfidenceEntry = {"gene_id": gid, "value": "", "argument": "", "description": "", "primary": False}
         row["confidence_primary"] = primaries[0] if primaries else (conf_list[0] if conf_list else empty_conf)
-        row["confidence_details"] = [c for c in conf_list if not c["primary"]]
+        row["confidence_details"] = details
         row["testing_entries"] = []
         raw_sec = str(row.pop("secondary_categories_raw", "") or "").strip()
         row["secondary_categories"] = [
@@ -563,12 +566,36 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
 
 
 def build_category_counts(library: list[GeneEntry]) -> dict[str, int]:
-    """Count genes per parent category."""
+    """Count genes per primary parent category (budget / sculpture accounting)."""
     counts: dict[str, int] = {}
     for entry in library:
         cat = entry["category"]
         counts[cat] = counts.get(cat, 0) + 1
     return counts
+
+
+def build_category_display_counts(library: list[GeneEntry]) -> dict[str, int]:
+    """Count genes visible in each category accordion (primary + secondary)."""
+    counts: dict[str, int] = {}
+    for entry in library:
+        cat = entry["category"]
+        counts[cat] = counts.get(cat, 0) + 1
+        for sec in entry.get("secondary_categories", []):
+            if not sec or sec == cat:
+                continue
+            counts[sec] = counts.get(sec, 0) + 1
+    return counts
+
+
+def gene_display_categories(entry: GeneEntry | dict[str, Any]) -> list[str]:
+    """Categories where a gene should appear in RPG UI (primary then secondaries)."""
+    primary = str(entry.get("category", "") or "")
+    cats: list[str] = [primary] if primary else []
+    for sec in entry.get("secondary_categories", []) or []:
+        name = str(sec or "").strip()
+        if name and name not in cats:
+            cats.append(name)
+    return cats
 
 
 def build_trait_counts(library: list[GeneEntry]) -> dict[str, int]:
@@ -661,6 +688,10 @@ ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
 GAME_GENE_LIBRARY: list[GeneEntry] = [g for g in GENE_LIBRARY if g["game_enabled"]]
 PLAYABLE_GENE_NAMES: frozenset[str] = frozenset(g["gene"] for g in GAME_GENE_LIBRARY)
 GAME_CATEGORY_COUNTS: dict[str, int] = build_category_counts(GAME_GENE_LIBRARY)
+# Accordion / body-map denominators: primary membership plus secondary badges.
+GAME_CATEGORY_DISPLAY_COUNTS: dict[str, int] = build_category_display_counts(
+    GAME_GENE_LIBRARY
+)
 
 
 def is_playable_gene(gene_display_name: str) -> bool:

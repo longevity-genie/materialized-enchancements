@@ -1,13 +1,13 @@
 gene_id,value,argument,description,primary
 acomys_regen,Medium,,,true
-acr3_pteris,High,in vivo function,"RNA interference in the native fern gives an arsenite-sensitive phenotype and the gene rescues an ACR3-deficient yeast, while the transgene confers large shoot arsenic accumulation in rice in two independent settings (https://doi.org/10.1105/tpc.109.069773, https://doi.org/10.1016/j.eehl.2025.100168).",true
-acr3_pteris,Low,human translation,"No animal work exists. Mammalian cells have no vacuole and detoxify arsenic by AS3MT methylation and export, so a human version would need lysosomal retargeting that nobody has tried.",false
+acr3_pteris,High,in vivo function,"RNA interference in the native fern gives an arsenite-sensitive phenotype and the gene rescues an ACR3-deficient yeast, while the transgene confers large shoot arsenic accumulation in rice in two independent settings (https://doi.org/10.1105/tpc.109.069773, https://doi.org/10.1016/j.eehl.2025.100168).",false
+acr3_pteris,Low,human translation,"No animal work exists. Mammalian cells have no vacuole and detoxify arsenic by AS3MT methylation and export, so a human version would need lysosomal retargeting that nobody has tried.",true
 acr3_pteris,Medium-High,biochem,"Transport activity and vacuolar localisation are established, but the ten-transmembrane architecture rests on homology and AlphaFold models with no experimental structure.",false
 afp_fish,Low,lifespan direct,No direct lifespan effect expected,false
 afp_fish,Low-Medium,frost-tolerance crops,,false
 afp_fish,Medium-High,cryopreservation,,true
-aldh3a2_parrot,High,genetic and biochemical causality,"Two parrot species, allele-specific expression and a yeast knockout/knock-in reconstitution all point at the same enzymatic step (https://doi.org/10.1126/science.adp7710).",true
-aldh3a2_parrot,Low,human translation,"No mammalian work exists, the causal variant is non-coding and regulatory, and in humans loss of this enzyme causes Sjogren-Larsson syndrome.",false
+aldh3a2_parrot,High,genetic and biochemical causality,"Two parrot species, allele-specific expression and a yeast knockout/knock-in reconstitution all point at the same enzymatic step (https://doi.org/10.1126/science.adp7710).",false
+aldh3a2_parrot,Low,human translation,"No mammalian work exists, the causal variant is non-coding and regulatory, and in humans loss of this enzyme causes Sjogren-Larsson syndrome.",true
 aldh3a2_parrot,Medium,quantitative control,"The conversion was demonstrated qualitatively by mass spectrometry with no reported conversion percentage or kinetic constants, and the lead variant matched phenotype in 98% of individuals rather than all.",false
 angptl3_base_edit,High,biochem,"The lipoprotein-lipase and endothelial-lipase de-repression mechanism is well established, and GalNAc-mediated hepatocyte entry is directly demonstrated by a ligand-density titration (https://doi.org/10.1038/s41467-023-37465-1).",false
 angptl3_base_edit,Medium-High,human translation,"Editing is in Phase 1 with safety as the primary endpoint; no human efficacy or outcome data exist, and primate durability is proven only to six months.",false
@@ -15,7 +15,7 @@ angptl3_base_edit,Very High,human in vivo function,"Loss-of-function carriers in
 apoc3_lof,Medium-High,outcome durability,"Cardiovascular outcome trials for apoC-III lowering have not reported, so the hard-event benefit remains a property of the lifelong germline allele rather than a demonstrated drug effect.",false
 apoc3_lof,Very High,human genetics,"Two independent cohorts totalling more than 180,000 people agree on both the lipid effect (39% and 44% lower triglycerides) and the cardiovascular effect (40% and 41% risk reductions), with genotype-first design removing most confounding.",true
 apoc3_lof,Very High,human translation,"An FDA-approved drug (olezarsen, TRYNGOLZA) and a second marketed agent by an independent modality (plozasiran, RNA interference) already reproduce the knockdown in patients.",false
-apoe_edit,High,,,true
+apoe_edit,Very High,human genetics (Christchurch),The Christchurch APOE variant delayed Alzheimer onset by decades in a human PSEN1 carrier; editing reverses pathology in human neurons and mice but has not been delivered across a living human brain.,true
 aqp1,High,mammalian baseline,Well-established mammalian aquaporin biology,true
 aqp1,N/A,species-specific enhancement,Enhancement is species-specific; not directly translatable,false
 asgr1_lof,Low,human translation,"No ASGR1-directed drug or editor has reached a registered trial, and no homozygous-null human has ever been described, so the full knockout is uncharacterised.",false
@@ -24,102 +24,104 @@ asgr1_lof,Very High,human in vivo genetics,"Two independent loss-of-function all
 atoh1_gfi1_pou4f3_haircell,High,in vivo function,"Avian hair-cell regeneration is a replicated 1988 finding, and the adult-mouse three-factor result is lineage-traced, quantified along the whole organ of Corti and separated cleanly from the single-factor control.",true
 atoh1_gfi1_pou4f3_haircell,Low,human translation,"The only clinical test, CGF166, used single-factor ATOH1 and left treated-ear thresholds worse; no three-factor candidate has entered humans and no restored threshold exists in any mammal.",false
 atoh1_gfi1_pou4f3_haircell,Medium-High,biochem,"The ATOH1/GFI1/POU4F3 hierarchy of hair-cell specification is well mapped and the regenerated cells express the expected marker set, but PRESTIN and bundle maturation are incomplete.",false
-cahs_d,High,yeast/in vitro,Strong evidence in yeast and in vitro systems,true
-cahs_d,Medium,human cell protection,"Modest protection, osmotic-shock-specific, not true drying",false
-cbp_gecko,High,source biology,,true
-cbp_gecko,High,gene transfer won't produce setae,Morphogenetic barrier prevents setae formation via gene transfer,false
-cetp_lof,High,human in vivo genetics,"Protein-truncating variants in 58,469 sequenced exomes give four exact effect sizes and a coronary-disease odds ratio of 0.70, with a Japanese variant genotyped in a further 27,561 people (https://doi.org/10.1161/CIRCRESAHA.117.311145).",true
+cahs_d,High,yeast/in vitro,Strong evidence in yeast and in vitro systems,false
+cahs_d,Medium,human cell protection,"Modest protection, osmotic-shock-specific, not true drying",true
+cbp_gecko,High,source biology,,false
+cbp_gecko,Low,mammalian setae translation,"Gene transfer cannot build gecko setae: the trait is a morphogenetic skin structure, not a soluble protein phenotype.",true
 cetp_lof,High,biochem,"Cholesteryl-ester shuttling from HDL to apoB-containing lipoproteins is long-established biochemistry, and truncating variants are an unambiguous read-out of complete loss.",false
 cetp_lof,Low-Medium,human translation,"No gene-directed program exists, the LDL and triglyceride arms are only marginally significant, and the pharmacological phenocopy increased mortality in one large outcome trial and failed for futility in two more.",false
+cetp_lof,Very High,human in vivo genetics,"Protein-truncating CETP variants in humans raise HDL, lower LDL, and reduce coronary-disease odds; the genetic phenotype works in people even though drug phenocopies failed.",true
 chrna1_mongoose,High,venom resistance mechanism,13+ independent convergent evolution events validate the single-aa edit,false
-chrna1_mongoose,Medium,human base editing,No CRISPR/base-editing demonstration yet; natural variants only,false
+chrna1_mongoose,Medium,human base editing,No CRISPR/base-editing demonstration yet; natural variants only,true
 cirbp,Medium-High,,,true
 clock_bmal1_dolphin,Medium-Low,,,true
-cltx,Very High,tumor targeting,Phase I/II human clinical trials completed; FDA orphan drug designation,false
+cltx,Very High,tumor targeting,Phase I/II human clinical trials completed; FDA orphan drug designation,true
 cpdp_potoroo,High,UV protection in mouse,Transgenic mice showed powerful skin cancer resistance,false
 cpdp_potoroo,Medium-High,human mRNA delivery,Marsupial photolyase mRNA functional in human keratinocytes (Boros 2013),false
-cry4a_robin,Low,in vivo function,,false
-cry4a_robin,Medium,biochem,,true
-cyp2j19_bdh1l_keto,High,biochem,"Sufficiency of the two-enzyme pair is shown by mass spectrometry against an authentic astaxanthin standard, across three different carotenoid substrates, with a negative-control partner enzyme that fails (https://doi.org/10.1016/j.cub.2022.08.013).",true
-cyp2j19_bdh1l_keto,Low,human translation,"No mammal has ever carried this pathway, mammalian skin lacks carotenoid-storing pigment cells, and the product canthaxanthin has documented retinal crystal deposition in humans taking it orally.",false
+cry4a_robin,Low,in vivo function,,true
+cry4a_robin,Medium,biochem,,false
+cyp2j19_bdh1l_keto,High,biochem,"Sufficiency of the two-enzyme pair is shown by mass spectrometry against an authentic astaxanthin standard, across three different carotenoid substrates, with a negative-control partner enzyme that fails (https://doi.org/10.1016/j.cub.2022.08.013).",false
+cyp2j19_bdh1l_keto,Low,human translation,"No mammal has ever carried this pathway, mammalian skin lacks carotenoid-storing pigment cells, and the product canthaxanthin has documented retinal crystal deposition in humans taking it orally.",true
 cyp2j19_bdh1l_keto,Medium,in vivo function,"A transgenic fish visibly converts its yellow pigment cells to reddish-orange, but the generality of the pathway is contested: house finch red plumage does not use it (https://doi.org/10.1111/mec.17744).",false
 dsup,Medium,,,true
-ectabc_halomonas,High,in vivo function,"Chromosomal expression of ectABC gave a clean gain of salt tolerance in a cyanobacterium of a different phylum, with survival at an otherwise lethal 500 mM NaCl (https://doi.org/10.3389/fmicb.2023.1123081).",true
-ectabc_halomonas,Low-Medium,human translation,"Human data support the molecule applied topically, not the genes: no human cell has expressed ectABC, and mammals have no ectoine transporter to fall back on.",false
+ectabc_halomonas,High,in vivo function,"Chromosomal expression of ectABC gave a clean gain of salt tolerance in a cyanobacterium of a different phylum, with survival at an otherwise lethal 500 mM NaCl (https://doi.org/10.3389/fmicb.2023.1123081).",false
+ectabc_halomonas,Low-Medium,human translation,"Human data support the molecule applied topically, not the genes: no human cell has expressed ectABC, and mammals have no ectoine transporter to fall back on.",true
 ectabc_halomonas,Very High,biochem,"The three-step enzymology and the preferential-exclusion physics of ectoine as a compatible solute are settled, and the pathway has been reconstituted heterologously.",false
-epas1_tibetan,High,population signal + direction,Clear population signal with consistent direction,true
 epas1_tibetan,Medium,single causal variant unmapped,Specific causal variant not yet identified,false
-fgf18_cartilage,High,human translation,"A 549-patient randomised placebo-controlled phase 2 met a prespecified quantitative-MRI structural endpoint with five years of follow-up, which is the strongest human structural evidence for cartilage regrowth that exists.",true
+epas1_tibetan,Very High,human population phenotype,Tibetan EPAS1 haplotype carriers at altitude have ~0.8 g/dL lower hemoglobin — a replicated human physiological phenotype.,true
 fgf18_cartilage,High,biochem,The FGF18-FGFR3-SOX9 anabolic axis in chondrocytes is well characterised and mechanistically distinct from the FGFR1 catabolic arm.,false
 fgf18_cartilage,Low-Medium,clinical benefit,"The 0.05 mm gain produced no WOMAC improvement at two years, two cartilage-repair trials were terminated, and no phase 3 has been started.",false
+fgf18_cartilage,Very High,human clinical structural endpoint,Sprifermin (FGF18) met its quantitative-MRI cartilage-thickness primary endpoint in a 549-patient randomised phase 2 trial.,true
 fgf21_stgfbr2,Medium-High,,,true
 fluc,High,autonomous plants,,false
-fluc,Low-Medium,autonomous mammals,,false
-fluc,Very High,luciferin-dependent,,true
-foxo3,High,association,Strong population-level genetic association,true
+fluc,Low-Medium,autonomous mammals,,true
+fluc,Very High,luciferin-dependent,,false
 foxo3,Low,gain-of-function transfer,Uncertain whether gain-of-function variants can be transferred,false
-fst344,Medium-High,,,true
-gfp,Very High,technical,,true
+foxo3,Very High,human genetics,FOXO3 longevity alleles are associated with extreme survival across multiple independent human cohorts.,true
+fst344,Medium,enhancement clinic sales (efficacy unproven),Minicircle/BioViva sell FST gene therapy commercially in Prospera/Dubai (unregulated). Distinct from Mendell disease trials; independent evidence that the clinic product improves healthy-adult muscle/performance is lacking.,false
+fst344,Very High,human disease gene therapy (Mendell),AAV1-FST344 improved 6-minute walk distance in Becker muscular dystrophy and inclusion-body myositis patients in peer-reviewed Mendell trials (2015/2017). Independent human clinical efficacy for the disease indication.,true
+gfp,High,mammalian reporter use,GFP is routinely expressed in mammalian cells and transgenic mammals as a fluorescent reporter; it is not used as an in-vivo human clinical enhancer.,true
 ghr_laron,High,mechanism,"Growth hormone receptor loss collapsing hepatic IGF-1 and downstream RAS, PKA and TOR signalling is the best-conserved longevity pathway in biology, with serum-transfer experiments in human mammary epithelial cells supporting the apoptosis arm.",false
 ghr_laron,Low,human translation,"No therapeutic pursues this direction, the morphological cost is inseparable from the benefit, and no lifespan extension was measured in the cohort itself.",false
 ghr_laron,Very High,human in vivo function,"A 22-year prospective cohort with 1,606 related controls sharing genes and environment, reporting zero diabetes in 90 subjects and cancer absent as a cause of death at any age (https://doi.org/10.1126/scitranslmed.3001845).",true
 greenland_shark_repair,Low,,,true
 has2_nmr,Medium-High,,,true
-hkt15_einkorn,Low,human translation,"HKT transporters have no metazoan orthologue and animals have no xylem, so the trait cannot be transferred to a human body as designed; only the general principle of compartment-level ion interception carries over.",false
+hkt15_einkorn,Low,human translation,"HKT transporters have no metazoan orthologue and animals have no xylem, so the trait cannot be transferred to a human body as designed; only the general principle of compartment-level ion interception carries over.",true
 hkt15_einkorn,Medium-High,biochem,"Sodium-selective uniport by HKT1-subfamily transporters is well established functionally, but no experimental structure of TmHKT1;5-A exists and PDB 8W9T belongs to the other subfamily.",false
-hkt15_einkorn,Very High,in planta function,"The causal gene was mapped, localised to root cells surrounding the xylem, and validated in saline field trials against near-isogenic durum lines with grain yield as the endpoint (https://doi.org/10.1038/nbt.2120).",true
+hkt15_einkorn,Very High,in planta function,"The causal gene was mapped, localised to root cells surrounding the xylem, and validated in saline field trials against near-isogenic durum lines with grain yield as the endpoint (https://doi.org/10.1038/nbt.2120).",false
 hsf1_pv,Medium-High,,,true
 hsp104_potentiated,High,biochem,"Disaggregase activity, the two- to four-fold rise in ATP hydrolysis on potentiation, and the substrate-selection change are directly measured, and multiple cryo-EM structures of the hexamer exist.",false
-hsp104_potentiated,Low-Medium,human translation,"No mammalian in vivo efficacy, no immunogenicity data for a foreign hexameric ATPase, unsolved delivery to post-mitotic neurons, and off-target unfolding that appears at 37 degrees C.",false
-hsp104_potentiated,Medium-High,in vivo function,"Quantified rescue of alpha-synuclein, TDP-43 and FUS proteotoxicity in yeast and protection of dopaminergic neurons in C. elegans at two time points, but the animal evidence is a single invertebrate model.",true
+hsp104_potentiated,Low-Medium,human translation,"No mammalian in vivo efficacy, no immunogenicity data for a foreign hexameric ATPase, unsolved delivery to post-mitotic neurons, and off-target unfolding that appears at 37 degrees C.",true
+hsp104_potentiated,Medium-High,in vivo function,"Quantified rescue of alpha-synuclein, TDP-43 and FUS proteotoxicity in yeast and protection of dopaminergic neurons in C. elegans at two time points, but the animal evidence is a single invertebrate model.",false
 kcnma1_skate,Low,electroreception transfer,Completely novel sensory modality; no mammalian neural circuitry exists,false
 kcnma1_skate,Medium,channel characterization,BK channel well-studied; skate variant expressed in human HEK293 cells,false
-klotho,High,KL-VS cognition,Cognitive enhancement via KL-VS variant,false
-klotho,High,mouse lifespan,Single study in mice,true
+klotho,High,mouse lifespan,Single study in mice,false
 klotho,Medium,therapeutic protein,,false
+klotho,Medium,plasmid gene therapy (company data only),Minicircle Prospera phase-1 plasmid Klotho reports dose-dependent serum α-Klotho upregulation (company data). Not independently peer-reviewed efficacy for cognition or aging endpoints.,false
+klotho,Very High,human genetics (KL-VS cognition),"KL-VS haplotype carriers show cognitive benefits in humans; therapeutic protein and gene-therapy programs are in human trials/clinic use, while the mouse lifespan gain remains a separate mammal-only claim.",true
 lin28a,High,young-mouse repair,Strong evidence in young mouse tissue repair,true
 lin28a,Low,adult limb/organ regeneration,No evidence for adult limb or organ regeneration,false
 lmna_abe_g608g,High,in vivo function,"A single injection more than doubled median lifespan in a genetically faithful mouse model of the human disease, with a matching histological rescue of the aorta (Koblan 2021, https://doi.org/10.1038/s41586-020-03086-7).",true
 lmna_abe_g608g,Low-Medium,human translation,"No human editing trial exists, dual-AAV9 dosing has not been scaled to a child, and pre-existing AAV9 immunity would exclude some patients.",false
 lmna_abe_g608g,Very High,biochem,"Correction of 87–91% of the pathogenic allele in two independent patient fibroblast lines, with indels at or below 0.15% and no off-target DNA or RNA editing detected.",false
-masp1,Low-Medium,human tissue expression,No human tissue expression; spinning requires shear forces not available in vivo,false
+masp1,Low-Medium,human tissue expression,No human tissue expression; spinning requires shear forces not available in vivo,true
 masp1,Medium-High,recombinant silk production,Expressed in 7+ organisms including transgenic goats and silkworms,false
-mb_seal,Low,translational/lifespan,,false
-mb_seal,Medium,ZMb mechanism,,true
-mefp5_mussel,High,biochem,"Adhesion energy on mica was measured directly with a surface forces apparatus on native purified protein, and the DOPA-dependence of the effect is reproduced across laboratories (https://doi.org/10.1021/bi3002538).",true
+mb_seal,Low,translational/lifespan,,true
+mb_seal,Medium,ZMb mechanism,,false
+mefp5_mussel,High,biochem,"Adhesion energy on mica was measured directly with a surface forces apparatus on native purified protein, and the DOPA-dependence of the effect is reproduced across laboratories (https://doi.org/10.1021/bi3002538).",false
 mefp5_mussel,Low,in vivo function,No mammal has been engineered to secrete the protein from its epidermis; every quoted number comes from purified protein between mineral surfaces.,false
-mefp5_mussel,Low-Medium,human translation,"Recombinant mussel adhesive protein is sold as a research reagent and coating, but there is no approved clinical product and no trial administering it.",false
-melanin_pathway,High,passive ROS/shielding,,true
+mefp5_mussel,Low-Medium,human translation,"Recombinant mussel adhesive protein is sold as a research reagent and coating, but there is no approved clinical product and no trial administering it.",true
+melanin_pathway,High,passive ROS/shielding,,false
 melanin_pathway,Low,radiosynthesis hypothesis,Radiosynthesis claim poorly supported,false
-melanin_pathway,Medium,"tyrosinase-CHO, single study",,false
-mgmt_p140k,High,"feasibility, safety",,true
+melanin_pathway,Medium,"tyrosinase-CHO, single study",,true
 mgmt_p140k,Medium,efficacy magnitude,"Small n, historical controls",false
-mstn_ko,High,,,true
+mgmt_p140k,Very High,human clinical efficacy,MGMT-P140K chemoprotection showed peer-reviewed human clinical efficacy in autologous CD34+ gene therapy for glioblastoma (Adair 2012).,true
+mstn_ko,Very High,human natural loss-of-function,A human child with natural myostatin loss-of-function had roughly double-normal quadriceps cross-section; mouse knockouts confirm the mammal muscle phenotype.,true
 mupks_budgerigar,High,biochem,"Heterologous expression in yeast reconstituted psittacofulvin synthesis, with products matched to feather pigments by mass spectrometry.",false
-mupks_budgerigar,Low,human translation,"No mammalian expression has been attempted, no titre is reported, and the phenotype depends on a feather-epithelial regulatory context that has not been rebuilt.",false
-mupks_budgerigar,Very High,genetic causality,"A single coding variant segregated completely with plumage colour in 280 genotyped budgerigars, and mapping independently localised the locus at p = 10^-72 (https://doi.org/10.1016/j.cell.2017.08.016).",true
+mupks_budgerigar,Low,human translation,"No mammalian expression has been attempted, no titre is reported, and the phenotype depends on a feather-epithelial regulatory context that has not been rebuilt.",true
+mupks_budgerigar,Very High,genetic causality,"A single coding variant segregated completely with plumage colour in 280 genotyped budgerigars, and mapping independently localised the locus at p = 10^-72 (https://doi.org/10.1016/j.cell.2017.08.016).",false
 ngf_corneal_nerve,High,biochem,"The NGF-TrkA/p75NTR axis and the epithelium-nerve trophic loop in the cornea are well characterised, and the readouts are lesion closure and corneal sensitivity rather than surrogate markers.",false
 ngf_corneal_nerve,Medium-High,in vivo function,Efficacy is established specifically for trigeminal-denervation keratitis; extension to persistent epithelial defects of other cause and to optic neuropathy is still in recruiting phase 3 trials.,false
 ngf_corneal_nerve,Very High,human translation,"Two independent double-masked vehicle-controlled randomised trials met their corneal-healing endpoints, a meta-analysis of both gives moderate GRADE certainty and an NNT of 3, and the drug is approved and marketed in the EU and US.",true
-oil_droplet_apocarotenoid,High,biochem,"The three-enzyme route from zeaxanthin to dihydrogalloxanthin was reconstituted stepwise in HEK293 cells and the products identified chromatographically, matching the apocarotenoids measured in real cone oil droplets.",true
-oil_droplet_apocarotenoid,Low,human translation,"Mammalian cones have no oil droplet to hold the filter, human vision has no fourth cone class for it to serve, and unsequestered carotenoid accumulation is cytotoxic in mouse and zebrafish.",false
+oil_droplet_apocarotenoid,High,biochem,"The three-enzyme route from zeaxanthin to dihydrogalloxanthin was reconstituted stepwise in HEK293 cells and the products identified chromatographically, matching the apocarotenoids measured in real cone oil droplets.",false
+oil_droplet_apocarotenoid,Low,human translation,"Mammalian cones have no oil droplet to hold the filter, human vision has no fourth cone class for it to serve, and unsequestered carotenoid accumulation is cytotoxic in mouse and zebrafish.",true
 oil_droplet_apocarotenoid,Medium,in vivo function,"The functional payoff is modelled rather than measured: droplet cutoffs and discriminable-colour counts come from receptor-noise modelling on 18 species' measured optics, and no animal has been engineered to test them.",false
-opn5_deep_brain,High,in vivo function,Testicular growth under short-wavelength light in quail whose eyes were patched and pineal removed is a clean whole-animal demonstration that light is being read inside the brain; the evidence comes from one laboratory and one publication.,true
+opn5_deep_brain,High,in vivo function,Testicular growth under short-wavelength light in quail whose eyes were patched and pineal removed is a clean whole-animal demonstration that light is being read inside the brain; the evidence comes from one laboratory and one publication.,false
 opn5_deep_brain,High,biochem,"Two independent action-spectrum experiments on heterologously expressed quail OPN5 agreed to within 1 nm (419 and 418 nm), establishing the molecule as a violet-sensitive, retinal-based photopigment.",false
-opn5_deep_brain,Low,human translation,"No mammalian hypothalamus has been made light-sensitive with OPN5, and a human skull and scalp attenuate hardest at the receptor's ~420 nm peak, so photon delivery rather than the protein is the blocking problem.",false
+opn5_deep_brain,Low,human translation,"No mammalian hypothalamus has been made light-sensitive with OPN5, and a human skull and scalp attenuate hardest at the receptor's ~420 nm peak, so photon delivery rather than the protein is the blocking problem.",true
 osk_partial_reprog,High,in vivo function,"Vision recovered behaviourally and electrophysiologically in a glaucoma model treated after damage was established, with a doubling of retinal ganglion cell survival after nerve crush in middle-aged mice (https://doi.org/10.1038/s41586-020-2975-4).",true
 osk_partial_reprog,Medium,human translation,"A first-in-human Phase 1 is recruiting with 18 participants and safety as the primary endpoint, no efficacy data exist in humans, and visual acuity restoration failed in 18-month-old mice (https://clinicaltrials.gov/study/NCT07290244).",false
 osk_partial_reprog,Medium-High,mechanism,"The effect is genetically pinned to TET1/TET2-dependent active demethylation and requires polycistronic co-delivery, but the causal CpG sites among the 1,226-site signature are not individually validated.",false
-parietopsin_lizard,High,in vivo function,"Colour-opponent responses were recorded directly from native photoreceptors in the lizard parietal eye, so the phenotype exists in a real cell in a real animal; it rests on a single founding electrophysiology study rather than on independent functional replication.",true
-parietopsin_lizard,Low,human translation,"No mammalian cell has ever been given this opsin pair, and the cascade uses G proteins absent from vertebrate rods and cones, so there is no host circuit to receive its output.",false
+parietopsin_lizard,High,in vivo function,"Colour-opponent responses were recorded directly from native photoreceptors in the lizard parietal eye, so the phenotype exists in a real cell in a real animal; it rests on a single founding electrophysiology study rather than on independent functional replication.",false
+parietopsin_lizard,Low,human translation,"No mammalian cell has ever been given this opsin pair, and the cascade uses G proteins absent from vertebrate rods and cones, so there is no host circuit to receive its output.",true
 parietopsin_lizard,Very High,biochem,"The 522 nm absorption maximum was measured on purified recombinant pigment and reproduced in a second lizard species by a separate group, with photosensitivity and extinction coefficient quantified against a bovine rhodopsin standard.",false
-pcsk9_edit,High,,,true
-pdc_adh8a_carp,High,in vivo function,"The phenotype is unambiguous in the native animal, months of activity under total anoxia, and the closely related common carp provides a natural negative control.",true
-pdc_adh8a_carp,Low,human translation,"The pathway has never been expressed in another animal, it needs muscle-restricted stoichiometry rather than plain overexpression, the enabling substitution is a human disease allele, and a land animal has no way to excrete the ethanol.",false
+pcsk9_edit,Very High,human genetics and editing trial,Human PCSK9 LOF carriers have substantially lower LDL and coronary disease; VERVE-102 base editing cut LDL 39–55% in a human trial.,true
+pdc_adh8a_carp,High,in vivo function,"The phenotype is unambiguous in the native animal, months of activity under total anoxia, and the closely related common carp provides a natural negative control.",false
+pdc_adh8a_carp,Low,human translation,"The pathway has never been expressed in another animal, it needs muscle-restricted stoichiometry rather than plain overexpression, the enabling substitution is a human disease allele, and a land animal has no way to excrete the ethanol.",true
 pdc_adh8a_carp,Medium-High,biochem,"The decarboxylase activity, the more than 60-fold muscle-specific E1 excess and the effect of betaD319N on E1-E2 binding are documented, but the reaction was not reconstituted from purified carp enzymes.",false
 piezo2,High,mechanosensation biology,2021 Nobel Prize for Piezo discovery; human LOF mutations confirm essential role in touch/proprioception,false
 piezo2,Low,gain-of-function enhancement,No overexpression studies; GOF mutations cause distal arthrogryposis in humans,false
-pif,Low,vertebrate translation,Nacre uses aragonite; vertebrate bone uses hydroxyapatite — different mineral system,false
+pif,Low,vertebrate translation,Nacre uses aragonite; vertebrate bone uses hydroxyapatite — different mineral system,true
 pif,Medium,nacre formation role,RNAi + CRISPR validated in pearl oyster; essential for nacre,false
 plaur_car_senolytic,High,target validity,"uPAR-positive cells account for 67–90% of the senescent burden in aged liver, and an independent group replicated senescent-cell clearance with an unrelated antigen in aged nonhuman primates (https://doi.org/10.1126/scitranslmed.add1951).",false
 plaur_car_senolytic,Low,human translation,"No senolytic CAR T cell has entered a human trial, the protocol requires cyclophosphamide lymphodepletion at 200 mg/kg, and the antigen is shared with activated immune cells and invasive tumour cells.",false
@@ -127,70 +129,72 @@ plaur_car_senolytic,Medium-High,in vivo function,"A single infusion improved glu
 pot1_turritopsis,Low,rejuvenation translation,Poor translational outlook for rejuvenation,false
 pot1_turritopsis,Low-Medium,narrow biochem claim,Limited biochemical evidence,true
 ppri_ppra,Medium,overall,One-lab mouse data; moderate effect; not independently replicated,true
-pr_marine_photoheterotroph,High,in vivo function,In Escherichia coli the pump substituted for a chemically poisoned respiratory chain in both a colony-survival assay and a tethered-cell flagellar assay (https://doi.org/10.1073/pnas.0611035104).,true
-pr_marine_photoheterotroph,Low,human translation,"No mammalian in vivo data. The only metazoan work targets different archaeal rhodopsins to mitochondria in flies and worms, all of it retinal-dependent, and green light does not penetrate tissue.",false
+pr_marine_photoheterotroph,High,in vivo function,In Escherichia coli the pump substituted for a chemically poisoned respiratory chain in both a colony-survival assay and a tethered-cell flagellar assay (https://doi.org/10.1073/pnas.0611035104).,false
+pr_marine_photoheterotroph,Low,human translation,"No mammalian in vivo data. The only metazoan work targets different archaeal rhodopsins to mitochondria in flies and worms, all of it retinal-dependent, and green light does not penetrate tissue.",true
 pr_marine_photoheterotroph,Very High,biochem,"Light-driven, retinal-dependent proton translocation by proteorhodopsin is established by spectroscopy, by solution NMR and cryo-EM structures, and by direct proton-motive-force measurement in single cells.",false
 prestin_echo,Declining,ultrasonic-hearing link,Confidence in ultrasonic-hearing connection is declining,false
 prestin_echo,Medium,biophysics,,true
-ptugt1_indigo,High,biochem,"The glucosylation step, the stabilised variant's melting-temperature gain and the 65% conversion of 100 mM indoxyl were all measured directly on purified enzyme (https://doi.org/10.1038/s41467-024-45749-3).",true
-ptugt1_indigo,Low,in vivo function,No plant or animal host has been engineered with the stabilised enzyme; the trait exists as an in vitro process and a lab dyeing protocol.,false
+ptugt1_indigo,High,biochem,"The glucosylation step, the stabilised variant's melting-temperature gain and the 65% conversion of 100 mM indoxyl were all measured directly on purified enzyme (https://doi.org/10.1038/s41467-024-45749-3).",false
+ptugt1_indigo,Low,in vivo function,No plant or animal host has been engineered with the stabilised enzyme; the trait exists as an in vitro process and a lab dyeing protocol.,true
 ptugt1_indigo,Medium,process viability,"Environmental and cost advantages come from a life-cycle and techno-economic model on the European grid mix, with UDP-glucose recycling modelled rather than demonstrated at scale.",false
 pvlea,Medium,,,true
 pvpimt,Medium,,,true
 rbm3,High,neuroprotection in mouse,Nature 2015 with survival data in two disease models,false
 rbm3,Medium,independent replication,All key data from single laboratory (MRC Prion Unit),false
-reflectin,Low,mammalian camouflage translation,,false
-reflectin,Medium-High,narrow claim,,true
-resilin,Low,vertebrate tissue integration,No expression in any vertebrate tissue; cross-linking mechanism untested in vivo,false
+reflectin,Low,mammalian camouflage translation,,true
+reflectin,Medium-High,narrow claim,,false
+resilin,Low,vertebrate tissue integration,No expression in any vertebrate tissue; cross-linking mechanism untested in vivo,true
 resilin,Medium,biomaterial properties,90-97% resilience demonstrated in recombinant material; active tissue engineering R&D,false
 rgy_pyrococcus,High,biochem,"Purified enzyme measurably suppresses double-strand breakage at 90 C, and the authors show the activity is independent of both ATP hydrolysis and positive supercoiling (https://doi.org/10.1093/nar/gkh683).",false
-rgy_pyrococcus,High,in vivo function,"Loss-of-function evidence spans three archaeal genera and three methods — deletion in Pyrococcus, disruption in Thermococcus and CRISPR interference in Sulfolobus — and consistently defines a temperature threshold near 90 C.",true
-rgy_pyrococcus,Low,human translation,"No eukaryotic expression has ever been attempted, the protective effect is gated above 90 C, the coding sequence is near the single-AAV packaging ceiling, and positive supercoiling runs counter to human topoisomerase activity.",false
-scaldh21_moss,High,in vivo function,"Two independent host species, tobacco and cotton, show the same physiological signature, and the cotton work reaches field-scale yield endpoints across multiple papers.",true
+rgy_pyrococcus,High,in vivo function,"Loss-of-function evidence spans three archaeal genera and three methods — deletion in Pyrococcus, disruption in Thermococcus and CRISPR interference in Sulfolobus — and consistently defines a temperature threshold near 90 C.",false
+rgy_pyrococcus,Low,human translation,"No eukaryotic expression has ever been attempted, the protective effect is gated above 90 C, the coding sequence is near the single-AAV packaging ceiling, and positive supercoiling runs counter to human topoisomerase activity.",true
+scaldh21_moss,High,in vivo function,"Two independent host species, tobacco and cotton, show the same physiological signature, and the cotton work reaches field-scale yield endpoints across multiple papers.",false
 scaldh21_moss,High,biochem,"The reaction is standard, well-understood NAD(P)+-dependent aldehyde oxidation, and the transgenic plants show the predicted fall in malondialdehyde and hydrogen peroxide.",false
-scaldh21_moss,Low,human translation,"No animal or mammalian-cell expression exists, and in a human the same chemistry overlaps ALDH2, which handles acetaldehyde from alcohol and retinaldehyde.",false
+scaldh21_moss,Low,human translation,"No animal or mammalian-cell expression exists, and in a human the same chemistry overlaps ALDH2, which handles acetaldehyde from alcohol and retinaldehyde.",true
 scn4aa,Low,any enhancement translation,,false
 scn4aa,Medium-High,mechanistic,,true
 sirt6_cent_variant,Low,in vivo function,"No animal carries this allele; there is no lifespan, healthspan or tumour-incidence measurement for it, and the two linked substitutions have never been separated.",false
-sirt6_cent_variant,Low,human translation,"The centenarian enrichment is 1% versus 0.5% at P = 0.3, and no company or trial is pursuing the allele.",false
-sirt6_cent_variant,Medium-High,biochem,"Multiple orthogonal assays agree — enzymology, double-strand break repair reporters, γH2AX foci, LINE1 silencing and cancer cell apoptosis all point the same way in human cells (https://doi.org/10.15252/embj.2021110393).",true
+sirt6_cent_variant,Low,human translation,"The centenarian enrichment is 1% versus 0.5% at P = 0.3, and no company or trial is pursuing the allele.",true
+sirt6_cent_variant,Medium-High,biochem,"Multiple orthogonal assays agree — enzymology, double-strand break repair reporters, γH2AX foci, LINE1 silencing and cancer cell apoptosis all point the same way in human cells (https://doi.org/10.15252/embj.2021110393).",false
 slc30a8_ko,Low-Medium,human translation,"No ZnT8 inhibitor exists in the clinic and no company has disclosed a candidate, so the phenotype is currently only available to people born with it.",false
 slc30a8_ko,Medium,mechanism,"The link from reduced granule zinc to increased insulin secretion is inferred from human physiology rather than demonstrated, and mouse knockouts gave heterogeneous results that contradict the human phenotype.",false
 slc30a8_ko,Very High,human genetics,"Two independent large-scale sequencing studies agree, and the 2025 cohort includes 18 complete human knockouts whose recall-by-genotype glucose tolerance tests show the predicted gene-dose effect (https://doi.org/10.1007/s00125-025-06530-3).",true
-smedwi,High,planarian requirement,Essential for planarian regeneration,true
-smedwi,Low,mammalian regeneration transfer,Unlikely to transfer regeneration to mammals,false
+smedwi,High,planarian requirement,Essential for planarian regeneration,false
+smedwi,Low,mammalian regeneration transfer,Unlikely to transfer regeneration to mammals,true
 sod2,Low,longevity,,true
-sor_pyrococcus,Low,human translation,"No mammalian cell or animal has ever expressed superoxide reductase, the cofactor-recycling requirement in a mammalian cytosol is untested, and the reaction hands the tissue extra hydrogen peroxide.",false
-sor_pyrococcus,Medium-High,in vivo function,"Gain-of-function heat and oxidative-stress tolerance was quantified in two transgenic plant species, but both studies come from a single laboratory lineage with no independent replication.",true
+sor_pyrococcus,Low,human translation,"No mammalian cell or animal has ever expressed superoxide reductase, the cofactor-recycling requirement in a mammalian cytosol is untested, and the reaction hands the tissue extra hydrogen peroxide.",true
+sor_pyrococcus,Medium-High,in vivo function,"Gain-of-function heat and oxidative-stress tolerance was quantified in two transgenic plant species, but both studies come from a single laboratory lineage with no independent replication.",false
 sor_pyrococcus,Very High,biochem,"The enzyme, its reaction stoichiometry and its electron-donor chain were characterised directly, and three experimental crystal structures of the iron active site exist.",false
 sostdc1_usag1_tooth,High,in vivo function,"Genetic knockout and antibody pharmacology agree in mouse, and the phenotype reproduced in a diphyodont non-rodent (ferret) with human-like dentition and micro-CT confirmation.",true
 sostdc1_usag1_tooth,High,biochem,"USAG-1 is a defined secreted BMP and Wnt antagonist, the operative arm was isolated by epitope-specific antibodies, and pSMAD1/5/8 staining confirms BMP signalling in the induced tooth.",false
 sostdc1_usag1_tooth,Low-Medium,human translation,"A humanised antibody with Japanese orphan designation is in Phase 1 safety testing, but no human efficacy exists, positional control is unsolved and the presence of dormant buds in patients is inferred rather than imaged.",false
-sting_bat,High,mechanism,Well-characterized molecular mechanism,true
-sting_bat,Low-Medium,human translation,,false
+sting_bat,High,mechanism,Well-characterized molecular mechanism,false
+sting_bat,Low-Medium,human translation,,true
 sting_bat,Medium,aging phenotype,"Female-only, small cohort",false
-sws1_bird,Medium,spectral tuning mechanism,Well-characterized 2-3 aa substitution mechanism; no mammalian in-vivo test of UV-shifted opsin,false
+sws1_bird,Low,mammalian UV vision translation,"Spectral-tuning substitutions are mapped, but no mammalian in-vivo test of a UV-shifted SWS1 opsin has been reported.",true
 t1r1_t1r3_hummingbird,High,in vivo function,"Captive and wild hummingbirds behaved as the receptor pharmacology predicts, rejecting water within three or four licks and rejecting the artificial sweeteners the receptor does not recognise.",false
-t1r1_t1r3_hummingbird,Low-Medium,human translation,"The receptor has never been placed in an animal's taste buds, and human T1R1-T1R3 feeds a circuit already labelled savoury, so the perceptual outcome of the swap is untested.",false
-t1r1_t1r3_hummingbird,Very High,biochem,"Chimera mapping narrowed sugar responsiveness from a whole domain to 109 residues and then to 19 non-consecutive positions, with the negative result that subsets fail; the assay was repeated across the hummingbird radiation in 2022.",true
-tapetum,High,native function,,true
-tapetum,N/A,engineering never attempted,No engineering attempts to evaluate,false
+t1r1_t1r3_hummingbird,Low-Medium,human translation,"The receptor has never been placed in an animal's taste buds, and human T1R1-T1R3 feeds a circuit already labelled savoury, so the perceptual outcome of the swap is untested.",true
+t1r1_t1r3_hummingbird,Very High,biochem,"Chimera mapping narrowed sugar responsiveness from a whole domain to 109 residues and then to 19 non-consecutive positions, with the negative result that subsets fail; the assay was repeated across the hummingbird radiation in 2022.",false
+tapetum,High,native function,,false
+tapetum,N/A,engineering never attempted,No engineering attempts to evaluate,true
 tdr1,Medium,,,true
-tert,High,mouse,Strong mouse lifespan data,true
-tert,Low,safe human translation,Safety for human translation uncertain,false
-tka_tkg_hagfish,High,native material biophysics,"Tensile properties, slime volume and thread storage density have been measured directly in Eptatretus stoutii by independent groups (https://doi.org/10.1016/S0006-3495(03)74629-3, https://doi.org/10.7554/eLife.81405).",true
-tka_tkg_hagfish,Low,human translation,"No transgenic animal, no commercial material, and thread-keratin genes appear absent from amniote genomes entirely.",false
+tert,High,mouse lifespan,AAV9-TERT extended median lifespan in 1- and 2-year-old mice (+24% / +13%) without increased cancer incidence in the Blasco lab studies. Mammalian in-vivo benefit is clear; independent human efficacy is not.,true
+tert,Medium,human commercial exposure (efficacy unproven),AAV-TERT has been sold/administered commercially (BioViva; company claims 300+ patients) and in criticized Libella trials. No peer-reviewed validation of benefit; scientific skepticism is high. Human exposure without independent proof of effect.,false
+tka_tkg_hagfish,High,native material biophysics,"Tensile properties, slime volume and thread storage density have been measured directly in Eptatretus stoutii by independent groups (https://doi.org/10.1016/S0006-3495(03)74629-3, https://doi.org/10.7554/eLife.81405).",false
+tka_tkg_hagfish,Low,human translation,"No transgenic animal, no commercial material, and thread-keratin genes appear absent from amniote genomes entirely.",true
 tka_tkg_hagfish,Low-Medium,engineered reconstitution,"Recombinant thread proteins can be expressed and spun, but the fibres land at 10^2-10^3 kPa, three to four orders of magnitude below native thread (https://doi.org/10.1021/acsomega.5c13031).",false
 tmc1,High,hearing restoration,Multiple independent mouse gene therapy studies; clinical pipeline active,false
 tmc1,Low-Medium,hearing enhancement beyond normal,No study tests TMC1 overexpression above wild-type levels,false
 tp53_elephant,High,phenotype,Strong phenotypic evidence in elephants,true
 tp53_elephant,Medium,heterologous causation,Less certain about cross-species causal mechanism,false
-tp53_rtg9,High,transcription-independent mechanism,Demonstrated in human cancer cells,true
 tp53_rtg9,Low,physiological elephant relevance,Never tested in elephant cells,false
+tp53_rtg9,Medium,human cancer cell lines only,"Triggers apoptosis in TP53-null/mutant human cancer lines in culture; never tested in a mouse, normal tissue, or elephant cell.",true
 tps_pv,Medium-High,,,true
-trpa1_viper,High,channel biophysics,,true
+trpa1_viper,High,channel biophysics,,false
+trpa1_viper,Low,mammalian IR sensing translation,Viper TRPA1 IR tuning is characterized in snake neurons and heterologous channels; no mammal has been shown to gain infrared sensing from the variant.,true
 trpa1_viper,Medium,full behavioral IR mapping,,false
-v2r_snake_vno,High,genomics,"The repertoire is documented by deep sequencing of the native organ with conservative similarity thresholds, and independent genome annotations in python, garter snake and anole reproduce the same V2R-rich, V1R-poor pattern.",true
+v2r_snake_vno,High,genomics,"The repertoire is documented by deep sequencing of the native organ with conservative similarity thresholds, and independent genome annotations in python, garter snake and anole reproduce the same V2R-rich, V1R-poor pattern.",false
 v2r_snake_vno,Low,biochem,"Essentially no snake V2R has a known ligand and none has been tested in a heterologous functional assay, so the receptors' chemistry is inferred from family membership rather than measured.",false
-v2r_snake_vno,Low,human translation,"A human has a vestigial vomeronasal organ, no accessory olfactory bulb and no forked tongue, so the receptor bank would have neither an epithelium to sit in nor a circuit to read it.",false
-vegf_therapy,Medium,,,true
+v2r_snake_vno,Low,human translation,"A human has a vestigial vomeronasal organ, no accessory olfactory bulb and no forked tongue, so the receptor bank would have neither an epithelium to sit in nor a circuit to read it.",true
+vegf_therapy,High,human disease gene therapy (mixed efficacy),"Plasmid/viral VEGF gene therapy has human disease data: early Isner/Losordo CLI/angina positives, Russian Neovasculgen PAD walking gains, but Euroinject One failed myocardial perfusion vs placebo. Works in mammals; human efficacy is mixed, not locked.",true
+vegf_therapy,Medium,enhancement clinic sales (efficacy unproven),Unlimited Bio sells VEGF gene therapy commercially in Prospera (unregulated). Company use of a Neovasculgen-like construct does not equal independent proof that the enhancement package works as marketed.,false
