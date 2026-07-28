@@ -24,6 +24,25 @@ from materialized_enhancements.gene_data import (
 )
 from materialized_enhancements.state import CATEGORY_COLORS
 
+# Reset gene-card scroll when switching rows. On mobile the panel sits below the
+# grid and page/panel scroll can leave the gene name above the fold.
+_KB_DETAIL_SCROLL_RESET_SCRIPT = """
+(() => {
+  const reset = () => {
+    const panel = document.querySelector(".kb-page .kb-detail-panel");
+    if (!panel) return;
+    panel.scrollTop = 0;
+    const anchor = panel.querySelector(".kb-detail-name") || panel;
+    anchor.scrollIntoView({ behavior: "auto", block: "nearest", inline: "nearest" });
+    if (anchor.getBoundingClientRect().top < 12) {
+      panel.scrollIntoView({ behavior: "auto", block: "start", inline: "nearest" });
+    }
+  };
+  // Remount (key=gene_id) + Reflex patch: wait one frame, then a short settle.
+  requestAnimationFrame(() => { window.setTimeout(reset, 40); });
+})();
+"""
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -76,15 +95,31 @@ _STAGE_BADGE_BG: dict[str, str] = {
     "Preclinical": "rgba(100, 116, 139, 0.35)",
 }
 
+_POSITIVE_LABELS: dict[str, str] = {
+    "true": "Positive",
+    "mixed": "Mixed",
+    "false": "Negative",
+}
 _POSITIVE_BADGE_FG: dict[str, str] = {
-    "true": "#4ade80",
-    "mixed": "#fbbf24",
-    "false": "#f87171",
+    "Positive": "#4ade80",
+    "Mixed": "#fbbf24",
+    "Negative": "#f87171",
 }
 _POSITIVE_BADGE_BG: dict[str, str] = {
-    "true": "rgba(34, 197, 94, 0.22)",
-    "mixed": "rgba(245, 158, 11, 0.22)",
-    "false": "rgba(248, 113, 113, 0.18)",
+    "Positive": "rgba(34, 197, 94, 0.28)",
+    "Mixed": "rgba(245, 158, 11, 0.28)",
+    "Negative": "rgba(248, 113, 113, 0.24)",
+}
+
+_HOST_LEVEL_BADGE_FG: dict[str, str] = {
+    "Human": "#4ade80",
+    "Animal": "#fbbf24",
+    "Cell / other": "#94a3b8",
+}
+_HOST_LEVEL_BADGE_BG: dict[str, str] = {
+    "Human": "rgba(34, 197, 94, 0.24)",
+    "Animal": "rgba(245, 158, 11, 0.24)",
+    "Cell / other": "rgba(148, 163, 184, 0.2)",
 }
 
 _KIND_BADGE_FG: dict[str, str] = {
@@ -92,8 +127,8 @@ _KIND_BADGE_FG: dict[str, str] = {
     "Lab / paper": "#c4b5fd",
 }
 _KIND_BADGE_BG: dict[str, str] = {
-    "Clinical trial": "rgba(59, 130, 246, 0.22)",
-    "Lab / paper": "rgba(124, 58, 237, 0.22)",
+    "Clinical trial": "rgba(59, 130, 246, 0.28)",
+    "Lab / paper": "rgba(124, 58, 237, 0.28)",
 }
 
 _ORG_TYPE_BADGE_FG: dict[str, str] = {
@@ -194,10 +229,19 @@ def _badge_column(
             "colorMap": color_map,
             "bgColorMap": bg_color_map,
             "borderRadius": "6px",
-            "padding": "2px 8px",
+            "padding": "4px 11px",
+            # Absolute size — library default 0.85em shrinks with density.
+            "fontSize": "0.92rem",
+            "fontWeight": "600",
         },
         **extra,
     }
+
+
+def _positive_label(raw: str) -> str:
+    """Map gene_testing.positive → visitor-facing Outcome label."""
+    key = str(raw or "").strip().lower()
+    return _POSITIVE_LABELS.get(key, str(raw or "").strip().title() or "")
 
 
 def _category_badge_maps() -> tuple[dict[str, str], dict[str, str]]:
@@ -403,12 +447,13 @@ def _experiments_lazyframe() -> pl.LazyFrame:
         doi = str(t.get("doi", "") or "")
         kind = "Clinical trial" if ref.startswith("NCT") else "Lab / paper"
         link = _normalize_link_url(doi, reference=ref)
+        intervention = str(t.get("intervention", "") or "")
         rows.append(
             {
                 "Host": host,
                 "Host level": _host_level(host),
-                "Intervention": t.get("intervention", ""),
-                "Positive": t.get("positive", ""),
+                "Intervention": intervention.replace("_", " "),
+                "Outcome": _positive_label(str(t.get("positive", "") or "")),
                 "Year": t.get("year", ""),
                 "Kind": kind,
                 "Reference": ref,
@@ -487,8 +532,8 @@ _EXP_KIND_COUNTS: dict[str, int] = {
     for kind in ("Clinical trial", "Lab / paper")
 }
 _EXP_POSITIVE_COUNTS: dict[str, int] = {
-    val: int(_EXP_DF.filter(pl.col("Positive") == val).height)
-    for val in ("true", "mixed", "false")
+    val: int(_EXP_DF.filter(pl.col("Outcome") == val).height)
+    for val in ("Positive", "Mixed", "Negative")
 }
 _ORGS_LF: pl.LazyFrame = _organizations_lazyframe()
 
@@ -507,7 +552,7 @@ _EXP_COL_DESCS: dict[str, str] = {
     "Host": "Experimental host / model",
     "Host level": "Human, animal, or cell / in vitro bucket",
     "Intervention": "How the gene was manipulated or observed",
-    "Positive": "Outcome polarity",
+    "Outcome": "Outcome polarity (positive / mixed / negative)",
     "Year": "Publication or trial year",
     "Kind": "Registry trial vs lab paper",
     "Reference": "Short citation or NCT id",
@@ -726,7 +771,7 @@ class KnowledgebaseState(rx.State):
         self.e_delivery = str(row.get("Delivery", "") or "")
         self.e_system = str(row.get("System", "") or "")
         self.e_year = str(row.get("Year", "") or "")
-        self.e_positive = str(row.get("Positive", "") or "")
+        self.e_positive = str(row.get("Outcome", "") or row.get("Positive", "") or "")
         self.e_result = str(row.get("Result", "") or "")
         self.e_effect = str(row.get("Effect size", "") or "")
         self.e_kind = str(row.get("Kind", "") or "")
@@ -795,6 +840,7 @@ class KnowledgebaseState(rx.State):
         self.surface = "genes"
         self.apply_gene_selection(gene_id, dossier_tab="overview")
         yield KbGenesGridState.load_grid
+        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
     @rx.event
     def open_gene_from_experiment(self):
@@ -804,6 +850,7 @@ class KnowledgebaseState(rx.State):
         self.surface = "genes"
         self.apply_gene_selection(gene_id, dossier_tab="evidence")
         yield KbGenesGridState.load_grid
+        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
     @rx.event
     def open_gene_from_org(self, gene_id: str):
@@ -814,6 +861,7 @@ class KnowledgebaseState(rx.State):
         self.surface = "genes"
         self.apply_gene_selection(gene_id, dossier_tab="overview")
         yield KbGenesGridState.load_grid
+        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
     def apply_gene_selection(self, gene_id: str, *, dossier_tab: str = "overview") -> None:
         """Populate dossier fields from a gene_id (callable from other states)."""
@@ -893,8 +941,9 @@ class KnowledgebaseState(rx.State):
         self.d_orgs = org_rows
 
     @rx.event
-    def select_gene(self, gene_id: str) -> None:
+    def select_gene(self, gene_id: str):
         self.apply_gene_selection(gene_id, dossier_tab="overview")
+        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
 
 class KbGenesGridState(LazyFrameGridMixin, rx.State):
@@ -937,7 +986,7 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
         )
 
     @rx.event
-    async def handle_lf_grid_row_click(self, params: dict[str, Any]) -> None:
+    async def handle_lf_grid_row_click(self, params: dict[str, Any]):
         row = params.get("row", {})
         gene_id = str(row.get("gene_id", ""))
         if not gene_id:
@@ -947,6 +996,7 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
             self.lf_grid_row_selection_model = {"type": "include", "ids": [row_id]}
         kb = await self.get_state(KnowledgebaseState)
         kb.apply_gene_selection(gene_id, dossier_tab="overview")
+        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
 
 class KbExperimentsGridState(LazyFrameGridMixin, rx.State):
@@ -963,7 +1013,7 @@ class KbExperimentsGridState(LazyFrameGridMixin, rx.State):
         if self.agg_kind:
             items.append({"field": "Kind", "operator": "equals", "value": self.agg_kind})
         if self.agg_positive:
-            items.append({"field": "Positive", "operator": "equals", "value": self.agg_positive})
+            items.append({"field": "Outcome", "operator": "equals", "value": self.agg_positive})
         return {"items": items, "logicOperator": "and"}
 
     def _apply_agg_filters(self) -> None:
@@ -1016,20 +1066,25 @@ class KbExperimentsGridState(LazyFrameGridMixin, rx.State):
             column_overrides={
                 "gene_id": {"hide": True},
                 "exp_idx": {"hide": True},
-                "Host level": {"hide": True},
-                "Gene": {"flex": 0.8},
-                "Host": {"flex": 0.9},
-                "Intervention": {"flex": 1.2},
-                "Positive": _badge_column(
+                "Host": {"hide": True},
+                "Host level": _badge_column(
+                    color_map=_HOST_LEVEL_BADGE_FG,
+                    bg_color_map=_HOST_LEVEL_BADGE_BG,
+                    flex=0.85,
+                    headerName="Host",
+                ),
+                "Gene": {"flex": 0.85},
+                "Intervention": {"flex": 1.25},
+                "Outcome": _badge_column(
                     color_map=_POSITIVE_BADGE_FG,
                     bg_color_map=_POSITIVE_BADGE_BG,
-                    flex=0.55,
+                    flex=0.75,
                 ),
-                "Year": {"flex": 0.45},
+                "Year": {"flex": 0.5},
                 "Kind": _badge_column(
                     color_map=_KIND_BADGE_FG,
                     bg_color_map=_KIND_BADGE_BG,
-                    flex=0.9,
+                    flex=0.95,
                 ),
                 "Reference": {"hide": True},
                 "DOI": {
@@ -1155,9 +1210,9 @@ _KB_CSS = """
     border-radius: 999px; width: fit-content; max-width: 100%;
 }
 .kb-stat-item { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
-.kb-stat-val { font-size: 0.95rem; font-weight: 700; color: #c4b5fd; line-height: 1.2; }
-.kb-stat-label { font-size: 0.78rem; color: #94a3b8; text-transform: none; letter-spacing: 0; font-weight: 500; }
-.kb-stat-sep { color: rgba(148, 163, 184, 0.45); font-size: 0.75rem; user-select: none; }
+.kb-stat-val { font-size: 1.02rem; font-weight: 700; color: #c4b5fd; line-height: 1.2; }
+.kb-stat-label { font-size: 0.88rem; color: #94a3b8; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.kb-stat-sep { color: rgba(148, 163, 184, 0.45); font-size: 0.85rem; user-select: none; }
 
 .kb-controls-bar {
     display: flex; flex-direction: column; gap: 8px;
@@ -1171,7 +1226,7 @@ _KB_CSS = """
     display: inline-flex; align-items: center; gap: 7px;
     border: 1px solid rgba(148, 163, 184, 0.28);
     background: rgba(2, 6, 23, 0.55); color: #cbd5e1;
-    border-radius: 999px; padding: 8px 14px; font-size: 0.88rem; font-weight: 600;
+    border-radius: 999px; padding: 9px 15px; font-size: 0.95rem; font-weight: 600;
     cursor: pointer;
 }
 .kb-view-btn:hover { border-color: rgba(167, 139, 250, 0.55); color: #e9d5ff; }
@@ -1181,7 +1236,7 @@ _KB_CSS = """
     color: #e9d5ff;
 }
 .kb-view-desc {
-    font-size: 0.9rem; color: #94a3b8; line-height: 1.5; padding: 0 2px; max-width: 42rem;
+    font-size: 0.98rem; color: #94a3b8; line-height: 1.5; padding: 0 2px; max-width: 42rem;
 }
 
 .kb-main {
@@ -1223,29 +1278,71 @@ _KB_CSS = """
     flex: 1 1 auto;
     min-height: 0;
 }
-.kb-grid-hint { font-size: 0.8rem; color: #64748b; }
+.kb-grid-hint { font-size: 0.92rem; color: #64748b; line-height: 1.45; }
 
-/* MUI DataGrid — dark to match RPG shell */
+/* MUI DataGrid — dark to match RPG shell; readable type (not compact density) */
 .kb-page .MuiDataGrid-root {
     --DataGrid-rowBorderColor: rgba(148, 163, 184, 0.14);
+    --DataGrid-fontSize: 1rem;
     background: #0b1220 !important;
     color: #e2e8f0 !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
     border-radius: 10px;
+    font-size: 1rem !important;
 }
 .kb-page .MuiDataGrid-main,
 .kb-page .MuiDataGrid-virtualScroller,
 .kb-page .MuiDataGrid-columnHeaders,
 .kb-page .MuiDataGrid-footerContainer,
 .kb-page .MuiDataGrid-toolbarContainer,
+.kb-page .MuiDataGrid-toolbar,
 .kb-page .MuiDataGrid-filler,
 .kb-page .MuiDataGrid-scrollbarFiller {
     background: #0b1220 !important;
+}
+/* MUI X v8 uses .MuiDataGrid-toolbar (v7 had toolbarContainer). */
+.kb-page .MuiDataGrid-toolbarContainer,
+.kb-page .MuiDataGrid-toolbar {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 4px 8px !important;
+    gap: 2px;
+    min-height: 40px;
+    justify-content: flex-end;
+}
+.kb-page .MuiDataGrid-toolbar .MuiButton-root,
+.kb-page .MuiDataGrid-toolbar .MuiButton-text,
+.kb-page .MuiDataGrid-toolbarContainer .MuiButton-root,
+.kb-page .MuiDataGrid-toolbarContainer .MuiButton-text {
+    color: #cbd5e1 !important;
+    font-size: 0.85rem !important;
+    text-transform: none;
+}
+.kb-page .MuiDataGrid-toolbar .MuiIconButton-root,
+.kb-page .MuiDataGrid-toolbarContainer .MuiIconButton-root {
+    color: #94a3b8 !important;
+}
+.kb-page .MuiDataGrid-toolbar .MuiIconButton-root:hover,
+.kb-page .MuiDataGrid-toolbarContainer .MuiIconButton-root:hover,
+.kb-page .MuiDataGrid-toolbar .MuiButton-root:hover,
+.kb-page .MuiDataGrid-toolbarContainer .MuiButton-root:hover {
+    color: #e9d5ff !important;
+    background: rgba(124, 58, 237, 0.16) !important;
+}
+.kb-page .MuiDataGrid-toolbar .MuiSvgIcon-root,
+.kb-page .MuiDataGrid-toolbarContainer .MuiSvgIcon-root {
+    color: inherit !important;
+}
+.kb-page .MuiDataGrid-toolbarDivider {
+    border-color: rgba(148, 163, 184, 0.22) !important;
 }
 .kb-page .MuiDataGrid-columnHeader,
 .kb-page .MuiDataGrid-columnHeaderTitle,
 .kb-page .MuiDataGrid-columnHeaderTitleContainer {
     color: #cbd5e1 !important;
+}
+.kb-page .MuiDataGrid-columnHeaderTitle {
+    font-size: 0.95rem !important;
+    font-weight: 650 !important;
 }
 .kb-page .MuiDataGrid-columnHeader {
     background: #111827 !important;
@@ -1257,9 +1354,20 @@ _KB_CSS = """
     cursor: pointer !important;
     user-select: none;
 }
+.kb-page .MuiDataGrid-cell,
+.kb-page .MuiDataGrid-cellContent {
+    font-size: 1rem !important;
+    line-height: 1.45 !important;
+}
 .kb-page .MuiDataGrid-cell {
     color: #e2e8f0 !important;
     border-bottom-color: rgba(148, 163, 184, 0.12) !important;
+}
+/* Badge pills — match Genes tab category / evidence chips */
+.kb-page .MuiDataGrid-cell > div[style*="border-radius"] {
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    padding: 4px 11px !important;
 }
 .kb-page .MuiDataGrid-cell a {
     color: #a78bfa !important;
@@ -1347,7 +1455,8 @@ _KB_CSS = """
 .kb-page .MuiDataGrid-virtualScrollerContent div[style*="padding"]:not([style*="border-radius"]) {
     background: #111827 !important;
     border-bottom-color: rgba(148, 163, 184, 0.2) !important;
-    font-size: 0.95rem !important;
+    font-size: 1.02rem !important;
+    line-height: 1.55 !important;
     color: #e2e8f0 !important;
 }
 .kb-page .MuiDataGrid-virtualScrollerContent div[style*="padding"]:not([style*="border-radius"]) span {
@@ -1373,43 +1482,43 @@ _KB_CSS = """
     overflow: auto;
     min-width: 0;
     /* Isolate from MUI density so dossier type stays readable */
-    font-size: 16px;
+    font-size: 17px;
     line-height: 1.55;
 }
 .kb-detail-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 8px; min-height: 200px; color: #64748b; text-align: center; font-size: 1rem;
+    gap: 8px; min-height: 200px; color: #64748b; text-align: center; font-size: 1.05rem;
 }
 .kb-detail-close {
     float: right; border: 1px solid rgba(167, 139, 250, 0.45);
     background: rgba(124, 58, 237, 0.22); color: #e9d5ff;
-    border-radius: 8px; padding: 6px 12px; font-weight: 600; cursor: pointer; font-size: 0.875rem;
+    border-radius: 8px; padding: 6px 12px; font-weight: 600; cursor: pointer; font-size: 0.95rem;
 }
-.kb-detail-name { margin: 0 0 8px; font-size: 1.55rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em; }
+.kb-detail-name { margin: 0 0 8px; font-size: 1.7rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em; }
 .kb-detail-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .kb-detail-cat {
-    font-size: 0.875rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    font-size: 0.95rem; font-weight: 700; padding: 4px 11px; border-radius: 999px;
 }
-.kb-detail-trait { font-size: 0.95rem; color: #94a3b8; }
+.kb-detail-trait { font-size: 1.02rem; color: #94a3b8; }
 .kb-detail-manip {
-    font-size: 0.85rem; font-weight: 600; color: #e9d5ff;
+    font-size: 0.92rem; font-weight: 600; color: #e9d5ff;
     background: rgba(124, 58, 237, 0.28);
     border-radius: 6px; padding: 3px 10px; margin-bottom: 4px;
 }
-.kb-detail-species { font-size: 0.95rem; color: #94a3b8; margin: 10px 0; line-height: 1.45; }
+.kb-detail-species { font-size: 1.02rem; color: #94a3b8; margin: 10px 0; line-height: 1.45; }
 .kb-detail-tier-badge {
-    display: inline-block; font-size: 0.85rem; font-weight: 700;
+    display: inline-block; font-size: 0.92rem; font-weight: 700;
     border-radius: 999px; padding: 4px 12px; margin-bottom: 12px;
     background: rgba(124, 58, 237, 0.2); color: #c4b5fd;
 }
 .kb-detail-desc {
-    font-size: 1.05rem; line-height: 1.65; color: #e2e8f0; margin: 0 0 18px;
+    font-size: 1.12rem; line-height: 1.65; color: #e2e8f0; margin: 0 0 18px;
 }
 .kb-dossier-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .kb-dossier-tab {
     border: 1px solid rgba(148, 163, 184, 0.28);
     background: rgba(2, 6, 23, 0.55); color: #94a3b8;
-    border-radius: 8px; padding: 8px 14px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    border-radius: 8px; padding: 8px 14px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
 }
 .kb-dossier-tab.active {
     background: rgba(124, 58, 237, 0.28);
@@ -1418,11 +1527,11 @@ _KB_CSS = """
 }
 .kb-detail-section { margin-bottom: 18px; }
 .kb-detail-section-label {
-    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+    font-size: 0.88rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 8px;
 }
 .kb-detail-section-text {
-    font-size: 1rem; line-height: 1.65; color: #e2e8f0;
+    font-size: 1.05rem; line-height: 1.65; color: #e2e8f0;
     white-space: pre-wrap; word-break: break-word;
 }
 .kb-links-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -1431,17 +1540,17 @@ _KB_CSS = """
 }
 .kb-ref-link {
     display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
-    font-size: 0.95rem; font-weight: 600; color: #c4b5fd;
+    font-size: 1.02rem; font-weight: 600; color: #c4b5fd;
     text-decoration: underline; text-underline-offset: 2px;
     line-height: 1.5;
 }
 .kb-ref-link:hover { color: #e9d5ff; }
 .kb-ref-doi {
-    font-size: 0.8rem; font-weight: 500; color: #94a3b8;
+    font-size: 0.88rem; font-weight: 500; color: #94a3b8;
     text-decoration: none;
 }
 .kb-ext-link {
-    font-size: 0.9rem; font-weight: 600; color: #c4b5fd;
+    font-size: 0.95rem; font-weight: 600; color: #c4b5fd;
     text-decoration: underline; text-underline-offset: 2px;
     background: rgba(124, 58, 237, 0.22); border-radius: 6px; padding: 5px 10px;
 }
@@ -1450,7 +1559,7 @@ _KB_CSS = """
     background: transparent; padding: 0; text-decoration: underline;
 }
 .kb-test-table-wrap { overflow-x: auto; }
-.kb-test-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.kb-test-table { width: 100%; border-collapse: collapse; font-size: 0.98rem; }
 .kb-test-table th {
     text-align: left; color: #94a3b8; font-weight: 600; padding: 8px 10px;
     border-bottom: 1px solid rgba(148, 163, 184, 0.22);
@@ -1461,15 +1570,16 @@ _KB_CSS = """
 }
 .kb-positive { color: #4ade80; }
 .kb-mixed { color: #fbbf24; }
+.kb-negative { color: #f87171; }
 .kb-org-detail-card {
     border: 1px solid rgba(148, 163, 184, 0.22);
     border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
     background: rgba(2, 6, 23, 0.45);
 }
-.kb-org-detail-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
-.kb-org-detail-row { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; line-height: 1.45; }
+.kb-org-detail-name { font-weight: 700; font-size: 1.08rem; color: #f8fafc; }
+.kb-org-detail-row { font-size: 0.98rem; color: #94a3b8; margin-top: 5px; line-height: 1.45; }
 .kb-org-gene-stage {
-    display: inline-block; font-size: 0.8rem; font-weight: 700;
+    display: inline-block; font-size: 0.88rem; font-weight: 700;
     border-radius: 999px; padding: 3px 10px; margin-right: 6px;
 }
 .kb-stage-commercial { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
@@ -1486,7 +1596,7 @@ _KB_CSS = """
 }
 .kb-agg-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .kb-agg-label {
-    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.05em; color: #64748b;
 }
 .kb-exp-surface {
@@ -1497,7 +1607,7 @@ _KB_CSS = """
     display: inline-flex; align-items: center; gap: 6px;
     border: 1px solid rgba(148, 163, 184, 0.28);
     background: rgba(15, 23, 42, 0.65); color: #cbd5e1;
-    border-radius: 999px; padding: 5px 12px; font-size: 0.78rem; font-weight: 600;
+    border-radius: 999px; padding: 7px 14px; font-size: 0.95rem; font-weight: 600;
     cursor: pointer;
 }
 .kb-agg-chip:hover { border-color: rgba(167, 139, 250, 0.55); color: #e9d5ff; }
@@ -1507,13 +1617,78 @@ _KB_CSS = """
     color: #e9d5ff;
 }
 .kb-agg-chip .kb-agg-count {
-    font-size: 0.72rem; font-weight: 700; color: #94a3b8;
+    font-size: 0.88rem; font-weight: 700; color: #94a3b8;
 }
 .kb-agg-chip.active .kb-agg-count { color: #c4b5fd; }
+/* Outcome / host / kind chips — same palette as grid badges */
+.kb-agg-chip.kb-agg-outcome-positive {
+    color: #4ade80; border-color: rgba(34, 197, 94, 0.45);
+    background: rgba(34, 197, 94, 0.14);
+}
+.kb-agg-chip.kb-agg-outcome-positive .kb-agg-count { color: #86efac; }
+.kb-agg-chip.kb-agg-outcome-positive.active {
+    background: rgba(34, 197, 94, 0.32); border-color: rgba(74, 222, 128, 0.75); color: #bbf7d0;
+}
+.kb-agg-chip.kb-agg-outcome-mixed {
+    color: #fbbf24; border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.14);
+}
+.kb-agg-chip.kb-agg-outcome-mixed .kb-agg-count { color: #fcd34d; }
+.kb-agg-chip.kb-agg-outcome-mixed.active {
+    background: rgba(245, 158, 11, 0.32); border-color: rgba(251, 191, 36, 0.75); color: #fde68a;
+}
+.kb-agg-chip.kb-agg-outcome-negative {
+    color: #f87171; border-color: rgba(248, 113, 113, 0.45);
+    background: rgba(248, 113, 113, 0.12);
+}
+.kb-agg-chip.kb-agg-outcome-negative .kb-agg-count { color: #fca5a5; }
+.kb-agg-chip.kb-agg-outcome-negative.active {
+    background: rgba(248, 113, 113, 0.28); border-color: rgba(248, 113, 113, 0.75); color: #fecaca;
+}
+.kb-agg-chip.kb-agg-host-human {
+    color: #4ade80; border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.12);
+}
+.kb-agg-chip.kb-agg-host-human .kb-agg-count { color: #86efac; }
+.kb-agg-chip.kb-agg-host-human.active {
+    background: rgba(34, 197, 94, 0.3); border-color: rgba(74, 222, 128, 0.7); color: #bbf7d0;
+}
+.kb-agg-chip.kb-agg-host-animal {
+    color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.12);
+}
+.kb-agg-chip.kb-agg-host-animal .kb-agg-count { color: #fcd34d; }
+.kb-agg-chip.kb-agg-host-animal.active {
+    background: rgba(245, 158, 11, 0.3); border-color: rgba(251, 191, 36, 0.7); color: #fde68a;
+}
+.kb-agg-chip.kb-agg-host-cell {
+    color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4);
+    background: rgba(148, 163, 184, 0.12);
+}
+.kb-agg-chip.kb-agg-host-cell .kb-agg-count { color: #94a3b8; }
+.kb-agg-chip.kb-agg-host-cell.active {
+    background: rgba(148, 163, 184, 0.28); border-color: rgba(203, 213, 225, 0.65); color: #e2e8f0;
+}
+.kb-agg-chip.kb-agg-kind-trial {
+    color: #93c5fd; border-color: rgba(59, 130, 246, 0.45);
+    background: rgba(59, 130, 246, 0.14);
+}
+.kb-agg-chip.kb-agg-kind-trial .kb-agg-count { color: #93c5fd; }
+.kb-agg-chip.kb-agg-kind-trial.active {
+    background: rgba(59, 130, 246, 0.32); border-color: rgba(147, 197, 253, 0.75); color: #bfdbfe;
+}
+.kb-agg-chip.kb-agg-kind-lab {
+    color: #c4b5fd; border-color: rgba(124, 58, 237, 0.45);
+    background: rgba(124, 58, 237, 0.14);
+}
+.kb-agg-chip.kb-agg-kind-lab .kb-agg-count { color: #c4b5fd; }
+.kb-agg-chip.kb-agg-kind-lab.active {
+    background: rgba(124, 58, 237, 0.32); border-color: rgba(196, 181, 253, 0.75); color: #ddd6fe;
+}
 .kb-agg-clear {
-    margin-left: auto; font-size: 0.75rem; font-weight: 600;
+    margin-left: auto; font-size: 0.85rem; font-weight: 600;
     border: 1px dashed rgba(148, 163, 184, 0.35); background: transparent;
-    color: #94a3b8; border-radius: 8px; padding: 4px 10px; cursor: pointer;
+    color: #94a3b8; border-radius: 8px; padding: 5px 11px; cursor: pointer;
 }
 .kb-agg-clear:hover { color: #e9d5ff; border-color: rgba(167, 139, 250, 0.55); }
 
@@ -1557,13 +1732,13 @@ _KB_CSS = """
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px;
 }
 .kb-avail-gene {
-    font-size: 1.05rem; font-weight: 700; color: #f8fafc;
+    font-size: 1.18rem; font-weight: 700; color: #f8fafc;
     letter-spacing: -0.01em; line-height: 1.25;
     flex: 1 1 auto; min-width: 0;
 }
-.kb-avail-org-count { font-size: 0.75rem; color: #64748b; width: 100%; }
+.kb-avail-org-count { font-size: 0.85rem; color: #64748b; width: 100%; }
 .kb-avail-desc {
-    font-size: 0.86rem; line-height: 1.5; color: #cbd5e1;
+    font-size: 0.98rem; line-height: 1.55; color: #cbd5e1;
     margin: 0;
     display: -webkit-box;
     -webkit-line-clamp: 4;
@@ -1594,29 +1769,29 @@ _KB_CSS = """
 }
 .kb-avail-offering:first-child { border-top: none; padding-top: 2px; }
 .kb-avail-offering-name {
-    font-size: 0.84rem; font-weight: 650; color: #e2e8f0;
+    font-size: 0.95rem; font-weight: 650; color: #e2e8f0;
     grid-column: 1; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .kb-avail-price {
-    font-size: 0.82rem; font-weight: 700; color: #c4b5fd;
+    font-size: 0.92rem; font-weight: 700; color: #c4b5fd;
     grid-column: 2; white-space: nowrap; justify-self: end;
 }
 .kb-avail-offering-meta {
     grid-column: 1 / -1;
     display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center;
-    font-size: 0.74rem; color: #94a3b8;
+    font-size: 0.85rem; color: #94a3b8;
 }
-.kb-avail-jurisdiction { font-size: 0.72rem; color: #64748b; }
+.kb-avail-jurisdiction { font-size: 0.82rem; color: #64748b; }
 .kb-avail-offering a {
-    color: #a78bfa; font-size: 0.74rem; font-weight: 600; text-decoration: none;
+    color: #a78bfa; font-size: 0.85rem; font-weight: 600; text-decoration: none;
 }
 .kb-avail-offering a:hover { text-decoration: underline; }
 .kb-avail-details-btn {
     align-self: flex-start; margin-top: auto; padding-top: 4px;
     border: none; background: transparent; color: #a78bfa;
     border-radius: 0; padding-left: 0; padding-right: 0;
-    font-size: 0.78rem; font-weight: 600;
+    font-size: 0.9rem; font-weight: 600;
     cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
 }
 .kb-avail-details-btn:hover { color: #e9d5ff; }
@@ -1629,23 +1804,39 @@ _KB_CSS = """
 }
 .kb-avail-details-body .kb-detail-section { margin-bottom: 4px; }
 .kb-avail-details-body .kb-detail-section-text {
-    font-size: 0.84rem; line-height: 1.55; max-width: 100%;
+    font-size: 0.95rem; line-height: 1.55; max-width: 100%;
     word-break: break-word;
 }
 .kb-avail-open-genes {
     align-self: flex-start;
     border: 1px solid rgba(167, 139, 250, 0.45);
     background: rgba(124, 58, 237, 0.22); color: #e9d5ff;
-    border-radius: 8px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600;
+    border-radius: 8px; padding: 7px 13px; font-size: 0.9rem; font-weight: 600;
     cursor: pointer;
 }
-.kb-exp-detail-gene-muted { font-size: 0.95rem; color: #94a3b8; margin-top: 8px; }
+.kb-exp-detail-gene-muted { font-size: 1.02rem; color: #94a3b8; margin-top: 8px; }
 .kb-exp-gene-link-btn {
     margin-top: 10px; align-self: flex-start;
     border: 1px solid rgba(167, 139, 250, 0.45);
     background: rgba(124, 58, 237, 0.22); color: #e9d5ff;
-    border-radius: 8px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600;
+    border-radius: 8px; padding: 7px 13px; font-size: 0.9rem; font-weight: 600;
     cursor: pointer;
+}
+/* Narrow viewports — keep type readable, slightly tighten without going compact */
+@media (max-width: 720px) {
+    .kb-page .MuiDataGrid-root,
+    .kb-page .MuiDataGrid-cell,
+    .kb-page .MuiDataGrid-cellContent {
+        font-size: 0.95rem !important;
+    }
+    .kb-page .MuiDataGrid-cell > div[style*="border-radius"] {
+        font-size: 0.88rem !important;
+    }
+    .kb-detail-panel { font-size: 16px; }
+    .kb-detail-name { font-size: 1.45rem; }
+    .kb-detail-desc { font-size: 1.05rem; }
+    .kb-avail-gene { font-size: 1.08rem; }
+    .kb-avail-desc { font-size: 0.92rem; }
 }
 """
 
@@ -1760,7 +1951,7 @@ _GRID_VIEWPORT_HEIGHT = "calc(100dvh - 280px)"
 _EXP_HIDDEN: dict[str, bool] = {
     "gene_id": False,
     "exp_idx": False,
-    "Host level": False,
+    "Host": False,
     "Reference": False,
     "Delivery": False,
     "System": False,
@@ -1774,7 +1965,7 @@ _ORG_HIDDEN: dict[str, bool] = {
 }
 
 
-_GRID_HEADER_PX = 44
+_GRID_HEADER_PX = 52
 
 
 def _grid_shell(
@@ -1788,10 +1979,10 @@ def _grid_shell(
     grid_kwargs: dict[str, Any] = {
         "height": height,
         "width": "100%",
-        "density": "compact",
+        "density": "standard",
         "column_header_height": _GRID_HEADER_PX,
         "autosize_on_mount": False,
-        "show_toolbar": False,
+        "show_toolbar": True,
         "show_description_in_header": False,
         "show_filter_panel": True,
         "show_filter_presets": False,
@@ -1875,66 +2066,96 @@ def _agg_chip(
     )
 
 
+def _colored_agg_chip(
+    label: str,
+    count: int,
+    *,
+    active_var: rx.Var,
+    on_toggle: rx.EventHandler,
+    tone: str,
+) -> rx.Component:
+    """Filter chip with the same color language as grid badge columns."""
+    return rx.el.button(
+        label,
+        rx.el.span(str(count), class_name="kb-agg-count"),
+        class_name=rx.cond(
+            active_var == label,
+            f"kb-agg-chip kb-agg-{tone} active",
+            f"kb-agg-chip kb-agg-{tone}",
+        ),
+        on_click=on_toggle(label),
+        type="button",
+    )
+
+
 def _experiments_agg_bar() -> rx.Component:
-    pos_labels = ("true", "mixed", "false")
-    pos_display = {"true": "Positive", "mixed": "Mixed", "false": "Negative"}
-    pos_chips = []
-    for val in pos_labels:
-        pos_chips.append(
-            rx.el.button(
-                pos_display[val],
-                rx.el.span(str(_EXP_POSITIVE_COUNTS.get(val, 0)), class_name="kb-agg-count"),
-                class_name=rx.cond(
-                    KbExperimentsGridState.agg_positive == val,
-                    "kb-agg-chip active",
-                    "kb-agg-chip",
-                ),
-                on_click=KbExperimentsGridState.toggle_agg_positive(val),
-                type="button",
-            )
-        )
     return rx.el.div(
         rx.el.div(
             rx.el.span("Host", class_name="kb-agg-label"),
-            _agg_chip(
+            _colored_agg_chip(
                 "Human",
                 _EXP_HOST_COUNTS.get("Human", 0),
                 active_var=KbExperimentsGridState.agg_host,
                 on_toggle=KbExperimentsGridState.toggle_agg_host,
+                tone="host-human",
             ),
-            _agg_chip(
+            _colored_agg_chip(
                 "Animal",
                 _EXP_HOST_COUNTS.get("Animal", 0),
                 active_var=KbExperimentsGridState.agg_host,
                 on_toggle=KbExperimentsGridState.toggle_agg_host,
+                tone="host-animal",
             ),
-            _agg_chip(
+            _colored_agg_chip(
                 "Cell / other",
                 _EXP_HOST_COUNTS.get("Cell / other", 0),
                 active_var=KbExperimentsGridState.agg_host,
                 on_toggle=KbExperimentsGridState.toggle_agg_host,
+                tone="host-cell",
             ),
             class_name="kb-agg-group",
         ),
         rx.el.div(
             rx.el.span("Kind", class_name="kb-agg-label"),
-            _agg_chip(
+            _colored_agg_chip(
                 "Clinical trial",
                 _EXP_KIND_COUNTS.get("Clinical trial", 0),
                 active_var=KbExperimentsGridState.agg_kind,
                 on_toggle=KbExperimentsGridState.toggle_agg_kind,
+                tone="kind-trial",
             ),
-            _agg_chip(
+            _colored_agg_chip(
                 "Lab / paper",
                 _EXP_KIND_COUNTS.get("Lab / paper", 0),
                 active_var=KbExperimentsGridState.agg_kind,
                 on_toggle=KbExperimentsGridState.toggle_agg_kind,
+                tone="kind-lab",
             ),
             class_name="kb-agg-group",
         ),
         rx.el.div(
             rx.el.span("Outcome", class_name="kb-agg-label"),
-            *pos_chips,
+            _colored_agg_chip(
+                "Positive",
+                _EXP_POSITIVE_COUNTS.get("Positive", 0),
+                active_var=KbExperimentsGridState.agg_positive,
+                on_toggle=KbExperimentsGridState.toggle_agg_positive,
+                tone="outcome-positive",
+            ),
+            _colored_agg_chip(
+                "Mixed",
+                _EXP_POSITIVE_COUNTS.get("Mixed", 0),
+                active_var=KbExperimentsGridState.agg_positive,
+                on_toggle=KbExperimentsGridState.toggle_agg_positive,
+                tone="outcome-mixed",
+            ),
+            _colored_agg_chip(
+                "Negative",
+                _EXP_POSITIVE_COUNTS.get("Negative", 0),
+                active_var=KbExperimentsGridState.agg_positive,
+                on_toggle=KbExperimentsGridState.toggle_agg_positive,
+                tone="outcome-negative",
+            ),
             class_name="kb-agg-group",
         ),
         rx.el.button(
@@ -1952,11 +2173,11 @@ def _experiments_surface() -> rx.Component:
     grid = _grid_shell(
         KbExperimentsGridState,
         hint=(
-            "Filter with the chips. Expand ▸ for delivery, system, and category. "
+            "Filter with the chips. Expand ▸ for host organism, delivery, system, and category. "
             "Row click opens experiment detail."
         ),
         visibility=_EXP_HIDDEN,
-        detail_columns=["Result", "Delivery", "System", "Effect size", "Category"],
+        detail_columns=["Host", "Result", "Delivery", "System", "Effect size", "Category"],
         height=_GRID_VIEWPORT_HEIGHT,
     )
     return rx.el.div(
@@ -2452,6 +2673,8 @@ def _gene_dossier() -> rx.Component:
             _dossier_overview(),
         ),
         class_name="kb-detail-panel",
+        # Remount on gene change so panel scrollTop resets with the new card.
+        key=KnowledgebaseState.selected_gene_id,
     )
 
 
@@ -2474,9 +2697,12 @@ def _experiment_detail_filled() -> rx.Component:
     )
     positive_class = rx.match(
         KnowledgebaseState.e_positive,
+        ("Positive", "kb-positive"),
         ("true", "kb-positive"),
+        ("Mixed", "kb-mixed"),
         ("mixed", "kb-mixed"),
-        ("false", ""),
+        ("Negative", "kb-negative"),
+        ("false", "kb-negative"),
         "",
     )
     return rx.el.div(
