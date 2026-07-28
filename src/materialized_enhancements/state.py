@@ -350,25 +350,51 @@ def _mobile_body_change_overlay_script() -> str:
 
 
 def _mobile_onboarding_scroll_script(step: int) -> str:
-    """Scroll the mobile viewport to the current onboarding target."""
-    selector_by_step = {
+    """Bring the current onboarding tip (or its fallback target) into view."""
+    fallback_by_step = {
         0: "#gene-library",
         1: "#compose-personal-tag",
         2: ".me-rpg-body-stage > .me-rpg-materialize-leg-cta.me-onboarding-materialize-lift",
         3: "#gene-library",
     }
-    selector = selector_by_step[min(3, max(0, step))]
+    fallback = fallback_by_step[min(3, max(0, step))]
     block = "start" if step in (0, 3) else "center"
     return f"""
 (() => {{
-    const isMobile = window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-    if (!isMobile) return;
-    if (document.querySelector(".me-onboarding-tip-card")) return;
-    window.setTimeout(() => {{
-        const target = document.querySelector({json.dumps(selector)});
+    const run = () => {{
+        const tip = document.querySelector(".me-onboarding-tip-card");
+        const target = tip || document.querySelector({json.dumps(fallback)});
         if (!target) return;
-        target.scrollIntoView({{behavior: "smooth", block: {json.dumps(block)}, inline: "nearest"}});
-    }}, 120);
+        const rect = target.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+        const fullyVisible = rect.top >= 8 && rect.bottom <= (vh - 8);
+        const tipFixed = tip && window.getComputedStyle(tip).position === "fixed";
+        if (fullyVisible && tipFixed) return;
+        if (!fullyVisible) {{
+            target.scrollIntoView({{behavior: "smooth", block: {json.dumps(block)}, inline: "nearest"}});
+        }}
+        // Tip may sit inside a height-capped scroll panel — scroll that ancestor too.
+        if (!tip) return;
+        let parent = tip.parentElement;
+        while (parent && parent !== document.body) {{
+            const style = window.getComputedStyle(parent);
+            const canScroll = /(auto|scroll)/.test(style.overflowY) && parent.scrollHeight > parent.clientHeight + 1;
+            if (canScroll) {{
+                const parentRect = parent.getBoundingClientRect();
+                const tipRect = tip.getBoundingClientRect();
+                if (tipRect.top < parentRect.top + 8 || tipRect.bottom > parentRect.bottom - 8) {{
+                    parent.scrollTo({{
+                        top: Math.max(0, parent.scrollTop + (tipRect.top - parentRect.top) - 12),
+                        behavior: "smooth",
+                    }});
+                }}
+                break;
+            }}
+            parent = parent.parentElement;
+        }}
+    }};
+    window.setTimeout(run, 80);
+    window.setTimeout(run, 280);
 }})();
 """
 

@@ -464,6 +464,9 @@ def _jigsaw_choice_section() -> rx.Component:
         JigsawState.choice_expanded,
         rx.el.div(
             rx.el.input(
+                id="jigsaw-personal-tag",
+                name="character-alias",
+                auto_complete="nickname",
                 placeholder="Name or personal tag...",
                 value=JigsawState.personal_tag,
                 on_change=JigsawState.set_personal_tag,

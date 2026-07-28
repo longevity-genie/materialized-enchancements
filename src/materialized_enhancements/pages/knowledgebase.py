@@ -24,22 +24,37 @@ from materialized_enhancements.gene_data import (
 )
 from materialized_enhancements.state import CATEGORY_COLORS
 
-# Reset gene-card scroll when switching rows. On mobile the panel sits below the
-# grid and page/panel scroll can leave the gene name above the fold.
-_KB_DETAIL_SCROLL_RESET_SCRIPT = """
-(() => {
-  const reset = () => {
-    const panel = document.querySelector(".kb-page .kb-detail-panel");
-    if (!panel) return;
+# Watch data-kb-gene on the dossier panel and reset scroll when the gene changes.
+# Do NOT yield rx.call_script from KbGenesGridState.handle_lf_grid_row_click after
+# await get_state(...) — that stalls Reflex's event queue and blocks further clicks.
+_KB_DETAIL_SCROLL_WATCH_SCRIPT = """
+(function () {
+  if (window.__kbDetailScrollWatch) return;
+  window.__kbDetailScrollWatch = true;
+  var lastGene = "";
+  var reset = function () {
+    var panel = document.querySelector(".kb-page .kb-detail-panel");
+    if (!panel) { lastGene = ""; return; }
+    var gene = panel.getAttribute("data-kb-gene") || "";
+    if (!gene || gene === lastGene) return;
+    lastGene = gene;
     panel.scrollTop = 0;
-    const anchor = panel.querySelector(".kb-detail-name") || panel;
+    var anchor = panel.querySelector(".kb-detail-name") || panel;
     anchor.scrollIntoView({ behavior: "auto", block: "nearest", inline: "nearest" });
     if (anchor.getBoundingClientRect().top < 12) {
       panel.scrollIntoView({ behavior: "auto", block: "start", inline: "nearest" });
     }
   };
-  // Remount (key=gene_id) + Reflex patch: wait one frame, then a short settle.
-  requestAnimationFrame(() => { window.setTimeout(reset, 40); });
+  var mo = new MutationObserver(function () {
+    window.requestAnimationFrame(reset);
+  });
+  mo.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["data-kb-gene"]
+  });
+  window.setTimeout(reset, 0);
 })();
 """
 
@@ -308,6 +323,88 @@ def _parse_key_references(raw: str) -> list[dict[str, str]]:
     return refs
 
 
+# URLs / DOIs embedded in free-text gene-card fields (DB stores plain text).
+_PROSE_LINK_RE = re.compile(
+    r"https?://[^\s<>\"']+|(?:doi:\s*)?(?:10\.\d{4,9}/[^\s<>\"']+)",
+    re.IGNORECASE,
+)
+_PROSE_TRAILING_PUNCT = ".,;:)]}\"'"
+
+
+def _href_for_prose_token(raw: str) -> str:
+    """Normalize a matched URL or DOI token into an https href."""
+    token = raw.strip().rstrip(_PROSE_TRAILING_PUNCT)
+    lower = token.lower()
+    if lower.startswith("http://") or lower.startswith("https://"):
+        return token
+    if lower.startswith("doi:"):
+        token = token[4:].strip()
+    if re.match(r"^10\.\d", token):
+        return f"https://doi.org/{token}"
+    return token
+
+
+def _split_prose_paragraphs(text: str) -> list[str]:
+    """Split free-text fields on blank lines into non-empty paragraphs."""
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+    parts = re.split(r"\n\s*\n+", raw)
+    paragraphs: list[str] = []
+    for part in parts:
+        # Soft line wraps inside a paragraph collapse to spaces.
+        cleaned = re.sub(r"[ \t]*\n[ \t]*", " ", part).strip()
+        if cleaned:
+            paragraphs.append(cleaned)
+    return paragraphs
+
+
+def _linkify_prose_inline(text: str) -> list[dict[str, str]]:
+    """Split one paragraph into {kind, v, href} segments (URLs/DOIs clickable)."""
+    raw = str(text or "")
+    if not raw:
+        return []
+    matches = list(_PROSE_LINK_RE.finditer(raw))
+    if not matches:
+        return [{"kind": "text", "v": raw, "href": ""}]
+    out: list[dict[str, str]] = []
+    pos = 0
+    for match in matches:
+        if match.start() > pos:
+            out.append({"kind": "text", "v": raw[pos : match.start()], "href": ""})
+        token = match.group(0)
+        # Keep sentence punctuation outside the link when it was greedily matched.
+        trimmed = token.rstrip(_PROSE_TRAILING_PUNCT)
+        trailing = token[len(trimmed) :]
+        if trimmed:
+            out.append(
+                {
+                    "kind": "link",
+                    "v": trimmed,
+                    "href": _href_for_prose_token(trimmed),
+                }
+            )
+        if trailing:
+            out.append({"kind": "text", "v": trailing, "href": ""})
+        pos = match.end()
+    if pos < len(raw):
+        out.append({"kind": "text", "v": raw[pos:], "href": ""})
+    return out
+
+
+def _linkify_prose_segments(text: str) -> list[dict[str, str]]:
+    """Linkify prose; insert para_break markers between blank-line paragraphs."""
+    paragraphs = _split_prose_paragraphs(text)
+    if not paragraphs:
+        return []
+    out: list[dict[str, str]] = []
+    for index, paragraph in enumerate(paragraphs):
+        if index > 0:
+            out.append({"kind": "para_break", "v": "", "href": ""})
+        out.extend(_linkify_prose_inline(paragraph))
+    return out
+
+
 def _best_org_stage(gene_id: str) -> str:
     entries = GENE_ORG_MAP.get(gene_id, [])
     if not entries:
@@ -400,6 +497,8 @@ def _genes_lazyframe() -> pl.LazyFrame:
                 "Short description": g["short_description"],
             }
         )
+    # Default order: alphabetical by display name. MUI column sorts override this.
+    rows.sort(key=lambda r: str(r["Gene"]).casefold())
     return pl.LazyFrame(rows)
 
 
@@ -700,13 +799,15 @@ class KnowledgebaseState(rx.State):
     d_species_scientific: str = ""
     d_evidence: str = ""
     d_tier_bucket: str = "genomic"
-    d_short: str = ""
-    d_mechanism: str = ""
-    d_achievements: str = ""
-    d_gaps: str = ""
-    d_notes: str = ""
+    # Prose fields are linkified segments ({kind, v, href}) so DB plain-text
+    # URLs/DOIs render as clickable links in the gene card.
+    d_short: list[dict[str, str]] = []
+    d_mechanism: list[dict[str, str]] = []
+    d_achievements: list[dict[str, str]] = []
+    d_gaps: list[dict[str, str]] = []
+    d_notes: list[dict[str, str]] = []
     d_confidence: str = ""
-    d_confidence_arg: str = ""
+    d_confidence_arg: list[dict[str, str]] = []
     d_gene_url: str = ""
     d_alphafold_url: str = ""
     d_pdb_url: str = ""
@@ -840,7 +941,6 @@ class KnowledgebaseState(rx.State):
         self.surface = "genes"
         self.apply_gene_selection(gene_id, dossier_tab="overview")
         yield KbGenesGridState.load_grid
-        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
     @rx.event
     def open_gene_from_experiment(self):
@@ -850,7 +950,6 @@ class KnowledgebaseState(rx.State):
         self.surface = "genes"
         self.apply_gene_selection(gene_id, dossier_tab="evidence")
         yield KbGenesGridState.load_grid
-        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
     @rx.event
     def open_gene_from_org(self, gene_id: str):
@@ -861,7 +960,6 @@ class KnowledgebaseState(rx.State):
         self.surface = "genes"
         self.apply_gene_selection(gene_id, dossier_tab="overview")
         yield KbGenesGridState.load_grid
-        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
     def apply_gene_selection(self, gene_id: str, *, dossier_tab: str = "overview") -> None:
         """Populate dossier fields from a gene_id (callable from other states)."""
@@ -882,14 +980,16 @@ class KnowledgebaseState(rx.State):
         self.d_species_scientific = gene["species_scientific_names"]
         self.d_evidence = gene["evidence_tier"]
         self.d_tier_bucket = _tier_bucket(_max_tier(gene["evidence_tier"]))
-        self.d_short = gene["short_description"]
-        self.d_mechanism = gene["mechanism"]
-        self.d_achievements = gene["achievements"]
-        self.d_gaps = gene["translational_gaps"]
-        self.d_notes = gene["notes"]
+        self.d_short = _linkify_prose_segments(str(gene.get("short_description", "") or ""))
+        self.d_mechanism = _linkify_prose_segments(str(gene.get("mechanism", "") or ""))
+        self.d_achievements = _linkify_prose_segments(str(gene.get("achievements", "") or ""))
+        self.d_gaps = _linkify_prose_segments(str(gene.get("translational_gaps", "") or ""))
+        self.d_notes = _linkify_prose_segments(str(gene.get("notes", "") or ""))
         conf = gene.get("confidence_primary") or {}
         self.d_confidence = str(conf.get("value", ""))
-        self.d_confidence_arg = str(conf.get("argument", "") or conf.get("description", ""))
+        self.d_confidence_arg = _linkify_prose_segments(
+            str(conf.get("argument", "") or conf.get("description", "") or "")
+        )
         self.d_gene_url = str(gene.get("gene_url", "") or "")
         self.d_alphafold_url = str(gene.get("alphafold_url", "") or "")
         self.d_pdb_url = str(gene.get("pdb_url", "") or "")
@@ -941,9 +1041,8 @@ class KnowledgebaseState(rx.State):
         self.d_orgs = org_rows
 
     @rx.event
-    def select_gene(self, gene_id: str):
+    def select_gene(self, gene_id: str) -> None:
         self.apply_gene_selection(gene_id, dossier_tab="overview")
-        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
 
 class KbGenesGridState(LazyFrameGridMixin, rx.State):
@@ -986,7 +1085,7 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
         )
 
     @rx.event
-    async def handle_lf_grid_row_click(self, params: dict[str, Any]):
+    async def handle_lf_grid_row_click(self, params: dict[str, Any]) -> None:
         row = params.get("row", {})
         gene_id = str(row.get("gene_id", ""))
         if not gene_id:
@@ -996,7 +1095,6 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
             self.lf_grid_row_selection_model = {"type": "include", "ids": [row_id]}
         kb = await self.get_state(KnowledgebaseState)
         kb.apply_gene_selection(gene_id, dossier_tab="overview")
-        yield rx.call_script(_KB_DETAIL_SCROLL_RESET_SCRIPT)
 
 
 class KbExperimentsGridState(LazyFrameGridMixin, rx.State):
@@ -1351,8 +1449,11 @@ _KB_CSS = """
 .kb-page .MuiDataGrid-row,
 .kb-page .MuiDataGrid-cell,
 .kb-page .MuiDataGrid-cellContent {
-    cursor: pointer !important;
     user-select: none;
+}
+/* Only Gene / Name look clickable — category/evidence badges are display-only */
+.kb-page .MuiDataGrid-cell {
+    cursor: default;
 }
 .kb-page .MuiDataGrid-cell,
 .kb-page .MuiDataGrid-cellContent {
@@ -1512,7 +1613,9 @@ _KB_CSS = """
     background: rgba(124, 58, 237, 0.2); color: #c4b5fd;
 }
 .kb-detail-desc {
-    font-size: 1.12rem; line-height: 1.65; color: #e2e8f0; margin: 0 0 18px;
+    font-size: 1.12rem; line-height: 1.65; color: #e2e8f0;
+    margin: 0 0 3.3em; /* two blank rows before next titled subsection */
+    word-break: break-word;
 }
 .kb-dossier-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .kb-dossier-tab {
@@ -1525,14 +1628,33 @@ _KB_CSS = """
     border-color: rgba(167, 139, 250, 0.72);
     color: #e9d5ff;
 }
-.kb-detail-section { margin-bottom: 18px; }
+.kb-detail-section { margin-bottom: 3.3em; } /* two blank rows between titled subsections */
 .kb-detail-section-label {
     font-size: 0.88rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 8px;
 }
 .kb-detail-section-text {
     font-size: 1.05rem; line-height: 1.65; color: #e2e8f0;
-    white-space: pre-wrap; word-break: break-word;
+    word-break: break-word;
+}
+.kb-prose-para-gap {
+    display: block;
+    height: 1.65em; /* one blank row between paragraphs inside a subsection */
+    width: 100%;
+}
+.kb-detail-desc a.kb-inline-link,
+.kb-detail-section-text a.kb-inline-link,
+.kb-avail-desc a.kb-inline-link {
+    color: #c4b5fd;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+.kb-detail-desc a.kb-inline-link:hover,
+.kb-detail-section-text a.kb-inline-link:hover,
+.kb-avail-desc a.kb-inline-link:hover {
+    color: #e9d5ff;
 }
 .kb-links-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .kb-ref-list {
@@ -1802,11 +1924,12 @@ _KB_CSS = """
     max-width: 100%;
     min-width: 0;
 }
-.kb-avail-details-body .kb-detail-section { margin-bottom: 4px; }
+.kb-avail-details-body .kb-detail-section { margin-bottom: 3.1em; }
 .kb-avail-details-body .kb-detail-section-text {
     font-size: 0.95rem; line-height: 1.55; max-width: 100%;
     word-break: break-word;
 }
+.kb-avail-details-body .kb-prose-para-gap { height: 1.55em; }
 .kb-avail-open-genes {
     align-self: flex-start;
     border: 1px solid rgba(167, 139, 250, 0.45);
@@ -2270,7 +2393,7 @@ def _available_card(card: dict[str, Any]) -> rx.Component:
         detail_parts.append(
             rx.el.div(
                 rx.el.div("Mechanism", class_name="kb-detail-section-label"),
-                rx.el.div(mechanism, class_name="kb-detail-section-text"),
+                _linked_static_prose(mechanism, "kb-detail-section-text"),
                 class_name="kb-detail-section",
             )
         )
@@ -2279,7 +2402,7 @@ def _available_card(card: dict[str, Any]) -> rx.Component:
         detail_parts.append(
             rx.el.div(
                 rx.el.div("Narrative", class_name="kb-detail-section-label"),
-                rx.el.div(narrative, class_name="kb-detail-section-text"),
+                _linked_static_prose(narrative, "kb-detail-section-text"),
                 class_name="kb-detail-section",
             )
         )
@@ -2309,7 +2432,7 @@ def _available_card(card: dict[str, Any]) -> rx.Component:
             rx.el.span(f"{org_count} {org_label}", class_name="kb-avail-org-count"),
             class_name="kb-avail-header",
         ),
-        rx.el.div(card["short_description"], class_name="kb-avail-desc"),
+        _linked_static_prose(str(card["short_description"] or ""), "kb-avail-desc"),
         rx.el.div(*offerings, class_name="kb-avail-offerings"),
         rx.el.button(
             rx.cond(is_open, "Hide details", "Details"),
@@ -2393,6 +2516,61 @@ def _reference_link(entry: dict) -> rx.Component:
     )
 
 
+def _prose_link_segment(seg: rx.Var) -> rx.Component:
+    """One text/link/paragraph-break chunk from state segment lists."""
+    return rx.match(
+        seg["kind"],
+        ("para_break", rx.el.div(class_name="kb-prose-para-gap")),
+        (
+            "link",
+            rx.el.a(
+                seg["v"],
+                href=seg["href"],
+                target="_blank",
+                rel="noopener noreferrer",
+                class_name="kb-inline-link",
+                title=seg["href"],
+            ),
+        ),
+        rx.el.span(seg["v"]),
+    )
+
+
+def _linked_prose(segments: rx.Var, class_name: str) -> rx.Component:
+    """Render linkified gene-card prose from state segment lists."""
+    return rx.el.div(
+        rx.foreach(segments, _prose_link_segment),
+        class_name=class_name,
+    )
+
+
+def _static_prose_segment(seg: dict[str, str]) -> rx.Component:
+    """Compile-time text/link/paragraph-break chunk for Available cards."""
+    if seg.get("kind") == "para_break":
+        return rx.el.div(class_name="kb-prose-para-gap")
+    if seg.get("kind") == "link" and seg.get("href"):
+        return rx.el.a(
+            seg["v"],
+            href=seg["href"],
+            target="_blank",
+            rel="noopener noreferrer",
+            class_name="kb-inline-link",
+            title=seg["href"],
+        )
+    return rx.el.span(seg.get("v", ""))
+
+
+def _linked_static_prose(text: str, class_name: str) -> rx.Component:
+    """Render linkified prose built at compile time (Available cards)."""
+    segments = _linkify_prose_segments(text)
+    if not segments:
+        return rx.fragment()
+    return rx.el.div(
+        *[_static_prose_segment(seg) for seg in segments],
+        class_name=class_name,
+    )
+
+
 def _references_section() -> rx.Component:
     return rx.cond(
         KnowledgebaseState.d_references.length() > 0,
@@ -2442,30 +2620,30 @@ def _testing_row(entry: dict) -> rx.Component:
 
 def _dossier_overview() -> rx.Component:
     return rx.fragment(
-        rx.el.p(KnowledgebaseState.d_short, class_name="kb-detail-desc"),
+        _linked_prose(KnowledgebaseState.d_short, "kb-detail-desc"),
         rx.cond(
-            KnowledgebaseState.d_mechanism != "",
+            KnowledgebaseState.d_mechanism.length() > 0,
             rx.el.div(
                 rx.el.div("Mechanism", class_name="kb-detail-section-label"),
-                rx.el.div(KnowledgebaseState.d_mechanism, class_name="kb-detail-section-text"),
+                _linked_prose(KnowledgebaseState.d_mechanism, "kb-detail-section-text"),
                 class_name="kb-detail-section",
             ),
             rx.fragment(),
         ),
         rx.cond(
-            KnowledgebaseState.d_achievements != "",
+            KnowledgebaseState.d_achievements.length() > 0,
             rx.el.div(
                 rx.el.div("Key results", class_name="kb-detail-section-label"),
-                rx.el.div(KnowledgebaseState.d_achievements, class_name="kb-detail-section-text"),
+                _linked_prose(KnowledgebaseState.d_achievements, "kb-detail-section-text"),
                 class_name="kb-detail-section",
             ),
             rx.fragment(),
         ),
         rx.cond(
-            KnowledgebaseState.d_gaps != "",
+            KnowledgebaseState.d_gaps.length() > 0,
             rx.el.div(
                 rx.el.div("Translational gaps", class_name="kb-detail-section-label"),
-                rx.el.div(KnowledgebaseState.d_gaps, class_name="kb-detail-section-text"),
+                _linked_prose(KnowledgebaseState.d_gaps, "kb-detail-section-text"),
                 class_name="kb-detail-section",
             ),
             rx.fragment(),
@@ -2580,10 +2758,12 @@ def _dossier_properties() -> rx.Component:
                 rx.el.div(
                     KnowledgebaseState.d_confidence,
                     rx.cond(
-                        KnowledgebaseState.d_confidence_arg != "",
+                        KnowledgebaseState.d_confidence_arg.length() > 0,
                         rx.el.div(
-                            KnowledgebaseState.d_confidence_arg,
-                            class_name="kb-detail-section-text",
+                            _linked_prose(
+                                KnowledgebaseState.d_confidence_arg,
+                                "kb-detail-section-text",
+                            ),
                             style={"marginTop": "6px"},
                         ),
                         rx.fragment(),
@@ -2595,10 +2775,10 @@ def _dossier_properties() -> rx.Component:
             rx.fragment(),
         ),
         rx.cond(
-            KnowledgebaseState.d_notes != "",
+            KnowledgebaseState.d_notes.length() > 0,
             rx.el.div(
                 rx.el.div("Notes", class_name="kb-detail-section-label"),
-                rx.el.div(KnowledgebaseState.d_notes, class_name="kb-detail-section-text"),
+                _linked_prose(KnowledgebaseState.d_notes, "kb-detail-section-text"),
                 class_name="kb-detail-section",
             ),
             rx.fragment(),
@@ -2673,8 +2853,8 @@ def _gene_dossier() -> rx.Component:
             _dossier_overview(),
         ),
         class_name="kb-detail-panel",
-        # Remount on gene change so panel scrollTop resets with the new card.
-        key=KnowledgebaseState.selected_gene_id,
+        # Client watcher resets scroll when this attribute changes (see watch script).
+        custom_attrs={"data-kb-gene": KnowledgebaseState.selected_gene_id},
     )
 
 
@@ -3012,6 +3192,7 @@ def knowledgebase_layout() -> rx.Component:
     )
     return rx.el.div(
         rx.el.style(_KB_CSS),
+        rx.script(_KB_DETAIL_SCROLL_WATCH_SCRIPT),
         _kb_intro(),
         _surface_switcher(),
         rx.el.div(

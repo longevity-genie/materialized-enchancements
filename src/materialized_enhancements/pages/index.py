@@ -3047,6 +3047,10 @@ def _debounced_personal_tag_input(
     return rx.debounce_input(
         rx.el.input(
             id=input_id,
+            # nickname — not a legal/cardholder name. Without this, Chrome
+            # classifies the field as NAME and offers wallet cardholder names.
+            name="character-alias",
+            auto_complete="nickname",
             placeholder="Enhanced <Name>",
             value=ComposeState.personal_tag,
             on_change=ComposeState.set_personal_tag,
@@ -3883,8 +3887,17 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
     return rx.script(
         """
         (() => {
-            if (window.__meGeneLibraryAnchorsInstalled) return;
-            window.__meGeneLibraryAnchorsInstalled = true;
+            const installerVersion = "exclusive-accordion-2026-07-28";
+            if (window.__meGeneLibraryAnchorsInstalled === installerVersion) return;
+            window.__meGeneLibraryAnchorsInstalled = installerVersion;
+
+            const accordionSelector = "details.me-rpg-category-accordion";
+
+            const closeOtherAccordions = (keepOpen) => {
+                document.querySelectorAll(`${accordionSelector}[open]`).forEach((el) => {
+                    if (el !== keepOpen) el.open = false;
+                });
+            };
 
             const geneLibraryHash = (href) => {
                 if (!href) return "";
@@ -3897,11 +3910,20 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
                 if (!hash) return;
                 const target = document.getElementById(hash.slice(1));
                 if (!target) return;
-                if (target.tagName.toLowerCase() === "details") {
+                if (target.matches(accordionSelector)) {
+                    closeOtherAccordions(target);
                     target.open = true;
                 }
                 target.scrollIntoView({ behavior: "smooth", block: "start" });
             };
+
+            // Exclusive accordion: opening one category fold closes the rest.
+            document.addEventListener("toggle", (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLDetailsElement)) return;
+                if (!target.matches(accordionSelector) || !target.open) return;
+                closeOtherAccordions(target);
+            }, true);
 
             document.addEventListener("click", (event) => {
                 const link = event.target.closest('a[href*="#gene-library-"]');
@@ -4107,7 +4129,6 @@ def _rpg_gene_library_panel() -> rx.Component:
         _rpg_gene_library_anchor_script(),
         _rpg_gene_library_title(),
         rx.el.div(_materialize_hint_bubble("genes"), style={"position": "relative"}),
-        _gene_library_onboarding_tooltip(),
         rx.el.div(
             *[_rpg_category_gene_accordion(cat) for cat in UNIQUE_CATEGORIES],
             class_name="me-rpg-library-grid",
@@ -5319,6 +5340,16 @@ def _rpg_flow_css() -> rx.Component:
             filter: none;
             opacity: 1;
             pointer-events: auto;
+            position: sticky;
+            top: 0;
+            z-index: 1210;
+        }
+        /* Short / capped left panels: keep step 1 tip pinned while the column scrolls. */
+        .me-rpg-library-section.me-onboarding-gene-lift {
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
         }
         .me-onboarding-marker-hint {
             position: relative;
@@ -6139,6 +6170,9 @@ def _rpg_active_genes_layout() -> rx.Component:
         rx.el.div(
             _mobile_mission_briefing_autoclose_script(),
             rx.el.div(
+                # Step 1 tip first so it is visible without scrolling past intro/video
+                # on short viewports where the left panel is height-capped.
+                _gene_library_onboarding_tooltip(),
                 _rpg_sidebar_intro_stack(),
                 _mobile_budget_materialize_stack(),
                 _rpg_gene_library_panel(),
@@ -9170,6 +9204,8 @@ def _report_hidden_inputs() -> rx.Component:
         ),
         rx.el.input(
             id="report-share-name",
+            name="me-report-share-name",
+            auto_complete="off",
             value=ComposeState.input_personal_tag,
             read_only=True,
             style={"display": "none"},
@@ -10237,12 +10273,13 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
                 position: fixed !important;
                 left: 12px !important;
                 right: 12px !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
+                top: max(12px, env(safe-area-inset-top, 0px)) !important;
+                bottom: auto !important;
+                transform: none !important;
                 z-index: 1400 !important;
                 width: auto !important;
                 max-width: calc(100vw - 24px) !important;
-                max-height: min(58svh, 390px) !important;
+                max-height: min(52svh, calc(100svh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))) !important;
                 overflow-y: auto !important;
                 overscroll-behavior: contain !important;
                 padding: 10px 12px !important;
