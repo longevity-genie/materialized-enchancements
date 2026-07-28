@@ -2455,6 +2455,7 @@ def _rpg_category_stat_row(category: str) -> rx.Component:
         class_name="me-rpg-category-anchor",
         title=tooltip,
         aria_label=tooltip,
+        on_click=ComposeState.open_gene_library_accordion(category),
         style={"display": "block", "marginBottom": "8px", "textDecoration": "none"},
     )
 
@@ -3938,7 +3939,24 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
     count = ComposeState.active_gene_counts[category]
     spent = ComposeState.active_category_prices[category]
     is_selected = ComposeState.selected_categories.contains(category)
+    is_open = ComposeState.gene_library_open_category == category
     total_count = GAME_CATEGORY_COUNTS.get(category, 0)
+
+    gene_grid = rx.el.div(
+        rx.foreach(
+            ComposeState.gene_catalog,
+            lambda gene_item: _rpg_gene_card_for_category(gene_item, category),
+        ),
+        class_name="me-rpg-category-gene-grid",
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "minmax(0, 1fr)",
+            "gap": "10px",
+            "padding": "10px 0 2px 16px",
+            "marginLeft": "10px",
+            "borderLeft": f"1px solid {color}44",
+        },
+    )
 
     return rx.el.details(
         rx.el.summary(
@@ -3972,7 +3990,11 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
                     style={"flex": "1", "minWidth": "0", "marginLeft": "10px"},
                 ),
                 rx.el.span(
-                    rx.cond(is_selected, "Active", "Expand"),
+                    rx.cond(
+                        is_open,
+                        "Open",
+                        rx.cond(is_selected, "Active", "Expand"),
+                    ),
                     style={
                         "fontSize": "0.82rem",
                         "fontWeight": "900",
@@ -3980,8 +4002,12 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
                         "textTransform": "uppercase",
                         "padding": "3px 8px",
                         "borderRadius": "6px",
-                        "backgroundColor": rx.cond(is_selected, f"{color}22", "rgba(148, 163, 184, 0.12)"),
-                        "color": rx.cond(is_selected, color, "#cbd5e1"),
+                        "backgroundColor": rx.cond(
+                            is_open,
+                            f"{color}33",
+                            rx.cond(is_selected, f"{color}22", "rgba(148, 163, 184, 0.12)"),
+                        ),
+                        "color": rx.cond(is_open | is_selected, color, "#cbd5e1"),
                         "whiteSpace": "nowrap",
                     },
                 ),
@@ -4016,24 +4042,18 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
             },
             title=tooltip,
             aria_label=tooltip,
+            # Own the open/close in state so gene cards unmount when collapsed.
+            # prevent_default stops the native <details> toggle from fighting us.
+            on_click=[
+                ComposeState.toggle_gene_library_accordion(category),
+                rx.prevent_default,
+            ],
         ),
-        rx.el.div(
-            rx.foreach(
-                ComposeState.gene_catalog,
-                lambda gene_item: _rpg_gene_card_for_category(gene_item, category),
-            ),
-            class_name="me-rpg-category-gene-grid",
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "minmax(0, 1fr)",
-                "gap": "10px",
-                "padding": "10px 0 2px 16px",
-                "marginLeft": "10px",
-                "borderLeft": f"1px solid {color}44",
-            },
-        ),
+        # Mount gene cards only while this fold is open (selection stays in state).
+        rx.cond(is_open, gene_grid, rx.fragment()),
         class_name="me-rpg-category-accordion",
         id=_category_anchor_id(category),
+        open=is_open,
         style={
             "background": "transparent",
             "border": "none",
@@ -4050,17 +4070,9 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
     return rx.script(
         """
         (() => {
-            const installerVersion = "exclusive-accordion-2026-07-28";
+            const installerVersion = "state-accordion-mount-2026-07-28";
             if (window.__meGeneLibraryAnchorsInstalled === installerVersion) return;
             window.__meGeneLibraryAnchorsInstalled = installerVersion;
-
-            const accordionSelector = "details.me-rpg-category-accordion";
-
-            const closeOtherAccordions = (keepOpen) => {
-                document.querySelectorAll(`${accordionSelector}[open]`).forEach((el) => {
-                    if (el !== keepOpen) el.open = false;
-                });
-            };
 
             const geneLibraryHash = (href) => {
                 if (!href) return "";
@@ -4068,33 +4080,25 @@ def _rpg_gene_library_anchor_script() -> rx.Component:
                 return index >= 0 ? href.slice(index) : "";
             };
 
-            const openCategory = (href) => {
+            const scrollToCategory = (href) => {
                 const hash = geneLibraryHash(href);
                 if (!hash) return;
                 const target = document.getElementById(hash.slice(1));
                 if (!target) return;
-                if (target.matches(accordionSelector)) {
-                    closeOtherAccordions(target);
-                    target.open = true;
-                }
-                target.scrollIntoView({ behavior: "smooth", block: "start" });
+                // Open state is owned by ComposeState (body-map / summary clicks).
+                // This script only scrolls so the opened fold is in view.
+                window.setTimeout(() => {
+                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 50);
             };
-
-            // Exclusive accordion: opening one category fold closes the rest.
-            document.addEventListener("toggle", (event) => {
-                const target = event.target;
-                if (!(target instanceof HTMLDetailsElement)) return;
-                if (!target.matches(accordionSelector) || !target.open) return;
-                closeOtherAccordions(target);
-            }, true);
 
             document.addEventListener("click", (event) => {
                 const link = event.target.closest('a[href*="#gene-library-"]');
                 if (!link) return;
-                window.setTimeout(() => openCategory(link.getAttribute("href")), 0);
+                window.setTimeout(() => scrollToCategory(link.getAttribute("href")), 0);
             });
-            window.addEventListener("hashchange", () => openCategory(window.location.hash));
-            window.setTimeout(() => openCategory(window.location.hash), 0);
+            window.addEventListener("hashchange", () => scrollToCategory(window.location.hash));
+            window.setTimeout(() => scrollToCategory(window.location.hash), 0);
         })();
         """
     )

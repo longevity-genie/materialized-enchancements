@@ -1130,6 +1130,9 @@ class ComposeState(rx.State):
     selected_categories: list[str] = []
     included_genes: list[str] = []
     expanded_genes: list[str] = []
+    # Which Gene library category accordion is open. Empty = all collapsed.
+    # Gene cards mount only for this category so closed folds stay out of the DOM.
+    gene_library_open_category: str = ""
     # Full DB-backed gene library for UI cards. Loaded once per process from
     # gene_data (SQLite/CSV); never rewritten on selection toggles.
     gene_catalog: list[SculptureSelectedGene] = COMPOSITION_GENE_CATALOG
@@ -1243,8 +1246,29 @@ class ComposeState(rx.State):
         self._prune_included_genes()
         self._recompute_params()
 
+    def open_gene_library_accordion(self, category: str) -> None:
+        """Open one Gene library category fold (exclusive); mount its gene cards."""
+        if category not in UNIQUE_CATEGORIES:
+            return
+        if self.gene_library_open_category != category:
+            self.expanded_genes = []
+        self.gene_library_open_category = category
+
+    def toggle_gene_library_accordion(self, category: str) -> None:
+        """Toggle one Gene library category fold; closing unmounts its gene cards."""
+        if category not in UNIQUE_CATEGORIES:
+            return
+        if self.gene_library_open_category == category:
+            self.gene_library_open_category = ""
+            self.expanded_genes = []
+            return
+        self.expanded_genes = []
+        self.gene_library_open_category = category
+
     def select_category(self, category: str):  # type: ignore[return]
         """Select a category from the body map without treating a repeat click as removal."""
+        # Always jump/open the matching library accordion, even if already selected.
+        self.open_gene_library_accordion(category)
         if category in self.selected_categories:
             return
         remaining = DEFAULT_BUDGET - _sum_credits_for_included_genes(
@@ -1342,6 +1366,7 @@ class ComposeState(rx.State):
         self.selected_categories = []
         self.included_genes = []
         self.expanded_genes = []
+        self.gene_library_open_category = ""
         self._recompute_params()
 
     def refresh_gene_catalog(self) -> None:
