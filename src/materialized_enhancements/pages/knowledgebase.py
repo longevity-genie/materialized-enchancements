@@ -126,14 +126,16 @@ _POSITIVE_BADGE_BG: dict[str, str] = {
     "Negative": "rgba(248, 113, 113, 0.24)",
 }
 
+# Host level uses a different hue axis than Outcome (green/amber/red polarity)
+# so Human≠Positive and Animal≠Mixed in the Experiments filters/grid.
 _HOST_LEVEL_BADGE_FG: dict[str, str] = {
-    "Human": "#4ade80",
-    "Animal": "#fbbf24",
+    "Human": "#38bdf8",
+    "Animal": "#e879f9",
     "Cell / other": "#94a3b8",
 }
 _HOST_LEVEL_BADGE_BG: dict[str, str] = {
-    "Human": "rgba(34, 197, 94, 0.24)",
-    "Animal": "rgba(245, 158, 11, 0.24)",
+    "Human": "rgba(56, 189, 248, 0.24)",
+    "Animal": "rgba(232, 121, 249, 0.24)",
     "Cell / other": "rgba(148, 163, 184, 0.2)",
 }
 
@@ -1768,20 +1770,20 @@ _KB_CSS = """
     background: rgba(248, 113, 113, 0.28); border-color: rgba(248, 113, 113, 0.75); color: #fecaca;
 }
 .kb-agg-chip.kb-agg-host-human {
-    color: #4ade80; border-color: rgba(34, 197, 94, 0.4);
-    background: rgba(34, 197, 94, 0.12);
+    color: #38bdf8; border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(56, 189, 248, 0.12);
 }
-.kb-agg-chip.kb-agg-host-human .kb-agg-count { color: #86efac; }
+.kb-agg-chip.kb-agg-host-human .kb-agg-count { color: #7dd3fc; }
 .kb-agg-chip.kb-agg-host-human.active {
-    background: rgba(34, 197, 94, 0.3); border-color: rgba(74, 222, 128, 0.7); color: #bbf7d0;
+    background: rgba(56, 189, 248, 0.3); border-color: rgba(56, 189, 248, 0.75); color: #bae6fd;
 }
 .kb-agg-chip.kb-agg-host-animal {
-    color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);
-    background: rgba(245, 158, 11, 0.12);
+    color: #e879f9; border-color: rgba(232, 121, 249, 0.45);
+    background: rgba(232, 121, 249, 0.12);
 }
-.kb-agg-chip.kb-agg-host-animal .kb-agg-count { color: #fcd34d; }
+.kb-agg-chip.kb-agg-host-animal .kb-agg-count { color: #f0abfc; }
 .kb-agg-chip.kb-agg-host-animal.active {
-    background: rgba(245, 158, 11, 0.3); border-color: rgba(251, 191, 36, 0.7); color: #fde68a;
+    background: rgba(232, 121, 249, 0.3); border-color: rgba(232, 121, 249, 0.75); color: #f5d0fe;
 }
 .kb-agg-chip.kb-agg-host-cell {
     color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4);

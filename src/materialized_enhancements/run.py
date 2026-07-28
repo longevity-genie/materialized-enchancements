@@ -28,6 +28,124 @@ def _setup() -> None:
     os.chdir(root)
 
 
+def _spawn_serve_liveness_watchdog(*, port: int, serve_pid: int, serve_pgid: int) -> subprocess.Popen[str]:
+    """Watch ``/_health`` from a sibling process and hard-kill a wedged serve.
+
+    Reflex fullstack + Granian can accept TCP while the ASGI worker is
+    deadlocked (e.g. Polars parallel sort on the request thread). The parent
+    still prints ``App running`` and looks alive. This watchdog treats a hung
+    health probe as fatal and SIGKILLs the serve process group so the failure
+    cannot stay silent in the terminal.
+    """
+    script = r"""
+import os
+import signal
+import sys
+import time
+import urllib.error
+import urllib.request
+
+port = int(sys.argv[1])
+serve_pid = int(sys.argv[2])
+serve_pgid = int(sys.argv[3])
+url = f"http://127.0.0.1:{port}/_health"
+timeout = float(os.environ.get("SERVE_HEALTH_TIMEOUT", "5"))
+interval = float(os.environ.get("SERVE_HEALTH_INTERVAL", "5"))
+fail_limit = int(os.environ.get("SERVE_HEALTH_FAIL_LIMIT", "2"))
+startup_grace = float(os.environ.get("SERVE_HEALTH_STARTUP_GRACE", "600"))
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _probe() -> bool:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            return 200 <= int(resp.status) < 500
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+
+
+def _kill_serve(reason: str) -> None:
+    print("", flush=True)
+    print("=" * 72, flush=True)
+    print("FATAL: uv run serve became unresponsive.", flush=True)
+    print(f"  health URL : {url}", flush=True)
+    print(f"  reason     : {reason}", flush=True)
+    print("  The process was still running but stopped answering HTTP.", flush=True)
+    print("  Killing the serve process group so this cannot look healthy.", flush=True)
+    print("=" * 72, flush=True)
+    try:
+        os.killpg(serve_pgid, signal.SIGKILL)
+    except ProcessLookupError:
+        try:
+            os.kill(serve_pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+print(
+    f"[serve-watchdog] monitoring {url} "
+    f"(timeout={timeout}s, interval={interval}s, fail_limit={fail_limit}, "
+    f"startup_grace={startup_grace}s)",
+    flush=True,
+)
+
+# Wait until the server becomes healthy once (compile/export can take a while).
+startup_deadline = time.time() + startup_grace
+while _pid_alive(serve_pid):
+    if _probe():
+        print(f"[serve-watchdog] health OK — {url}", flush=True)
+        break
+    if time.time() >= startup_deadline:
+        _kill_serve(
+            f"never became healthy within startup grace ({startup_grace}s)"
+        )
+        raise SystemExit(1)
+    time.sleep(1.0)
+else:
+    raise SystemExit(0)
+
+failures = 0
+while _pid_alive(serve_pid):
+    time.sleep(interval)
+    if not _pid_alive(serve_pid):
+        break
+    if _probe():
+        if failures:
+            print("[serve-watchdog] health recovered", flush=True)
+        failures = 0
+        continue
+    failures += 1
+    print(
+        f"[serve-watchdog] health FAILED ({failures}/{fail_limit}) — {url}",
+        flush=True,
+    )
+    if failures >= fail_limit:
+        _kill_serve(f"health timed out {fail_limit} times (timeout={timeout}s)")
+        raise SystemExit(1)
+
+raise SystemExit(0)
+"""
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(port),
+            str(serve_pid),
+            str(serve_pgid),
+        ],
+        start_new_session=True,
+        cwd=str(Path.cwd()),
+    )
+
+
 def main() -> None:
     """Start the Reflex development server.
 
@@ -57,8 +175,22 @@ def main() -> None:
 
 
 def serve() -> None:
-    """Start the single-port production server (Reflex 0.9+ unified mode)."""
+    """Start the single-port production server (Reflex 0.9+ unified mode).
+
+    Starts an external liveness watchdog that SIGKILLs the serve process group
+    if ``/_health`` stops responding — wedged workers must not look healthy.
+    """
     _setup()
+
+    # Own process group so the watchdog can hard-kill Granian workers too.
+    try:
+        os.setpgrp()
+    except OSError:
+        pass
+
+    # Polars Rayon pools can deadlock the single Granian fullstack worker.
+    # Cap threads before any Polars import/use in the serve child.
+    os.environ.setdefault("POLARS_MAX_THREADS", "1")
 
     web_dir = Path(".web")
     if web_dir.exists():
@@ -72,20 +204,64 @@ def serve() -> None:
     regenerate_stale_report_landing_pages()
 
     from reflex import constants
+    from reflex.config import get_config
     from reflex.constants.base import RunningMode
     from reflex.reflex import _run
     from reflex_base.config import environment
 
     port_str = os.getenv("APP_PORT", "").strip()
-    port = int(port_str) if port_str else None
+    if port_str:
+        port = int(port_str)
+    else:
+        port = int(get_config().frontend_port or 3000)
+
+    # Keep env knobs readable for operators / the watchdog child.
+    os.environ.setdefault("SERVE_HEALTH_TIMEOUT", "5")
+    os.environ.setdefault("SERVE_HEALTH_INTERVAL", "5")
+    os.environ.setdefault("SERVE_HEALTH_FAIL_LIMIT", "2")
+    os.environ.setdefault("SERVE_HEALTH_STARTUP_GRACE", "600")
+
+    watchdog: subprocess.Popen[str] | None = None
+    if os.getenv("SERVE_HEALTH_WATCHDOG", "1").strip() not in {"0", "false", "False", "no", "NO"}:
+        watchdog = _spawn_serve_liveness_watchdog(
+            port=port,
+            serve_pid=os.getpid(),
+            serve_pgid=os.getpgrp(),
+        )
+        print(
+            f"[serve] liveness watchdog pid={watchdog.pid} "
+            f"→ http://127.0.0.1:{port}/_health",
+            flush=True,
+        )
+    else:
+        print("[serve] liveness watchdog DISABLED (SERVE_HEALTH_WATCHDOG=0)", flush=True)
 
     environment.REFLEX_COMPILE_CONTEXT.set(constants.CompileContext.RUN)
-    _run(
-        env=constants.Env.PROD,
-        running_mode=RunningMode.FULLSTACK,
-        frontend_port=port,
-        backend_port=port,
-    )
+    try:
+        _run(
+            env=constants.Env.PROD,
+            running_mode=RunningMode.FULLSTACK,
+            frontend_port=port,
+            backend_port=port,
+        )
+    finally:
+        if watchdog is not None:
+            if watchdog.poll() is None:
+                watchdog.terminate()
+                try:
+                    watchdog.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    watchdog.kill()
+                    watchdog.wait(timeout=3)
+            # If the watchdog already killed us, we never get here. If _run
+            # returned while the watchdog reported a hang, surface that loudly.
+            if watchdog.returncode not in (None, 0):
+                print(
+                    "[serve] FATAL: liveness watchdog aborted the server "
+                    f"(exit={watchdog.returncode}).",
+                    flush=True,
+                )
+                raise SystemExit(1)
 
 
 def _build_preselect_url(

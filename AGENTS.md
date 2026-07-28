@@ -58,9 +58,16 @@ materialized-enhancements/          ← repo root
 ### Running the App
 
 ```bash
-uv run start        # starts Reflex dev server (http://localhost:3000)
+uv run start        # Reflex dev server (frontend :3000 + backend :8000)
+uv run serve        # production fullstack on one port (:3000 by default)
 ```
 
+**`uv run serve` must never look alive while dead.** Prod fullstack runs one Granian worker; a wedged event handler can leave TCP listening with no responses and no traceback. `serve()` therefore:
+1. puts the serve process in its own process group (`os.setpgrp()`);
+2. exposes `GET /_health` on the same ASGI worker (JSON `{"status":"ok"}`);
+3. spawns an external liveness watchdog that polls `/_health` and, after consecutive timeouts, prints a loud FATAL banner and `SIGKILL`s the whole process group.
+
+Tune with `SERVE_HEALTH_TIMEOUT` (seconds, default 5), `SERVE_HEALTH_INTERVAL` (default 5), `SERVE_HEALTH_FAIL_LIMIT` (default 2), `SERVE_HEALTH_STARTUP_GRACE` (default 600 — compile can be slow). Set `SERVE_HEALTH_WATCHDOG=0` only when deliberately debugging a hang without auto-kill.
 ---
 
 ## Data Model
@@ -674,3 +681,4 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - Gene/sculpture inputs load from `data/enhancement.db` (SQLite, preferred) or CSV fallback from `data/db_backup/` (see `gene_data.py` / `sculpture.py`). UniProt accessions in `gene_properties` drive AlphaFold URLs assembled in `gene_data.py`; `data/input/structures/*.pdb` files are local/gitignored and should stay untracked.
 - Dev server / LAN: `python-dotenv` loads repo-root `.env` in `rxconfig.py` and `src/materialized_enhancements/run.py` before config. Backend bind defaults to `0.0.0.0` via `BACKEND_BIND_HOST` (or `REFLEX_BACKEND_HOST` when set). `vite_allowed_hosts` is permissive by default so `http://<LAN-IP>:3000` works; optionally restrict with `BACKEND_VITE_ALLOWED_HOSTS`. For phones on Wi‑Fi, `API_URL` may need the machine LAN IP and backend port, not `localhost`.
 - Mobile USB debugging: connect an Android phone with USB debugging enabled, run `adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8000 tcp:8000` to forward ports, then `adb shell svc power stayon usb` to prevent auto-lock during debugging. Open Chrome on the phone at `localhost:3000`. Take screenshots with `adb exec-out screencap -p > /tmp/screenshot.png`. For Chrome DevTools MCP access, also run `adb forward tcp:9222 localabstract:chrome_devtools_remote`. Mobile CSS uses `@media (hover: none) and (pointer: coarse)` for touch-device detection; ensure Chrome is in mobile site mode (not "Request desktop site") when testing.
+- **`uv run serve` liveness:** Granian fullstack can wedge the ASGI worker (e.g. Polars parallel `sort()` deadlock) while the port still accepts connections and the console still looks running. `serve()` runs an external `/_health` watchdog that FATAL-logs and SIGKILLs the process group on repeated timeouts — never leave a silent zombie listener. Knowledgebase grids must use Granian-safe sorting (`sort_dataframe_model` in reflex-mui-datagrid), not Polars `LazyFrame.sort().collect()` on the worker thread.

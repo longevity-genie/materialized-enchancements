@@ -135,6 +135,13 @@ def normalize_reflex_event_websocket_path(app: ASGIApp) -> ASGIApp:
     async def wrapped_app(scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             path = str(scope.get("path", ""))
+            # Liveness probe for ``uv run serve`` watchdog. Must stay tiny and
+            # go through the same ASGI worker — if that worker is wedged, this
+            # hangs and the external watchdog aborts the process group.
+            if path in {"/_health", "/_health/"}:
+                resp = JSONResponse({"status": "ok"})
+                await resp(scope, receive, send)
+                return
             if path == "/_api/upload-report-assets":
                 await _handle_upload_report_assets(scope, receive, send)
                 return

@@ -18,6 +18,7 @@ FAVICON_URL_PATH = f"/{FAVICON_PATH.as_posix()}"
 ROOT_FAVICON_PATH = Path("favicon.ico")
 ROBOT_EXCLUDED_PATHS: tuple[str, ...] = (
     "/_event/",
+    "/_health",
     "/ping",
 )
 
