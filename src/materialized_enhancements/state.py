@@ -85,11 +85,15 @@ REPORT_PORTRAIT_FALLBACK_MIME_BY_SUFFIX: dict[str, str] = {
 
 
 class KeyReferenceSegment(TypedDict):
-    """One text or link fragment in Key references (Reflex foreach needs typed list)."""
+    """One text/link/para_break fragment for gene prose (Reflex foreach needs typed list)."""
 
     kind: str
     v: str
     href: str
+
+
+# Alias kept for call sites that linkify free-text fields (notes, narrative, …).
+ProseSegment = KeyReferenceSegment
 
 
 def _manipulation_icon_key(manipulation: str) -> str:
@@ -126,9 +130,13 @@ class SculptureSelectedGene(TypedDict):
     species_common_names: str
     species_scientific_names: str
     short_description: str
+    short_description_segments: list[ProseSegment]
     narrative: str
+    narrative_segments: list[ProseSegment]
     mechanism: str
+    mechanism_segments: list[ProseSegment]
     achievements: str
+    achievements_segments: list[ProseSegment]
     evidence_tier: str
     confidence_entries: list[dict[str, str]]
     confidence_primary: dict[str, str]
@@ -137,9 +145,11 @@ class SculptureSelectedGene(TypedDict):
     confidence_bucket: str
     testing_entries: list[dict[str, str]]
     translational_gaps: str
+    translational_gaps_segments: list[ProseSegment]
     key_references: str
     key_reference_segments: list[KeyReferenceSegment]
     notes: str
+    notes_segments: list[ProseSegment]
     description: str
     enhancement: str
     paper_url: str
@@ -295,9 +305,13 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "species_common_names": g["species_common_names"],
         "species_scientific_names": g["species_scientific_names"],
         "short_description": g["short_description"],
+        "short_description_segments": _linkify_prose_segments(str(g.get("short_description", "") or "")),
         "narrative": g["narrative"],
+        "narrative_segments": _linkify_prose_segments(str(g.get("narrative", "") or "")),
         "mechanism": g["mechanism"],
+        "mechanism_segments": _linkify_prose_segments(str(g.get("mechanism", "") or "")),
         "achievements": g["achievements"],
+        "achievements_segments": _linkify_prose_segments(str(g.get("achievements", "") or "")),
         "evidence_tier": g["evidence_tier"],
         "confidence_entries": g.get("confidence_entries", []),
         "confidence_primary": g.get("confidence_primary", _EMPTY_CONFIDENCE_PRIMARY),
@@ -306,9 +320,13 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "confidence_bucket": _confidence_bucket_from_entries(g.get("confidence_entries", [])),
         "testing_entries": testing_entries,
         "translational_gaps": g["translational_gaps"],
+        "translational_gaps_segments": _linkify_prose_segments(
+            str(g.get("translational_gaps", "") or "")
+        ),
         "key_references": g["key_references"],
         "key_reference_segments": _split_key_references_with_links(str(g.get("key_references", ""))),
         "notes": g["notes"],
+        "notes_segments": _linkify_prose_segments(str(g.get("notes", "") or "")),
         "description": g["description"],
         "enhancement": g["enhancement"],
         "paper_url": g["paper_url"],
@@ -456,14 +474,16 @@ def _mobile_onboarding_scroll_script(step: int) -> str:
 RECOMMENDED_MIN_INCLUDED_GENES_FOR_TOTEM: int = 3
 
 
+# Match knowledgebase: URLs / DOIs in free-text gene fields (DB stores plain text).
 _REF_TOKEN_RE = re.compile(
-    r"https?://[^\s|<>]+|(?:doi:\s*)?(?:10\.\d{4,9}/[^\s|<>]+)",
+    r"https?://[^\s|<>\"']+|(?:doi:\s*)?(?:10\.\d{4,9}/[^\s|<>\"']+)",
     re.IGNORECASE,
 )
+_PROSE_TRAILING_PUNCT = ".,;:)]}\"'"
 
 
 def _href_for_reference_token(raw: str) -> str:
-    t = raw.strip().rstrip(".,;)")
+    t = raw.strip().rstrip(_PROSE_TRAILING_PUNCT)
     tl = t.lower()
     if tl.startswith("http"):
         return t
@@ -471,34 +491,65 @@ def _href_for_reference_token(raw: str) -> str:
         t = t[4:].strip()
     if re.match(r"^10\.\d", t):
         return f"https://doi.org/{t}"
-    return raw
+    return t
+
+
+def _linkify_prose_inline(text: str) -> list[ProseSegment]:
+    """Split one paragraph into text/link segments (URLs/DOIs clickable)."""
+    raw = str(text or "")
+    if not raw:
+        return []
+    matches = list(_REF_TOKEN_RE.finditer(raw))
+    if not matches:
+        return [{"kind": "text", "v": raw, "href": ""}]
+    out: list[ProseSegment] = []
+    pos = 0
+    for match in matches:
+        if match.start() > pos:
+            out.append({"kind": "text", "v": raw[pos : match.start()], "href": ""})
+        token = match.group(0)
+        trimmed = token.rstrip(_PROSE_TRAILING_PUNCT)
+        trailing = token[len(trimmed) :]
+        if trimmed:
+            out.append(
+                {
+                    "kind": "link",
+                    "v": trimmed,
+                    "href": _href_for_reference_token(trimmed),
+                }
+            )
+        if trailing:
+            out.append({"kind": "text", "v": trailing, "href": ""})
+        pos = match.end()
+    if pos < len(raw):
+        out.append({"kind": "text", "v": raw[pos:], "href": ""})
+    return out
+
+
+def _linkify_prose_segments(text: str) -> list[ProseSegment]:
+    """Linkify free-text; insert para_break between blank-line paragraphs."""
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+    parts = re.split(r"\n\s*\n+", raw)
+    paragraphs: list[str] = []
+    for part in parts:
+        cleaned = re.sub(r"[ \t]*\n[ \t]*", " ", part).strip()
+        if cleaned:
+            paragraphs.append(cleaned)
+    if not paragraphs:
+        return []
+    out: list[ProseSegment] = []
+    for index, paragraph in enumerate(paragraphs):
+        if index > 0:
+            out.append({"kind": "para_break", "v": "", "href": ""})
+        out.extend(_linkify_prose_inline(paragraph))
+    return out
 
 
 def _split_key_references_with_links(text: str) -> list[KeyReferenceSegment]:
     """Split key-references prose into alternating text and link segments for Reflex."""
-    if not text.strip():
-        return []
-    matches = list(_REF_TOKEN_RE.finditer(text))
-    if not matches:
-        seg: KeyReferenceSegment = {"kind": "text", "v": text, "href": ""}
-        return [seg]
-    out: list[KeyReferenceSegment] = []
-    pos = 0
-    for m in matches:
-        if m.start() > pos:
-            out.append({"kind": "text", "v": text[pos:m.start()], "href": ""})
-        raw = m.group(0)
-        out.append(
-            {
-                "kind": "link",
-                "v": raw,
-                "href": _href_for_reference_token(raw),
-            }
-        )
-        pos = m.end()
-    if pos < len(text):
-        out.append({"kind": "text", "v": text[pos:], "href": ""})
-    return out
+    return _linkify_prose_segments(text)
 
 
 _VALUE_TO_BUCKET: dict[str, str] = {
@@ -560,11 +611,34 @@ def _confidence_summary(entries: list[dict[str, str]]) -> str:
     return "; ".join(parts)
 
 
+# Higher confidence first within each category accordion / gene checkbox list.
+# Category filter in the UI preserves relative catalog order.
+_CONFIDENCE_SORT_RANK: dict[str, int] = {
+    "very high": 0,
+    "high": 1,
+    "medium-high": 2,
+    "medium": 3,
+    "medium-low": 4,
+    "low-medium": 5,
+    "low": 6,
+    "declining": 7,
+    "n/a": 8,
+}
+
+
+def _primary_confidence_sort_key(g: dict[str, Any]) -> tuple[int, str]:
+    """Sort key: primary confidence (Very High first), then gene name."""
+    primary = g.get("confidence_primary") or {}
+    value = str(primary.get("value", "")).strip().lower()
+    return (_CONFIDENCE_SORT_RANK.get(value, 9), str(g.get("gene", "")))
+
+
 # Playable-only catalog for the game UI (Compose / RPG / materialization).
 # Knowledgebase keeps GENE_LIBRARY; game surfaces must never render game_enabled=0.
 # Not a reactive @rx.var: selection updates use included_genes only.
 COMPOSITION_GENE_CATALOG: list[SculptureSelectedGene] = [
-    build_composition_gene_row(g, included=False) for g in GAME_GENE_LIBRARY
+    build_composition_gene_row(g, included=False)
+    for g in sorted(GAME_GENE_LIBRARY, key=_primary_confidence_sort_key)
 ]
 COMPOSITION_GENE_BY_NAME: dict[str, SculptureSelectedGene] = {
     row["gene"]: row for row in COMPOSITION_GENE_CATALOG
@@ -2968,7 +3042,7 @@ class ComposeState(rx.State):
         names: dict[str, list[dict[str, str]]] = {c: [] for c in UNIQUE_CATEGORIES}
         included = set(self.included_genes)
         selected = set(self.selected_categories)
-        for g in GAME_GENE_LIBRARY:
+        for g in sorted(GAME_GENE_LIBRARY, key=_primary_confidence_sort_key):
             if g["gene"] not in included:
                 continue
             if g["category"] not in selected:

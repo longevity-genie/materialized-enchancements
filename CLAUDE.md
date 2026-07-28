@@ -217,10 +217,11 @@ All tables have foreign key constraints back to `genes` and/or `species` (and `o
 The UI signal bars and the bold Confidence pill read **`confidence_primary`** (= the row with `is_primary = 1`). That primary must answer: *how confident are we this helps a mammal / human body?* — not *how solid is the native-organism story?*
 
 **Primary value tiers (strict):**
-- **Very High** — tested **and works in humans**: human genetics with a clear phenotype, approved/marketed therapy, or **peer-reviewed** human clinical efficacy for the claimed indication (e.g. Klotho KL-VS genetics; Mendell AAV1-FST344 in BMD/IBM; FDA apoC-III drugs).
-- **High** — tested in **mammals** (mouse/ferret/etc. in vivo) **or** human disease GT with **mixed/unsettled** efficacy — but **not** independently shown to work for the enhancement claim.
-- **Not Very High:** unregulated commercial / Prospera / BioViva / Libella gene-therapy *sales or exposure* without peer-reviewed proof of benefit (TERT commercial, Minicircle FST wellness, Unlimited Bio VEGF package, Minicircle Klotho plasmid). Put those as **Medium** secondary details (`enhancement clinic sales` / `efficacy unproven`); do not promote them to primary.
-- Everything else (cells-only, biomaterial, source-organism insect/plant/yeast/planarian, biochem reconstitution) is **at most Medium** as primary — never High/Very High.
+- **Very High** — tested in humans **and works** (efficacy): human genetics with a clear phenotype, approved/marketed therapy, or **peer-reviewed** human clinical efficacy for the claimed indication (e.g. Klotho KL-VS; Mendell AAV1-FST344 in BMD/IBM; FDA apoC-III drugs).
+- **High** — (a) tested in **mammals** in vivo with a clear benefit (mouse/ferret/etc.), **or** (b) given to **humans without serious trouble** (acceptable safety / exposure) but **efficacy not independently locked** — including mixed human disease GT. Human **cell-culture** transfection is **not** “tested in humans.”
+- **Not Very High / not High from cells alone:** cultured human cells, flies, worms, biomaterials → **at most Medium** as primary. Example: CIRBP human-cell repair 1.6× + Drosophila lifespan only → **Medium** (gaps saying “no mouse or human trial” must match the badge).
+- **Not Very High:** commercial / Prospera / BioViva / Libella GT *sales* without peer-reviewed efficacy stay off primary. If there is real human clinic exposure with acceptable safety (no serious AEs in known circles) → **High** secondary (`safety acceptable; efficacy unproven`); if safety is also unknown → **Medium** secondary.
+- Insect/plant/yeast/planarian source biology and biochem reconstitution stay **secondary** — never High/Very High primary.
 
 **Audit rule for agents:** when reviewing confidence / commercial / human-testing evidence, **never use SQL `LIMIT`**. Truncated result sets have already caused missed obvious genes (Klotho, VEGF, FST, TERT). Always join full `gene_confidence` primaries against all of `organization_genes` (especially `stage='commercial'`) and human-positive `gene_testing` rows with no row cap.
 

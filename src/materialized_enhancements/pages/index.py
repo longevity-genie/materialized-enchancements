@@ -1083,9 +1083,9 @@ def _trait_item(trait: rx.Var) -> rx.Component:
     )
 
 
-def _gene_selection_text_block(title: str, body: rx.Var) -> rx.Component:
+def _gene_selection_text_block(title: str, segments: rx.Var) -> rx.Component:
     return rx.cond(
-        body != "",
+        segments.length() > 0,
         rx.el.div(
             rx.el.div(
                 title,
@@ -1099,7 +1099,7 @@ def _gene_selection_text_block(title: str, body: rx.Var) -> rx.Component:
                 },
             ),
             rx.el.p(
-                body,
+                rx.foreach(segments, _gene_prose_segment),
                 style={
                     "fontSize": "0.96rem",
                     "color": "#dbeafe",
@@ -1758,24 +1758,35 @@ def _gene_organizations_section(org_entries: rx.Var) -> rx.Component:
     )
 
 
-def _gene_key_reference_segment(seg: rx.Var) -> rx.Component:
-    return rx.cond(
-        seg["kind"] == "link",
-        rx.el.a(
-            seg["v"],
-            href=seg["href"],
-            target="_blank",
-            rel="noopener noreferrer",
-            style={
-                "color": "#93c5fd",
-                "textDecoration": "underline",
-                "textUnderlineOffset": "2px",
-                "fontSize": "0.78rem",
-                "wordBreak": "break-all",
-            },
+def _gene_prose_segment(seg: rx.Var) -> rx.Component:
+    """Render one linkified prose chunk (text / link / paragraph break)."""
+    return rx.match(
+        seg["kind"],
+        (
+            "link",
+            rx.el.a(
+                seg["v"],
+                href=seg["href"],
+                target="_blank",
+                rel="noopener noreferrer",
+                style={
+                    "color": "#93c5fd",
+                    "textDecoration": "underline",
+                    "textUnderlineOffset": "2px",
+                    "wordBreak": "break-word",
+                },
+            ),
         ),
-        rx.el.span(seg["v"], style={"fontSize": "0.78rem", "color": "#cbd5e1"}),
+        (
+            "para_break",
+            rx.el.br(),
+        ),
+        rx.el.span(seg["v"]),
     )
+
+
+def _gene_key_reference_segment(seg: rx.Var) -> rx.Component:
+    return _gene_prose_segment(seg)
 
 
 def _gene_key_references_linked(segments: rx.Var) -> rx.Component:
@@ -2166,7 +2177,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             style={"display": "flex", "alignItems": "center"},
         ),
         rx.el.p(
-            gene_item["short_description"],
+            rx.foreach(gene_item["short_description_segments"], _gene_prose_segment),
             style={
                 "fontSize": "0.83rem",
                 "color": "#374151",
@@ -2230,21 +2241,27 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                         ),
                         style={"margin": "0 14px 6px 36px"},
                     ),
-                    _gene_selection_text_block("Full description", gene_item["narrative"]),
-                    _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
+                    _gene_selection_text_block("Full description", gene_item["narrative_segments"]),
+                    _gene_selection_text_block("Mechanism", gene_item["mechanism_segments"]),
                     rx.el.div(
                         _gene_organizations_section(gene_item["org_entries"]),
                         style={"margin": "0 14px 6px 36px"},
                     ),
-                    _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                    _gene_selection_text_block(
+                        "Achievements (effect sizes)",
+                        gene_item["achievements_segments"],
+                    ),
                     _gene_testing_table(gene_item["testing_entries"]),
-                    _gene_selection_text_block("Translational gaps", gene_item["translational_gaps"]),
+                    _gene_selection_text_block(
+                        "Translational gaps",
+                        gene_item["translational_gaps_segments"],
+                    ),
                     rx.cond(
-                        gene_item["key_references"] != "",
+                        gene_item["key_reference_segments"].length() > 0,
                         _gene_key_references_linked(gene_item["key_reference_segments"]),
                         rx.fragment(),
                     ),
-                    _gene_selection_text_block("Notes", gene_item["notes"]),
+                    _gene_selection_text_block("Notes", gene_item["notes_segments"]),
                     rx.el.div(
                         rx.el.div(
                             "Biophysical / metadata",
@@ -3538,9 +3555,9 @@ def _mobile_body_change_overlay() -> rx.Component:
     )
 
 
-def _rpg_gene_side_text(title: str, body: rx.Var) -> rx.Component:
+def _rpg_gene_side_text(title: str, segments: rx.Var) -> rx.Component:
     return rx.cond(
-        body != "",
+        segments.length() > 0,
         rx.el.div(
             rx.el.div(
                 title,
@@ -3554,7 +3571,7 @@ def _rpg_gene_side_text(title: str, body: rx.Var) -> rx.Component:
                 },
             ),
             rx.el.div(
-                body,
+                rx.foreach(segments, _gene_prose_segment),
                 style={
                     "fontSize": "0.86rem",
                     "lineHeight": "1.45",
@@ -3827,7 +3844,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
         ),
         rx.el.div(
             rx.el.p(
-                gene_item["short_description"],
+                rx.foreach(gene_item["short_description_segments"], _gene_prose_segment),
                 style={
                     "fontSize": "0.98rem",
                     "color": rx.cond(included, "#e0f2fe", "#dbeafe"),
@@ -3891,15 +3908,21 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                         gene_item["confidence_details"],
                         show_details=True,
                     ),
-                    _gene_selection_text_block("Full description", gene_item["narrative"]),
-                    _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
+                    _gene_selection_text_block("Full description", gene_item["narrative_segments"]),
+                    _gene_selection_text_block("Mechanism", gene_item["mechanism_segments"]),
                     _gene_organizations_section(gene_item["org_entries"]),
-                    _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                    _gene_selection_text_block(
+                        "Achievements (effect sizes)",
+                        gene_item["achievements_segments"],
+                    ),
                     _gene_testing_table(gene_item["testing_entries"]),
-                    _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
-                    _rpg_gene_side_text("Notes", gene_item["notes"]),
+                    _rpg_gene_side_text(
+                        "Translational gaps",
+                        gene_item["translational_gaps_segments"],
+                    ),
+                    _rpg_gene_side_text("Notes", gene_item["notes_segments"]),
                     rx.cond(
-                        gene_item["key_references"] != "",
+                        gene_item["key_reference_segments"].length() > 0,
                         _rpg_gene_side_references(gene_item["key_reference_segments"]),
                         rx.fragment(),
                     ),
