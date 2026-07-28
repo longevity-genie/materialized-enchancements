@@ -505,10 +505,11 @@ def _confidence_summary(entries: list[dict[str, str]]) -> str:
     return "; ".join(parts)
 
 
-# DB-backed catalog snapshot for the process lifetime (gene_data loads SQLite/CSV).
+# Playable-only catalog for the game UI (Compose / RPG / materialization).
+# Knowledgebase keeps GENE_LIBRARY; game surfaces must never render game_enabled=0.
 # Not a reactive @rx.var: selection updates use included_genes only.
 COMPOSITION_GENE_CATALOG: list[SculptureSelectedGene] = [
-    build_composition_gene_row(g, included=False) for g in GENE_LIBRARY
+    build_composition_gene_row(g, included=False) for g in GAME_GENE_LIBRARY
 ]
 COMPOSITION_GENE_BY_NAME: dict[str, SculptureSelectedGene] = {
     row["gene"]: row for row in COMPOSITION_GENE_CATALOG

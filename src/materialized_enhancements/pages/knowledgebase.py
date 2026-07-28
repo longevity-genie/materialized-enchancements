@@ -15,6 +15,7 @@ from reflex_mui_datagrid import LazyFrameGridMixin, lazyframe_grid
 
 from materialized_enhancements.components.layout import fomantic_icon
 from materialized_enhancements.gene_data import (
+    GAME_GENE_LIBRARY,
     GENE_LIBRARY,
     GENE_ORG_MAP,
     GENE_TESTING,
@@ -176,15 +177,20 @@ _SURFACE_MODES: list[tuple[str, str, str]] = [
 
 _SURFACE_DESCRIPTIONS: dict[str, str] = {
     "genes": (
-        "Browse every curated enhancement gene. Click a row for the full dossier — "
-        "mechanism, evidence, organizations, and references."
+        f"Browse all {len(GENE_LIBRARY)} curated enhancement genes — more than the "
+        f"{len(GAME_GENE_LIBRARY)} selectable in the game. Some entries are "
+        "knowledge-base-only until their model inputs are ready. Click a row for the "
+        "full dossier — mechanism, evidence, organizations, and references."
     ),
     "experiments": (
         "Browse the experimental and trial corpus by host level, intervention, and outcome."
     ),
     "organizations": (
-        "Labs, biotech companies, and clinics working on these genes. "
-        "Click a row for the organization card."
+        "A curated sample of labs, biotech companies, and clinics working on enhancement "
+        "properties of these genes — not a complete map of every disease-focused lab. "
+        "Well-studied targets (e.g. APOE) have hundreds of groups worldwide; many "
+        "disease-only programs are omitted on purpose. We welcome additions of orgs "
+        "doing enhancement research. Click a row for the organization card."
     ),
     "available": (
         "Commercial and clinic offerings — expand Details for biology and references."
@@ -1987,7 +1993,9 @@ def _kb_intro() -> rx.Component:
             "This project is not only a game. It is the most complete public map we know of "
             "enhancement biology: curated genes across species, a searchable experimental and "
             "trial corpus, and the organizations translating them — from academic labs to "
-            "commercial offerings. Built for biohackers, investors, and scientists who want "
+            "commercial offerings. The knowledgebase lists more genes than you can select in "
+            "the game; organization coverage is selective (enhancement research, not every "
+            "disease-focused lab). Built for biohackers, investors, and scientists who want "
             "sources, not slogans. Data is version-controlled on ",
             rx.el.a(
                 "DoltHub",
@@ -2001,6 +2009,12 @@ def _kb_intro() -> rx.Component:
             rx.el.div(
                 rx.el.span(str(len(GENE_LIBRARY)), class_name="kb-stat-val"),
                 rx.el.span("genes", class_name="kb-stat-label"),
+                class_name="kb-stat-item",
+            ),
+            rx.el.span("·", class_name="kb-stat-sep"),
+            rx.el.div(
+                rx.el.span(str(len(GAME_GENE_LIBRARY)), class_name="kb-stat-val"),
+                rx.el.span("in game", class_name="kb-stat-label"),
                 class_name="kb-stat-item",
             ),
             rx.el.span("·", class_name="kb-stat-sep"),
@@ -2745,7 +2759,14 @@ def _dossier_organizations() -> rx.Component:
         rx.cond(
             KnowledgebaseState.d_orgs.length() > 0,
             rx.foreach(KnowledgebaseState.d_orgs, _org_dossier_card),
-            rx.el.div("No organizations linked yet.", class_name="kb-detail-section-text"),
+            rx.el.div(
+                "No organizations linked yet. This list is a curated sample of groups "
+                "working on enhancement properties — not every disease-focused lab. "
+                "Well-studied genes can have hundreds of labs worldwide; disease-only "
+                "programs are often omitted on purpose. Suggest enhancement-focused "
+                "additions via DoltHub.",
+                class_name="kb-detail-section-text",
+            ),
         ),
         class_name="kb-detail-section",
     )

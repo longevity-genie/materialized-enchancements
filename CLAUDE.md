@@ -241,7 +241,15 @@ The `genes` table has a `game_enabled INTEGER NOT NULL DEFAULT 1` column. It sep
 
 New genes are added with `game_enabled = 0` until their `gene_properties` biophysical columns (protein_mass_kda, exon_count, gravy_score, etc.) are populated — these drive the sculpture pipeline and would produce degenerate geometry if NULL.
 
-The choke point is `ComposeState.included_genes` in `state.py`: `toggle_gene()` and `toggle_gene_from_library()` guard with `is_playable_gene()`, and `_prune_included_genes()` filters against `GAME_GENE_LIBRARY`. Budget, counts, and report paths use `GAME_CATEGORY_COUNTS` / `GAME_GENE_LIBRARY`.
+The choke point is the game catalog + selection guards in `state.py`:
+`COMPOSITION_GENE_CATALOG` / `ComposeState.gene_catalog` is built from
+`GAME_GENE_LIBRARY` only — non-playable genes must never be rendered in the
+game UI (RPG accordion, materialization checkboxes, selected chips).
+`toggle_gene()` / `toggle_gene_from_library()` still guard with
+`is_playable_gene()`, and `_prune_included_genes()` filters against
+`GAME_GENE_LIBRARY`. Budget, counts, and report paths use
+`GAME_CATEGORY_COUNTS` / `GAME_GENE_LIBRARY`. Knowledgebase keeps the full
+`GENE_LIBRARY`.
 
 ### Contributing data via DoltHub
 

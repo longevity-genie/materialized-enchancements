@@ -654,10 +654,9 @@ ANIMAL_LIBRARY: list[AnimalEntry] = build_animal_library(GENE_LIBRARY)
 # its gene_properties biophysical columns (the sculpture inputs) are still
 # empty, or whenever a curator wants it readable but not yet selectable.
 #
-# GENE_LIBRARY stays the full knowledge base: the gene accordion, species
-# pages, and crawler/SEO copy must keep showing every curated gene.
-# GAME_GENE_LIBRARY and PLAYABLE_GENE_NAMES drive selection, budget, and
-# 3D-model generation.
+# GENE_LIBRARY stays the full knowledge base (knowledgebase route, crawler/SEO).
+# GAME_GENE_LIBRARY / PLAYABLE_GENE_NAMES / COMPOSITION_GENE_CATALOG drive the
+# game UI — non-playable genes must never be rendered there.
 # ---------------------------------------------------------------------------
 GAME_GENE_LIBRARY: list[GeneEntry] = [g for g in GENE_LIBRARY if g["game_enabled"]]
 PLAYABLE_GENE_NAMES: frozenset[str] = frozenset(g["gene"] for g in GAME_GENE_LIBRARY)
