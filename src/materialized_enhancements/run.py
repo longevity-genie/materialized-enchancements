@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import multiprocessing
 import os
 import shutil
 import signal
@@ -21,11 +22,28 @@ def _terminal_hyperlink(url: str) -> str:
     return f"\033]8;;{url}\033\\{url}\033]8;;\033\\"
 
 
+def _force_spawn_worker_processes() -> None:
+    """Make ASGI worker processes ``spawn``, never ``fork``.
+
+    Reflex imports/compiles the app in this process, and that import runs
+    Polars, which builds its Rayon thread pool. Granian then creates its ASGI
+    worker with ``multiprocessing.get_start_method()``. Under ``fork`` the
+    child inherits that pool's state without its threads, so the first
+    parallel Polars operation in a request (``unique()`` for filter value
+    options, ``sort()``) blocks forever inside ``collect()`` — no traceback,
+    port still listening. ``spawn`` gives the worker a fresh interpreter that
+    builds its own pool.
+    """
+    if multiprocessing.get_start_method(allow_none=True) != "spawn":
+        multiprocessing.set_start_method("spawn", force=True)
+
+
 def _setup() -> None:
     """Load .env and ensure cwd is the project root (where rxconfig.py lives)."""
     root = Path(__file__).resolve().parents[2]
     load_dotenv(root / ".env")
     os.chdir(root)
+    _force_spawn_worker_processes()
 
 
 def _spawn_serve_liveness_watchdog(*, port: int, serve_pid: int, serve_pgid: int) -> subprocess.Popen[str]:
@@ -174,23 +192,84 @@ def main() -> None:
     _run(env=constants.Env.DEV)
 
 
+def _resolve_serve_asgi_server(cli_server: str | None) -> str:
+    """Pick ASGI server for ``uv run serve``: granian (default) or uvicorn.
+
+    Priority: ``--server`` CLI flag → ``SERVE_ASGI_SERVER`` env → granian.
+    Sets ``REFLEX_USE_GRANIAN`` so Reflex's ``should_use_granian()`` follows.
+    """
+    raw = (cli_server or os.getenv("SERVE_ASGI_SERVER", "") or "granian").strip().lower()
+    if raw in {"granian", "gr"}:
+        server = "granian"
+    elif raw in {"uvicorn", "uv", "gunicorn"}:
+        server = "uvicorn"
+    else:
+        print(
+            f"[serve] FATAL: unknown ASGI server {raw!r}. "
+            "Use --server granian|uvicorn (or SERVE_ASGI_SERVER).",
+            flush=True,
+        )
+        raise SystemExit(2)
+
+    if server == "granian":
+        os.environ["REFLEX_USE_GRANIAN"] = "1"
+        return server
+
+    import importlib.util
+
+    missing = [
+        name
+        for name in ("uvicorn", "gunicorn")
+        if importlib.util.find_spec(name) is None
+    ]
+    if missing:
+        print(
+            "[serve] FATAL: --server uvicorn requires "
+            + " and ".join(missing)
+            + ". Install with: uv add uvicorn gunicorn",
+            flush=True,
+        )
+        raise SystemExit(2)
+
+    os.environ["REFLEX_USE_GRANIAN"] = "0"
+    return server
+
+
 def serve() -> None:
     """Start the single-port production server (Reflex 0.9+ unified mode).
 
     Starts an external liveness watchdog that SIGKILLs the serve process group
     if ``/_health`` stops responding — wedged workers must not look healthy.
-    """
-    _setup()
 
-    # Own process group so the watchdog can hard-kill Granian workers too.
+    ASGI server selection (default Granian)::
+
+        uv run serve --server granian
+        uv run serve --server uvicorn
+        SERVE_ASGI_SERVER=uvicorn uv run serve
+    """
+    parser = argparse.ArgumentParser(
+        description="Production fullstack serve (single port).",
+    )
+    parser.add_argument(
+        "--server",
+        choices=("granian", "uvicorn"),
+        default=None,
+        help=(
+            "ASGI server for the Reflex fullstack worker "
+            "(default: SERVE_ASGI_SERVER or granian). "
+            "uvicorn uses gunicorn+UvicornH11Worker on Linux."
+        ),
+    )
+    args = parser.parse_args()
+
+    _setup()
+    asgi_server = _resolve_serve_asgi_server(args.server)
+
+    # Own process group so the watchdog can hard-kill ASGI workers too.
     try:
         os.setpgrp()
     except OSError:
         pass
-
-    # Polars Rayon pools can deadlock the single Granian fullstack worker.
-    # Cap threads before any Polars import/use in the serve child.
-    os.environ.setdefault("POLARS_MAX_THREADS", "1")
 
     web_dir = Path(".web")
     if web_dir.exists():
@@ -221,6 +300,12 @@ def serve() -> None:
     os.environ.setdefault("SERVE_HEALTH_FAIL_LIMIT", "2")
     os.environ.setdefault("SERVE_HEALTH_STARTUP_GRACE", "600")
 
+    print(
+        f"[serve] ASGI server={asgi_server} "
+        f"(REFLEX_USE_GRANIAN={os.environ.get('REFLEX_USE_GRANIAN')})",
+        flush=True,
+    )
+
     watchdog: subprocess.Popen[str] | None = None
     if os.getenv("SERVE_HEALTH_WATCHDOG", "1").strip() not in {"0", "false", "False", "no", "NO"}:
         watchdog = _spawn_serve_liveness_watchdog(
@@ -246,7 +331,11 @@ def serve() -> None:
         )
     finally:
         if watchdog is not None:
-            if watchdog.poll() is None:
+            # Read the exit status BEFORE our own terminate(), which would
+            # itself set returncode=-15 and make every clean Ctrl+C shutdown
+            # look like the watchdog had aborted a wedged server.
+            watchdog_exit = watchdog.poll()
+            if watchdog_exit is None:
                 watchdog.terminate()
                 try:
                     watchdog.wait(timeout=3)
@@ -255,10 +344,10 @@ def serve() -> None:
                     watchdog.wait(timeout=3)
             # If the watchdog already killed us, we never get here. If _run
             # returned while the watchdog reported a hang, surface that loudly.
-            if watchdog.returncode not in (None, 0):
+            if watchdog_exit not in (None, 0):
                 print(
                     "[serve] FATAL: liveness watchdog aborted the server "
-                    f"(exit={watchdog.returncode}).",
+                    f"(exit={watchdog_exit}).",
                     flush=True,
                 )
                 raise SystemExit(1)

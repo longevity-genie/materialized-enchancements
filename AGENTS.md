@@ -60,14 +60,25 @@ materialized-enhancements/          ← repo root
 ```bash
 uv run start        # Reflex dev server (frontend :3000 + backend :8000)
 uv run serve        # production fullstack on one port (:3000 by default)
+uv run serve --server granian   # default ASGI worker
+uv run serve --server uvicorn   # gunicorn + UvicornH11Worker (A/B vs Granian)
+# or: SERVE_ASGI_SERVER=uvicorn uv run serve
 ```
 
-**`uv run serve` must never look alive while dead.** Prod fullstack runs one Granian worker; a wedged event handler can leave TCP listening with no responses and no traceback. `serve()` therefore:
+**`uv run serve` must never look alive while dead.** Prod fullstack runs one ASGI worker (Granian by default; `--server uvicorn` for the uvicorn/gunicorn path); a wedged event handler can leave TCP listening with no responses and no traceback. `serve()` therefore:
 1. puts the serve process in its own process group (`os.setpgrp()`);
 2. exposes `GET /_health` on the same ASGI worker (JSON `{"status":"ok"}`);
 3. spawns an external liveness watchdog that polls `/_health` and, after consecutive timeouts, prints a loud FATAL banner and `SIGKILL`s the whole process group.
 
 Tune with `SERVE_HEALTH_TIMEOUT` (seconds, default 5), `SERVE_HEALTH_INTERVAL` (default 5), `SERVE_HEALTH_FAIL_LIMIT` (default 2), `SERVE_HEALTH_STARTUP_GRACE` (default 600 — compile can be slow). Set `SERVE_HEALTH_WATCHDOG=0` only when deliberately debugging a hang without auto-kill.
+
+**Read the watchdog's exit status before shutting it down.** `serve()`'s
+`finally` block terminates a still-running watchdog, which sets its
+`returncode` to `-15`. Testing `returncode` *after* that call makes every clean
+Ctrl+C print `FATAL: liveness watchdog aborted the server (exit=-15)` and exit
+1 — so the one banner that is supposed to mean "the ASGI worker wedged" fires
+on healthy shutdowns and becomes noise. Capture `watchdog.poll()` into a local
+**before** `terminate()` and report on that value only.
 ---
 
 ## Data Model
@@ -689,4 +700,5 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - Gene/sculpture inputs load from `data/enhancement.db` (SQLite, preferred) or CSV fallback from `data/db_backup/` (see `gene_data.py` / `sculpture.py`). UniProt accessions in `gene_properties` drive AlphaFold URLs assembled in `gene_data.py`; `data/input/structures/*.pdb` files are local/gitignored and should stay untracked.
 - Dev server / LAN: `python-dotenv` loads repo-root `.env` in `rxconfig.py` and `src/materialized_enhancements/run.py` before config. Backend bind defaults to `0.0.0.0` via `BACKEND_BIND_HOST` (or `REFLEX_BACKEND_HOST` when set). `vite_allowed_hosts` is permissive by default so `http://<LAN-IP>:3000` works; optionally restrict with `BACKEND_VITE_ALLOWED_HOSTS`. For phones on Wi‑Fi, `API_URL` may need the machine LAN IP and backend port, not `localhost`.
 - Mobile USB debugging: connect an Android phone with USB debugging enabled, run `adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8000 tcp:8000` to forward ports, then `adb shell svc power stayon usb` to prevent auto-lock during debugging. Open Chrome on the phone at `localhost:3000`. Take screenshots with `adb exec-out screencap -p > /tmp/screenshot.png`. For Chrome DevTools MCP access, also run `adb forward tcp:9222 localabstract:chrome_devtools_remote`. Mobile CSS uses `@media (hover: none) and (pointer: coarse)` for touch-device detection; ensure Chrome is in mobile site mode (not "Request desktop site") when testing.
-- **`uv run serve` liveness:** Granian fullstack can wedge the ASGI worker (e.g. Polars parallel `sort()` deadlock) while the port still accepts connections and the console still looks running. `serve()` runs an external `/_health` watchdog that FATAL-logs and SIGKILLs the process group on repeated timeouts — never leave a silent zombie listener. Knowledgebase grids must use Granian-safe sorting (`sort_dataframe_model` in reflex-mui-datagrid), not Polars `LazyFrame.sort().collect()` on the worker thread.
+- **`uv run serve` must force `spawn` ASGI workers (fork-after-Rayon deadlock).** Reflex compiles the app in the parent process, which builds Polars' Rayon pool; Granian then creates its worker via `multiprocessing`, which defaults to `fork` on Linux. The child inherits the pool's locks without its threads, so the **first parallel Polars call in a request** — a grid `sort()`, or the `unique()` behind filter value options — blocks forever inside `collect()` with no traceback while the port still listens. `run.py::_force_spawn_worker_processes()` calls `multiprocessing.set_start_method("spawn", force=True)` from `_setup()`; do not remove it. `serve()` also keeps the external `/_health` watchdog that FATAL-logs and SIGKILLs the process group on repeated timeouts. Full write-up: [`docs/granian-polars-sort-deadlock.md`](docs/granian-polars-sort-deadlock.md).
+- **Knowledgebase grids require `reflex-mui-datagrid>=0.3.13` (PyPI, not a local path):** lazy Polars `filter→sort→slice→collect` with full Rayon, materialized **off** the ASGI thread via a shared, never-shut-down executor (do not cap `POLARS_MAX_THREADS`, do not full-frame Python-sort, do not use a `with`-scoped `ThreadPoolExecutor` — its `shutdown(wait=True)` waits out the query the timeout was abandoning); free-text filters must not flip to `singleSelect` on filter-icon click; filter/sort/scroll failures must clear `lf_grid_loading` and report into `lf_grid_stats` so one grid cannot stall the app.

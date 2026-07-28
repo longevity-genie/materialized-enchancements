@@ -351,6 +351,18 @@ reload = [
 ]
 
 [[package]]
+name = "gunicorn"
+version = "26.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/b7/a4a3f632f823e432ce6bc65f62961b7980c898c77f075a2f7118cb3846fe/gunicorn-26.0.0.tar.gz", hash = "sha256:ca9346f85e3a4aeeb64d491045c16b9a35647abd37ea15efe53080eb8b090baf", size = 727286, upload-time = "2026-05-05T06:38:25.529Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/40/9c2384fc2be4ad25dd4a49decd5ad9ea5a3639814c11bd40ab77cb9f0a14/gunicorn-26.0.0-py3-none-any.whl", hash = "sha256:40233d26a5f0d1872916188c276e21641155111c2853f0c2cd55260aec0d24fc", size = 212009, upload-time = "2026-05-05T06:38:23.007Z" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -493,6 +505,7 @@ dependencies = [
     { name = "enhancement-geometry" },
     { name = "fast-simplification" },
     { name = "granian" },
+    { name = "gunicorn" },
     { name = "networkx" },
     { name = "pillow" },
     { name = "polars" },
@@ -500,6 +513,7 @@ dependencies = [
     { name = "reflex" },
     { name = "reflex-components-radix" },
     { name = "reflex-mui-datagrid" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -515,13 +529,15 @@ requires-dist = [
     { name = "enhancement-geometry", specifier = ">=0.2.4" },
     { name = "fast-simplification", specifier = ">=0.1.13" },
     { name = "granian", specifier = ">=2.7.9" },
+    { name = "gunicorn", specifier = ">=26.0.0" },
     { name = "networkx", specifier = ">=3.6.1" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "polars", specifier = ">=1.43.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "reflex", specifier = "==0.9.7" },
     { name = "reflex-components-radix", specifier = "==0.9.6" },
-    { name = "reflex-mui-datagrid", specifier = ">=0.3.10" },
+    { name = "reflex-mui-datagrid", specifier = ">=0.3.13" },
+    { name = "uvicorn", specifier = ">=0.51.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1217,7 +1233,7 @@ wheels = [
 
 [[package]]
 name = "reflex-mui-datagrid"
-version = "0.3.10"
+version = "0.3.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "polars" },
@@ -1225,9 +1241,9 @@ dependencies = [
     { name = "reflex-components-core" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/03/ad62df7fa0d38fc5ad151a91b61929e83fe3ffd151088202d1ae84e4209c/reflex_mui_datagrid-0.3.10.tar.gz", hash = "sha256:114371866126f3995c3662123bdb8e7336e767638429e05941330702da310df6", size = 67106, upload-time = "2026-07-28T13:48:59.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/f9/5b2fdf769ab8d2332d10a0804a56577e3f905b587b9333cf7aca2210767a/reflex_mui_datagrid-0.3.13.tar.gz", hash = "sha256:82f0afd6038f2446810f4a79836ea0655e2970b504e5ac8159ff0fed3e26d48d", size = 68896, upload-time = "2026-07-28T14:30:27.192Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/bc/40ee56dfa5495aa5b8e9264e8645f7c5b0d1fbf9b56b747637d583073592/reflex_mui_datagrid-0.3.10-py3-none-any.whl", hash = "sha256:b163e3005f3998d6cfc360d8ad571c7d09e6c8a12c73a6d5919a9dd902b9346a", size = 72143, upload-time = "2026-07-28T13:49:00.784Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/d1/41092dea2e4f75a3db5ae7c4952e0c5d9ac925af11d0a65b6ab863cb4ded/reflex_mui_datagrid-0.3.13-py3-none-any.whl", hash = "sha256:e39129df9f7f7a3696f439d49df20b6e7e6dab42ac5b316c395793eb0cf2e794", size = 73965, upload-time = "2026-07-28T14:30:25.817Z" },
 ]
 
 [[package]]
@@ -1486,6 +1502,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
+name = "uvicorn"
+version = "0.51.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "h11" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a2/65/b7c6c443ccc58678c91e1e973bbe2a878591538655d6e1d47f24ba1c51f3/uvicorn-0.51.0.tar.gz", hash = "sha256:f6f4b69b657c312f516dd2d268ab9ae6f254b11e4bac504f37b2ab58b24dd0b0", size = 94412, upload-time = "2026-07-08T10:59:05.962Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/45/ec/dbb7e5a6b91f86bfb9eb7d2988a2730907b6a729875b949c7f022e8b88fa/uvicorn-0.51.0-py3-none-any.whl", hash = "sha256:5d38af6cd620f2ae3849fb44fd4879e0890aa1febe8d47eb355fb45d93fe6a5b", size = 73219, upload-time = "2026-07-08T10:59:04.44Z" },
 ]
 
 [[package]]

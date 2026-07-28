@@ -1058,6 +1058,11 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
 
     @rx.event
     def load_grid(self):
+        # set_lazyframe() resets filter/sort/pagination, and set_surface() calls
+        # this on every tab switch. The frame is a constant, so reloading can
+        # only discard the visitor's filters (and race a mid-flight Apply).
+        if self.lf_grid_loaded:
+            return
         yield from self.set_lazyframe(
             _GENES_LF,
             descriptions=_GENE_COL_DESCS,
@@ -1163,6 +1168,10 @@ class KbExperimentsGridState(LazyFrameGridMixin, rx.State):
 
     @rx.event
     def load_grid(self):
+        # Idempotent for the same reason as the Genes grid — and here a reload
+        # also re-scans 1k+ rows on every tab switch.
+        if self.lf_grid_loaded:
+            return
         yield from self.set_lazyframe(
             _EXPERIMENTS_LF,
             descriptions=_EXP_COL_DESCS,
@@ -1237,6 +1246,9 @@ class KbOrgsGridState(LazyFrameGridMixin, rx.State):
 
     @rx.event
     def load_grid(self):
+        # Idempotent for the same reason as the Genes grid.
+        if self.lf_grid_loaded:
+            return
         yield from self.set_lazyframe(
             _ORGS_LF,
             descriptions=_ORG_COL_DESCS,

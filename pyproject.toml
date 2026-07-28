@@ -15,7 +15,9 @@ dependencies = [
   "pillow>=12.3.0",
   "fast-simplification>=0.1.13",
   "networkx>=3.6.1",
-  "reflex-mui-datagrid>=0.3.10",
+  "reflex-mui-datagrid>=0.3.13",
+  "uvicorn>=0.51.0",
+  "gunicorn>=26.0.0",
 ]
 
 [project.scripts]
