@@ -1336,6 +1336,160 @@ def _gene_tested_on_row(testing_entries: rx.Var) -> rx.Component:
     )
 
 
+def _gene_tested_on_fold(testing_entries: rx.Var) -> rx.Component:
+    """Collapsed host list — can be long, so keep it behind a details toggle."""
+    return rx.cond(
+        testing_entries.length() > 0,
+        rx.el.details(
+            rx.el.summary(
+                rx.el.span(
+                    "Tested on",
+                    style={
+                        "fontSize": "0.9rem",
+                        "fontWeight": "900",
+                        "color": "#94a3b8",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.06em",
+                    },
+                ),
+                rx.el.span(
+                    "(",
+                    testing_entries.length().to(str),
+                    ")",
+                    style={
+                        "fontSize": "0.78rem",
+                        "fontWeight": "700",
+                        "color": "#64748b",
+                        "marginLeft": "6px",
+                    },
+                ),
+                style={
+                    "cursor": "pointer",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "listStyle": "none",
+                    "padding": "8px 10px",
+                    "borderRadius": "7px",
+                    "background": "rgba(148, 163, 184, 0.08)",
+                    "border": "1px solid rgba(148, 163, 184, 0.22)",
+                    "color": "#cbd5e1",
+                    "userSelect": "none",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(testing_entries, _tested_host_badge),
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "gap": "4px",
+                    "flexWrap": "wrap",
+                    "padding": "10px 4px 2px 4px",
+                },
+            ),
+            class_name="me-gene-tested-on-fold",
+            style={"margin": "4px 0"},
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_evidence_tier_row(evidence_tier: rx.Var) -> rx.Component:
+    """Compact highest-evidence-tier label for the default gene-card surface."""
+    return rx.cond(
+        evidence_tier != "",
+        rx.el.div(
+            rx.el.span(
+                "Highest evidence",
+                style={
+                    "fontSize": "0.95rem",
+                    "fontWeight": "900",
+                    "color": "#94a3b8",
+                    "marginRight": "8px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                    "flexShrink": "0",
+                },
+            ),
+            rx.el.span(
+                evidence_tier,
+                style={
+                    "fontSize": "0.82rem",
+                    "fontWeight": "700",
+                    "padding": "2px 10px",
+                    "borderRadius": "6px",
+                    "backgroundColor": "rgba(56, 189, 248, 0.14)",
+                    "color": "#7dd3fc",
+                    "border": "1px solid rgba(125, 211, 252, 0.35)",
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "2px"},
+        ),
+        rx.fragment(),
+    )
+
+
+def _availability_badge(label: str, background: str, color: str, border: str) -> rx.Component:
+    return rx.el.span(
+        label,
+        style={
+            "fontSize": "0.76rem",
+            "fontWeight": "800",
+            "padding": "3px 10px",
+            "borderRadius": "999px",
+            "backgroundColor": background,
+            "color": color,
+            "border": border,
+            "letterSpacing": "0.04em",
+            "textTransform": "uppercase",
+            "whiteSpace": "nowrap",
+        },
+    )
+
+
+def _gene_availability_badges(gene_item: rx.Var) -> rx.Component:
+    """Show commercial / clinical-trial status above Details when present."""
+    return rx.cond(
+        gene_item["has_commercial"] | gene_item["has_clinical_trial"],
+        rx.el.div(
+            rx.el.span(
+                "Status",
+                style={
+                    "fontSize": "0.95rem",
+                    "fontWeight": "900",
+                    "color": "#94a3b8",
+                    "marginRight": "8px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                    "flexShrink": "0",
+                },
+            ),
+            rx.cond(
+                gene_item["has_commercial"],
+                _availability_badge(
+                    "Commercial",
+                    "rgba(52, 211, 153, 0.16)",
+                    "#6ee7b7",
+                    "1px solid rgba(110, 231, 183, 0.4)",
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                gene_item["has_clinical_trial"],
+                _availability_badge(
+                    "Clinical trial",
+                    "rgba(96, 165, 250, 0.16)",
+                    "#93c5fd",
+                    "1px solid rgba(147, 197, 253, 0.4)",
+                ),
+                rx.fragment(),
+            ),
+            style={"display": "flex", "alignItems": "center", "gap": "6px", "flexWrap": "wrap"},
+        ),
+        rx.fragment(),
+    )
+
+
 _POSITIVE_COLORS: dict[str, str] = {
     "true": "#22c55e",
     "false": "#ef4444",
@@ -2006,6 +2160,17 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 "whiteSpace": "pre-wrap",
             },
         ),
+        rx.el.div(
+            _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
+            _gene_evidence_tier_row(gene_item["evidence_tier"]),
+            _gene_availability_badges(gene_item),
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "6px",
+                "margin": "6px 14px 4px 36px",
+            },
+        ),
         rx.el.button(
             rx.cond(
                 is_expanded,
@@ -2041,75 +2206,71 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
         ),
         rx.cond(
             is_expanded,
-            rx.el.div(
                 rx.el.div(
-                    _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
-                    _gene_tested_on_row(gene_item["testing_entries"]),
-                    style={
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "gap": "8px",
-                        "margin": "0 14px 10px 36px",
-                    },
-                ),
-                _gene_selection_text_block("Full description", gene_item["narrative"]),
-                _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
-                _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
-                _gene_testing_table(gene_item["testing_entries"]),
-                _gene_organizations_section(gene_item["org_entries"]),
-                _gene_selection_text_block("Highest evidence tier", gene_item["evidence_tier"]),
-                _gene_selection_text_block("Translational gaps", gene_item["translational_gaps"]),
-                rx.cond(
-                    gene_item["key_references"] != "",
-                    _gene_key_references_linked(gene_item["key_reference_segments"]),
-                    rx.fragment(),
-                ),
-                _gene_selection_text_block("Notes", gene_item["notes"]),
-                rx.el.div(
+                    _gene_selection_text_block("Full description", gene_item["narrative"]),
+                    _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
                     rx.el.div(
-                        "Biophysical / metadata",
-                        style={
-                            "fontSize": "0.82rem",
-                            "fontWeight": "600",
-                            "color": "#475569",
-                            "margin": "4px 0 6px 0",
-                        },
+                        _gene_organizations_section(gene_item["org_entries"]),
+                        style={"margin": "0 14px 6px 36px"},
                     ),
-                    _gene_selection_prop_row("Protein length (aa)", gene_item["protein_length_aa"]),
-                    _gene_selection_prop_row("Protein mass (kDa)", gene_item["protein_mass_kda"]),
-                    _gene_selection_prop_row("Exon count", gene_item["exon_count"]),
-                    _gene_selection_prop_row("Genes in system", gene_item["genes_in_system"]),
-                    _gene_selection_prop_row("Recipient organism count", gene_item["recipient_organism_count"]),
-                    _gene_selection_prop_row("Disorder (%)", gene_item["disorder_pct"]),
-                    _gene_selection_prop_row("Isoelectric point (pI)", gene_item["isoelectric_point_pI"]),
-                    _gene_selection_prop_row("GRAVY score", gene_item["gravy_score"]),
-                    _gene_selection_prop_row("Key publication year", gene_item["key_publication_year"]),
-                    style={"padding": "4px 14px 10px 36px"},
-                ),
-                rx.cond(
-                    gene_item["paper_url"] != "",
+                    _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
+                    _gene_testing_table(gene_item["testing_entries"]),
+                    _gene_selection_text_block("Translational gaps", gene_item["translational_gaps"]),
+                    rx.cond(
+                        gene_item["key_references"] != "",
+                        _gene_key_references_linked(gene_item["key_reference_segments"]),
+                        rx.fragment(),
+                    ),
+                    _gene_selection_text_block("Notes", gene_item["notes"]),
                     rx.el.div(
-                        rx.el.a(
-                            fomantic_icon("external-link", size=11),
-                            rx.el.span(" Open first linked reference", style={"marginLeft": "4px"}),
-                            href=gene_item["paper_url"],
-                            target="_blank",
+                        rx.el.div(
+                            "Biophysical / metadata",
                             style={
-                                "fontSize": "0.78rem",
-                                "display": "inline-flex",
-                                "alignItems": "center",
-                                "color": "#7c3aed",
+                                "fontSize": "0.82rem",
+                                "fontWeight": "600",
+                                "color": "#475569",
+                                "margin": "4px 0 6px 0",
                             },
                         ),
-                        style={"padding": "0 14px 10px 36px"},
+                        _gene_selection_prop_row("Protein length (aa)", gene_item["protein_length_aa"]),
+                        _gene_selection_prop_row("Protein mass (kDa)", gene_item["protein_mass_kda"]),
+                        _gene_selection_prop_row("Exon count", gene_item["exon_count"]),
+                        _gene_selection_prop_row("Genes in system", gene_item["genes_in_system"]),
+                        _gene_selection_prop_row("Recipient organism count", gene_item["recipient_organism_count"]),
+                        _gene_selection_prop_row("Disorder (%)", gene_item["disorder_pct"]),
+                        _gene_selection_prop_row("Isoelectric point (pI)", gene_item["isoelectric_point_pI"]),
+                        _gene_selection_prop_row("GRAVY score", gene_item["gravy_score"]),
+                        _gene_selection_prop_row("Key publication year", gene_item["key_publication_year"]),
+                        style={"padding": "4px 14px 10px 36px"},
                     ),
-                    rx.fragment(),
+                    rx.cond(
+                        gene_item["paper_url"] != "",
+                        rx.el.div(
+                            rx.el.a(
+                                fomantic_icon("external-link", size=11),
+                                rx.el.span(" Open first linked reference", style={"marginLeft": "4px"}),
+                                href=gene_item["paper_url"],
+                                target="_blank",
+                                style={
+                                    "fontSize": "0.78rem",
+                                    "display": "inline-flex",
+                                    "alignItems": "center",
+                                    "color": "#7c3aed",
+                                },
+                            ),
+                            style={"padding": "0 14px 10px 36px"},
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.el.div(
+                        _gene_tested_on_fold(gene_item["testing_entries"]),
+                        style={"margin": "6px 14px 10px 36px"},
+                    ),
+                    style={
+                        "borderTop": "1px solid #f3f4f6",
+                        "backgroundColor": "#fafafa",
+                    },
                 ),
-                style={
-                    "borderTop": "1px solid #f3f4f6",
-                    "backgroundColor": "#fafafa",
-                },
-            ),
             rx.fragment(),
         ),
         style={
@@ -3651,6 +3812,17 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                     "whiteSpace": "pre-wrap",
                 },
             ),
+            rx.el.div(
+                _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
+                _gene_evidence_tier_row(gene_item["evidence_tier"]),
+                _gene_availability_badges(gene_item),
+                style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "6px",
+                    "marginTop": "10px",
+                },
+            ),
             rx.el.button(
                 rx.cond(
                     is_expanded,
@@ -3690,21 +3862,11 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             rx.cond(
                 is_expanded,
                 rx.el.div(
-                    rx.el.div(
-                        _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
-                        _gene_tested_on_row(gene_item["testing_entries"]),
-                        style={
-                            "display": "flex",
-                            "flexDirection": "column",
-                            "gap": "8px",
-                        },
-                    ),
                     _gene_selection_text_block("Full description", gene_item["narrative"]),
                     _gene_selection_text_block("Mechanism", gene_item["mechanism"]),
+                    _gene_organizations_section(gene_item["org_entries"]),
                     _gene_selection_text_block("Achievements (effect sizes)", gene_item["achievements"]),
                     _gene_testing_table(gene_item["testing_entries"]),
-                    _gene_organizations_section(gene_item["org_entries"]),
-                    _rpg_gene_side_text("Highest evidence tier", gene_item["evidence_tier"]),
                     _rpg_gene_side_text("Translational gaps", gene_item["translational_gaps"]),
                     _rpg_gene_side_text("Notes", gene_item["notes"]),
                     rx.cond(
@@ -3713,6 +3875,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                         rx.fragment(),
                     ),
                     _gene_structure_viewer(gene_item),
+                    _gene_tested_on_fold(gene_item["testing_entries"]),
                     style={
                         "display": "flex",
                         "flexDirection": "column",
@@ -5198,6 +5361,21 @@ def _rpg_flow_css() -> rx.Component:
         }
         details.me-rpg-category-accordion > summary::marker {
             content: "";
+        }
+        details.me-gene-tested-on-fold > summary::-webkit-details-marker {
+            display: none;
+        }
+        details.me-gene-tested-on-fold > summary::marker {
+            content: "";
+        }
+        details.me-gene-tested-on-fold > summary::before {
+            content: "▸";
+            margin-right: 8px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        details.me-gene-tested-on-fold[open] > summary::before {
+            content: "▾";
         }
         details.me-rpg-category-accordion[open] .me-rpg-accordion-chevron {
             transform: rotate(90deg);
@@ -10331,7 +10509,7 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
     image=_page_image_url(),
     description=_page_description("/"),
     meta=_page_meta("/"),
-    on_load=[AppState.redirect_legacy_tab, ComposeState.check_clean_storage],
+    on_load=[AppState.redirect_legacy_tab, ComposeState.refresh_gene_catalog, ComposeState.check_clean_storage],
 )
 def index_page() -> rx.Component:
     """Character profile — default RPG loadout builder."""
@@ -10349,7 +10527,12 @@ _NOINDEX_META: list[dict[str, str]] = [
     image=_page_image_url(),
     description=_page_description("/materialization"),
     meta=_NOINDEX_META,
-    on_load=[ComposeState.apply_artex_params, ComposeState.apply_saved_report, ComposeState.apply_shared_report],
+    on_load=[
+        ComposeState.refresh_gene_catalog,
+        ComposeState.apply_artex_params,
+        ComposeState.apply_saved_report,
+        ComposeState.apply_shared_report,
+    ],
 )
 def materialization_page() -> rx.Component:
     """Materialization — 3D output, viewer, report, and export actions."""

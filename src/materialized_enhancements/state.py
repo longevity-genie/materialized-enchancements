@@ -153,6 +153,8 @@ class SculptureSelectedGene(TypedDict):
     playable: bool
     price: int
     org_entries: list[dict[str, str]]
+    has_commercial: bool
+    has_clinical_trial: bool
     protein_length_aa: str
     protein_mass_kda: str
     exon_count: str
@@ -214,6 +216,49 @@ def _gene_org_display_entries(gene_id: str) -> list[dict[str, str]]:
     return entries
 
 
+def _is_clinical_trial_stage(stage: str) -> bool:
+    """True for human pipeline stages beyond pure preclinical research."""
+    return stage == "pilot" or stage.startswith("phase")
+
+
+def _rpg_testing_entries(entries: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Drop observational / association-only rows from the game UI.
+
+    Observational NCT noise dominates host lists and the testing table; keep
+    interventional and natural-variant evidence for the character cards.
+    """
+    out: list[dict[str, str]] = []
+    for e in entries:
+        intervention = str(e.get("intervention", "") or "").strip().lower()
+        if intervention == "observational" or intervention.startswith("observational"):
+            continue
+        if intervention in {"none (association study)", "association study"}:
+            continue
+        out.append(e)
+    return out
+
+
+def _gene_availability_flags(
+    gene_id: str,
+    testing_entries: list[dict[str, str]],
+) -> tuple[bool, bool]:
+    """Return (has_commercial, has_clinical_trial) for compact gene-card badges."""
+    has_commercial = False
+    has_clinical_trial = False
+    for og in GENE_ORG_MAP.get(gene_id, []):
+        stage = str(og.get("stage", "") or "")
+        if stage == "commercial":
+            has_commercial = True
+        if _is_clinical_trial_stage(stage) or str(og.get("trial_id", "") or "").strip():
+            has_clinical_trial = True
+    if not has_clinical_trial:
+        has_clinical_trial = any(
+            str(t.get("reference_short", "") or "").startswith("NCT")
+            for t in testing_entries
+        )
+    return has_commercial, has_clinical_trial
+
+
 _EMPTY_CONFIDENCE_PRIMARY: dict[str, Any] = {
     "gene_id": "",
     "value": "",
@@ -232,6 +277,11 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
     prop_row = resolve_gene_properties_row(g["gene"], g["gene_id"])
     price = int(prop_row.get("gene_price", 0))
     puzzle_svg = g["puzzle_svg"]
+    testing_entries = _rpg_testing_entries(list(g.get("testing_entries", [])))
+    has_commercial, has_clinical_trial = _gene_availability_flags(
+        str(g["gene_id"]),
+        testing_entries,
+    )
     return {
         "gene_id": g["gene_id"],
         "gene": g["gene"],
@@ -253,7 +303,7 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "confidence_details": g.get("confidence_details", []),
         "confidence_summary": _confidence_summary(g.get("confidence_entries", [])),
         "confidence_bucket": _confidence_bucket_from_entries(g.get("confidence_entries", [])),
-        "testing_entries": g.get("testing_entries", []),
+        "testing_entries": testing_entries,
         "translational_gaps": g["translational_gaps"],
         "key_references": g["key_references"],
         "key_reference_segments": _split_key_references_with_links(str(g.get("key_references", ""))),
@@ -272,6 +322,8 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "playable": bool(g["game_enabled"]),
         "price": price,
         "org_entries": _gene_org_display_entries(g["gene_id"]),
+        "has_commercial": has_commercial,
+        "has_clinical_trial": has_clinical_trial,
         **_gene_props_flat(g["gene"], g["gene_id"]),
     }
 
@@ -1292,7 +1344,19 @@ class ComposeState(rx.State):
         self.expanded_genes = []
         self._recompute_params()
 
+    def refresh_gene_catalog(self) -> None:
+        """Rebind the game gene catalog from the filtered module constant.
+
+        Reflex keeps per-client state across hot reloads, so without this a
+        session started before observational filtering still serves the old
+        full testing lists on character cards.
+        """
+        self.gene_catalog = COMPOSITION_GENE_CATALOG
+
     def toggle_gene_details(self, gene: str) -> None:
+        # Keep expanded cards on the filtered catalog even if this client token
+        # still holds a pre-filter gene_catalog from an older process.
+        self.refresh_gene_catalog()
         if gene in self.expanded_genes:
             self.expanded_genes = [g for g in self.expanded_genes if g != gene]
         else:
