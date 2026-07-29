@@ -1483,12 +1483,23 @@ _KB_CSS = """
 .kb-page .MuiDataGrid-cell {
     color: #e2e8f0 !important;
     border-bottom-color: rgba(148, 163, 184, 0.12) !important;
+    display: flex !important;
+    align-items: center !important;
 }
-/* Badge pills — match Genes tab category / evidence chips */
+/* Badge pills — vertically center text; avoid parent line-height skew */
 .kb-page .MuiDataGrid-cell > div[style*="border-radius"] {
     font-size: 0.92rem !important;
     font-weight: 600 !important;
-    padding: 4px 11px !important;
+    padding: 3px 11px !important;
+    line-height: 1.15 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .kb-page .MuiDataGrid-cell a {
     color: #a78bfa !important;
@@ -1721,8 +1732,10 @@ _KB_CSS = """
 .kb-org-detail-name { font-weight: 700; font-size: 1.08rem; color: #f8fafc; }
 .kb-org-detail-row { font-size: 0.98rem; color: #94a3b8; margin-top: 5px; line-height: 1.45; }
 .kb-org-gene-stage {
-    display: inline-block; font-size: 0.88rem; font-weight: 700;
-    border-radius: 999px; padding: 3px 10px; margin-right: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.88rem; font-weight: 700; line-height: 1.15;
+    border-radius: 999px; padding: 4px 10px; margin-right: 6px;
+    box-sizing: border-box; white-space: nowrap;
 }
 .kb-stage-commercial { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
 .kb-stage-phase { background: rgba(59, 130, 246, 0.22); color: #93c5fd; }

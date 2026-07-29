@@ -1448,9 +1448,13 @@ def _availability_badge(label: str, background: str, color: str, border: str) ->
     return rx.el.span(
         label,
         style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
             "fontSize": "0.76rem",
             "fontWeight": "800",
-            "padding": "3px 10px",
+            "lineHeight": "1.15",
+            "padding": "4px 10px",
             "borderRadius": "999px",
             "backgroundColor": background,
             "color": color,
@@ -1458,6 +1462,7 @@ def _availability_badge(label: str, background: str, color: str, border: str) ->
             "letterSpacing": "0.04em",
             "textTransform": "uppercase",
             "whiteSpace": "nowrap",
+            "boxSizing": "border-box",
         },
     )
 
