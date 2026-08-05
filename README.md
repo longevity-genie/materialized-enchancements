@@ -4,7 +4,7 @@
 
 An RPG-style character creator for speculative human enhancement. Spend enhancement credits on real genes from extraordinary organisms, watch your profile light up by category, then materialize the result as a unique 3D-printable artifact and a personal enhancement report.
 
-**[Try it live](https://enhancement.bio/)** · [Project video](https://youtu.be/ev726lz5sLo) · [Gene knowledge base](https://www.dolthub.com/repositories/longevity-genie/enhancement-bio) · [Open source](https://github.com/winternewt/materialized-enchancements)
+**[Try it live](https://enhancement.bio/)** · [Project video](https://youtu.be/ev726lz5sLo) · [Gene knowledge base](https://www.dolthub.com/repositories/longevity-genie/enhancement-bio) · [Open source](https://github.com/longevity-genie/materialized-enhancements)
 
 ---
 
@@ -89,17 +89,17 @@ The gene library is more than game data — it is a curated knowledge base of re
 
 Whether you are a researcher studying gene transfer, a biohacker evaluating enhancement options, or a transhumanist tracking which therapies are already available in alternative jurisdictions — the database gives you structured, evidence-graded data to work from. We are expanding it to include providers and clinics offering gene therapies today.
 
-109 genes · 6 parent categories · 71 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,023 experimental evidence records · 729 registered clinical trials · 108 organizations (69 academic labs, 36 biotech companies, 3 clinics) · 850 unique DOI-linked references.
+109 genes catalogued (80 playable in the RPG, 29 knowledge-base-only pending biophysical data) · 6 parent categories · 71 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,023 experimental evidence records · 729 registered clinical trials · 108 organizations (69 academic labs, 36 biotech companies, 3 clinics) · 850 unique DOI-linked references.
 
 
-| Category                 | Genes | Example organisms                                                                    |
-| ------------------------ | ----- | ------------------------------------------------------------------------------------ |
-| Longevity & Genome       | 25    | Greenland shark, Naked mole-rat, African elephant, Orange roughy                     |
-| Environmental Adaptation | 19    | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium         |
-| Expression               | 17    | Crystal jellyfish, Golden silk orbweaver, Humboldt squid, Venus flower basket sponge |
-| Stress Resistance        | 16    | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon                |
-| Regeneration             | 16    | Axolotl, Planarian, Spiny mouse, Immortal jellyfish, American lobster                |
-| Perception               | 16    | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin            |
+| Category                 | Total | Playable | Example organisms                                                                    |
+| ------------------------ | ----- | -------- | ------------------------------------------------------------------------------------ |
+| Longevity & Genome       | 25    | 20       | Greenland shark, Naked mole-rat, African elephant, Orange roughy                     |
+| Environmental Adaptation | 19    | 17       | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium         |
+| Expression               | 17    | 11       | Crystal jellyfish, Golden silk orbweaver, Humboldt squid, Venus flower basket sponge |
+| Stress Resistance        | 16    | 11       | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon                |
+| Regeneration             | 16    | 11       | Axolotl, Planarian, Spiny mouse, Immortal jellyfish, American lobster                |
+| Perception               | 16    | 10       | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin            |
 
 
 Each gene has an **evidence tier** (T2–T6), a **confidence level**, quantified achievements with citations, and honest notes about limitations, contradictions, and translational gaps.
@@ -480,7 +480,7 @@ Protein structure files (`assets/structures/*.pdb`) and 3D-printable STL meshes 
 
 Started at CODAME ART+TECH 『 The New Human 』 in Milano, now developed by the joint [GlucoseDAO](https://glucosedao.org) and [Longevity Genie](https://longevity-genie.info) team.
 
-The project is **open source** ([repository](https://github.com/winternewt/materialized-enchancements)) and built so other artists can plug their own generative models into the same biological input engine.
+The project is **open source** ([repository](https://github.com/longevity-genie/materialized-enhancements)) and built so other artists can plug their own generative models into the same biological input engine.
 
 ### Gratitudes
 

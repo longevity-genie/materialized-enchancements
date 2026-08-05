@@ -84,7 +84,7 @@ Rather than fearing genetic enhancement, this project imagines a world where it 
 
 ## Tech Stack
 
-- **Frontend UI**: Reflex ([GitHub Repo](https://github.com/winternewt/materialized-enchancements))
+- **Frontend UI**: Reflex ([GitHub Repo](https://github.com/longevity-genie/materialized-enhancements))
 - **Generative Form Prototype**: Rhino / Grasshopper
 - **Future Generative Engine**: Open-source generative models directly integrated with the UI
 - **Generative Video**: Google Flux / Veo
@@ -119,4 +119,4 @@ The gene library is built on real published research — every entry links to a 
 
 The puzzle metaphor runs through the whole project: each organism is a puzzle piece, the human silhouette is assembled from non-human biological heritage, and your personal totem is the assembled result of your choices — a materialised version of your vision of yourself.
 
-Source code: https://github.com/winternewt/materialized-enchancements
+Source code: https://github.com/longevity-genie/materialized-enhancements

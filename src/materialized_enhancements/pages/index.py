@@ -460,7 +460,7 @@ def _landing_tab() -> rx.Component:
                         rx.el.div(
                             _contact_link(
                                 "Open a GitHub issue",
-                                "https://github.com/winternewt/materialized-enchancements/issues",
+                                "https://github.com/longevity-genie/materialized-enhancements/issues",
                             ),
                             _contact_link("Email Livia", "mailto:liviazaharia2020@gmail.com"),
                             _contact_link("Email Anton", "mailto:antonkulaga@gmail.com"),
@@ -502,7 +502,7 @@ def _landing_tab() -> rx.Component:
                                 "Early version — ideas exceed funding and hands. Have a feature request? ",
                                 rx.el.a(
                                     "Open a GitHub issue",
-                                    href="https://github.com/winternewt/materialized-enchancements/issues",
+                                    href="https://github.com/longevity-genie/materialized-enhancements/issues",
                                     target="_blank",
                                     rel="noopener noreferrer",
                                     style=_a,
@@ -553,7 +553,7 @@ def _landing_tab() -> rx.Component:
                             _contact_link("Email Livia about funding", "mailto:liviazaharia2020@gmail.com"),
                             _contact_link(
                                 "Request a feature on GitHub",
-                                "https://github.com/winternewt/materialized-enchancements/issues",
+                                "https://github.com/longevity-genie/materialized-enhancements/issues",
                             ),
                             style={
                                 "display": "flex",
@@ -720,7 +720,7 @@ def _landing_tab() -> rx.Component:
                 "GitHub issues. ",
                 rx.el.a(
                     "Browse the repository on GitHub",
-                    href="https://github.com/winternewt/materialized-enchancements",
+                    href="https://github.com/longevity-genie/materialized-enhancements",
                     target="_blank",
                     rel="noopener noreferrer",
                     style=_a,
@@ -728,7 +728,7 @@ def _landing_tab() -> rx.Component:
                 " or ",
                 rx.el.a(
                     "open an issue",
-                    href="https://github.com/winternewt/materialized-enchancements/issues",
+                    href="https://github.com/longevity-genie/materialized-enhancements/issues",
                     target="_blank",
                     rel="noopener noreferrer",
                     style=_a,
@@ -10100,6 +10100,27 @@ def _tab_menu(active_route: str) -> rx.Component:
                     "textTransform": "uppercase",
                     "padding": "0 1.5em",
                 },
+            ),
+            *(
+                [
+                    rx.el.a(
+                        fomantic_icon("github", size=16, color="#94a3b8"),
+                        href=GITHUB_PROJECT_URL,
+                        target="_blank",
+                        rel="noopener noreferrer",
+                        title="View source on GitHub",
+                        style={
+                            "display": "inline-flex",
+                            "alignItems": "center",
+                            "padding": "0 0.75em",
+                            "height": "100%",
+                            "opacity": "0.7",
+                            "transition": "opacity 0.2s",
+                        },
+                    ),
+                ]
+                if GITHUB_PROJECT_URL
+                else []
             ),
             class_name="right menu",
         ),

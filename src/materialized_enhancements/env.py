@@ -47,7 +47,7 @@ DISCORD_COMMUNITY_NAME: str = os.getenv(
     "DISCORD_COMMUNITY_NAME", "enhancement.bio Discord"
 ).strip() or "community"
 GITHUB_PROJECT_URL: str = os.getenv(
-    "GITHUB_PROJECT_URL", "https://github.com/longevity-genie/materialized-enchancements"
+    "GITHUB_PROJECT_URL", "https://github.com/longevity-genie/materialized-enhancements"
 ).strip()
 DONATION_URL: str = os.getenv("DONATION_URL", "https://ko-fi.com/liviazaharia").strip()
 

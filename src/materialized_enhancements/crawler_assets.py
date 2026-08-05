@@ -139,7 +139,7 @@ def build_llms_txt() -> str:
 ## Canonical Site
 
 - Site: {_canonical_base_url()}
-- Repository: https://github.com/winternewt/materialized-enchancements
+- Repository: https://github.com/longevity-genie/materialized-enhancements
 - Data source: `data/enhancement.db` (SQLite) loaded by `materialized_enhancements.gene_data`
 
 ## Public Pages

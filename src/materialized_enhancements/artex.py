@@ -150,64 +150,6 @@ def _push_to_display(api_url: str, display_id: str, slug: str) -> str:
     return delivery
 
 
-# ── STL preview renderer ──────────────────────────────────────────────────────
-
-_MAX_PREVIEW_FACES = 15_000
-
-
-def render_stl_preview_png(stl_bytes: bytes, size: int = 800) -> bytes:
-    """Render a perspective-view PNG of an STL mesh using trimesh + matplotlib.
-
-    The result is a dark-background image suitable for use as an ARTEX ``image``
-    base layer.  Faces are randomly decimated to ``_MAX_PREVIEW_FACES`` before
-    rendering so that even large sculptures finish in < 2 s.
-    """
-    import numpy as np
-    import trimesh
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # type: ignore[import-untyped]
-
-    mesh = trimesh.load(io.BytesIO(stl_bytes), file_type="stl")
-
-    faces = mesh.faces
-    if len(faces) > _MAX_PREVIEW_FACES:
-        rng = np.random.default_rng(42)
-        faces = faces[rng.choice(len(faces), _MAX_PREVIEW_FACES, replace=False)]
-    verts = mesh.vertices[faces]  # (F, 3, 3)
-
-    dpi = 100
-    fig = plt.figure(figsize=(size / dpi, size / dpi), dpi=dpi)
-    fig.patch.set_facecolor("#080a10")
-    ax = fig.add_subplot(111, projection="3d")
-    ax.set_facecolor("#080a10")
-
-    # shade=True requires colors at construction; edgecolors must not be "none"
-    # at init or matplotlib's _shade_colors broadcasts normals against an empty
-    # array. Set edge color to "none" after construction instead.
-    poly = Poly3DCollection(
-        verts, linewidth=0, antialiased=True, shade=True,
-        facecolors="#7ba8f0", alpha=0.88,
-    )
-    poly.set_edgecolor("none")
-    ax.add_collection3d(poly)
-
-    cx, cy, cz = mesh.centroid
-    span = float(np.max(mesh.bounds[1] - mesh.bounds[0])) * 0.55
-    ax.set_xlim(cx - span, cx + span)
-    ax.set_ylim(cy - span, cy + span)
-    ax.set_zlim(cz - span, cz + span)
-    ax.set_axis_off()
-    ax.view_init(elev=25, azim=45)
-
-    plt.tight_layout(pad=0)
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close(fig)
-    return buf.getvalue()
-
-
 # ── Package format ────────────────────────────────────────────────────────────
 
 _PREVIEW_PATH = "preview/preview.png"

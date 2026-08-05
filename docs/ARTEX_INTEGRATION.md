@@ -294,7 +294,7 @@ curl http://127.0.0.1:8787/api/venue/displays
 
 Start the Reflex app:
 ```bash
-cd /path/to/materialized-enchancements
+cd /path/to/materialized-enhancements
 uv run start
 # → http://localhost:3000
 ```
@@ -361,7 +361,6 @@ uv run pytest tests/test_artex_integration.py -v -s
   - Single asset `kind: "model"` pointing to the STL (was two assets: preview image + model)
 - `build_artex_package_zip` no longer auto-generates a preview PNG; the Three.js
   runtime renders the mesh live.  A poster PNG can still be supplied optionally.
-- `render_stl_preview_png` is retained but no longer called in the publish pipeline.
 
 ### Known runtime constraints
 
