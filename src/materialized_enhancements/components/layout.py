@@ -366,7 +366,10 @@ def idle_band() -> rx.Component:
     )
 
 
-def template(*children: rx.Component) -> rx.Component:
+def template(
+    *children: rx.Component,
+    include_report_libs: bool = False,
+) -> rx.Component:
     """Main page template — White Mirror light theme."""
     global_css = rx.el.style(
         """
@@ -416,7 +419,7 @@ def template(*children: rx.Component) -> rx.Component:
     return rx.el.div(
         fomantic_stylesheets(),
         ws_watchdog(),
-        report_libs(),
+        report_libs() if include_report_libs else rx.fragment(),
         global_css,
         idle_band(),
         rx.el.div(

@@ -11,19 +11,17 @@ from __future__ import annotations
 import binascii
 import logging
 import random
-import sqlite3
 import statistics
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-import polars as pl
 from enhancement_geometry import PipelineConfig, export_stl, run_pipeline_with_retry
 from enhancement_geometry.config import MAX_MODEL_SPAN
 
+from materialized_enhancements.gene_data import GENE_PROPERTY_ROWS
+
 logger = logging.getLogger(__name__)
 
-GENE_PROPERTIES_PATH = Path(__file__).resolve().parents[2] / "data" / "db_backup" / "gene_properties.csv"
-DB_PATH = Path(__file__).resolve().parents[2] / "data" / "enhancement.db"
 DEFAULT_EXPORT_DIR = Path(__file__).resolve().parents[2] / "data" / "output" / "sculptures"
 
 NUM_CIRCLES = 8
@@ -102,44 +100,8 @@ MIN_RADIUS = _BASE_MIN_RADIUS * DST_LOWER_SCALE  # consistent with _DST_RANGES f
 MAX_RADIUS = _BASE_MAX_RADIUS * DST_UPPER_SCALE
 
 
-def _load_gene_property_rows(path: Path) -> List[Dict[str, Any]]:
-    """Rows from the synced database when it exists, else from the fallback CSV.
-
-    The DoltHub-synced SQLite is the source of truth; ``gene_properties.csv`` is
-    the offline fallback. Reading the CSV while the app reads the database is how
-    the two silently drift, which matters here because these columns are the
-    3D-model inputs.
-
-    This module cannot import ``gene_data`` (that would be a cycle via
-    ``state``), so it opens its own short-lived read-only connection.
-
-    Two shape differences are normalised so downstream code sees one format:
-    the SQLite export lower-cases ``isoelectric_point_pI``, and it stores
-    ``has_alphafold`` as 0/1 where the CSV uses the strings "true"/"false".
-    """
-    if not DB_PATH.is_file():
-        return pl.read_csv(path).to_dicts()
-
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    try:
-        rows = conn.execute("SELECT * FROM gene_properties").fetchall()
-    finally:
-        conn.close()
-
-    out: List[Dict[str, Any]] = []
-    for r in rows:
-        row = dict(r)
-        if "isoelectric_point_pi" in row:
-            row["isoelectric_point_pI"] = row.pop("isoelectric_point_pi")
-        if "has_alphafold" in row:
-            row["has_alphafold"] = bool(row["has_alphafold"])
-        out.append(row)
-    return out
-
-
 def load_gene_property_indexes(
-    path: Path = GENE_PROPERTIES_PATH,
+    rows: List[Dict[str, Any]] | None = None,
 ) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     """Load properties keyed by short `gene` label and by stable `gene_id` (slug).
 
@@ -147,10 +109,10 @@ def load_gene_property_indexes(
     properties file uses the short protein label (\"MGMT\"). Matching by
     `gene_id` keeps prices and biophysics aligned.
     """
-    rows = _load_gene_property_rows(path)
+    property_rows = GENE_PROPERTY_ROWS if rows is None else rows
     by_gene: Dict[str, Dict[str, Any]] = {}
     by_gene_id: Dict[str, Dict[str, Any]] = {}
-    for row in rows:
+    for row in property_rows:
         gid = str(row.get("gene_id", "") or "").strip()
         row_out = {k: v for k, v in row.items() if k != "gene_id"}
         gname = str(row_out.get("gene", "") or "").strip()

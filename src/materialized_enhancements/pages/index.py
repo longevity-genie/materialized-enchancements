@@ -12,7 +12,6 @@ from materialized_enhancements.gene_data import (
     GAME_CATEGORY_DISPLAY_COUNTS,
     DEFAULT_BUDGET,
     GENE_LIBRARY,
-    GENE_TESTING,
     UNIQUE_CATEGORIES,
 )
 from materialized_enhancements.env import (
@@ -814,7 +813,7 @@ def _category_button(category: str) -> rx.Component:
             "backgroundColor": rx.cond(is_selected, color, "#ffffff"),
             "color": rx.cond(is_selected, "#ffffff", rx.cond(is_enabled, "#1a1a2e", "#d1d5db")),
             "opacity": rx.cond(is_enabled, "1", "0.5"),
-            "transition": "all 0.15s ease",
+            "transition": "background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease",
         },
     )
 
@@ -1229,7 +1228,7 @@ def _confidence_detail_line(entry: rx.Var) -> rx.Component:
 
 def _gene_confidence_section(
     primary: rx.Var,
-    details: rx.Var,
+    details: rx.Var | None = None,
     show_details: bool = False,
 ) -> rx.Component:
     """Show the mammal/human-facing primary confidence pill.
@@ -1272,7 +1271,7 @@ def _gene_confidence_section(
             ),
             rx.fragment(),
         )
-        if show_details
+        if show_details and details is not None
         else rx.fragment()
     )
     return rx.cond(
@@ -1577,15 +1576,18 @@ def _testing_entry_row(entry: rx.Var) -> rx.Component:
     )
 
 
-def _gene_testing_table(testing_entries: rx.Var) -> rx.Component:
+def _gene_testing_records(testing_entries: rx.Var) -> rx.Component:
+    """Render testing records inside an already-collapsed parent section."""
     return rx.cond(
         testing_entries.length() > 0,
         rx.el.div(
             rx.el.div(
-                "Testing Evidence",
+                "Testing records (",
+                testing_entries.length().to(str),
+                ")",
                 style={
-                    "fontSize": "0.82rem",
-                    "fontWeight": "800",
+                    "fontSize": "0.9rem",
+                    "fontWeight": "900",
                     "color": "#94a3b8",
                     "textTransform": "uppercase",
                     "letterSpacing": "0.06em",
@@ -1623,9 +1625,45 @@ def _gene_testing_table(testing_entries: rx.Var) -> rx.Component:
                         "borderCollapse": "collapse",
                     },
                 ),
-                style={"overflowX": "auto", "maxWidth": "100%"},
+                style={
+                    "overflowX": "auto",
+                    "maxWidth": "100%",
+                    "padding": "10px 4px 2px 4px",
+                },
             ),
             style={"margin": "8px 0"},
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_testing_table(testing_entries: rx.Var) -> rx.Component:
+    """Collapsed testing table used in long-form report rows."""
+    return rx.cond(
+        testing_entries.length() > 0,
+        rx.el.details(
+            rx.el.summary(
+                rx.el.span(
+                    "Testing evidence",
+                    style={
+                        "fontSize": "0.9rem",
+                        "fontWeight": "900",
+                        "color": "#94a3b8",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.06em",
+                    },
+                ),
+                style={
+                    "cursor": "pointer",
+                    "listStyle": "none",
+                    "padding": "8px 10px",
+                    "borderRadius": "7px",
+                    "background": "rgba(148, 163, 184, 0.08)",
+                    "border": "1px solid rgba(148, 163, 184, 0.22)",
+                },
+            ),
+            _gene_testing_records(testing_entries),
+            class_name="me-gene-testing-evidence-fold",
         ),
         rx.fragment(),
     )
@@ -2046,7 +2084,6 @@ def _manipulation_badge_dark(gene_item: rx.Var) -> rx.Component:
 def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
     gene_sym = gene_item["gene"]
     included = ComposeState.included_genes.contains(gene_sym)
-    is_expanded = ComposeState.expanded_genes.contains(gene_sym)
     gene_price = gene_item["price"].to(int)
     cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
     # genes.game_enabled = 0: readable in the library, but not selectable yet
@@ -2192,7 +2229,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             },
         ),
         rx.el.div(
-            _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
+            _gene_confidence_section(gene_item["confidence_primary"]),
             _gene_evidence_tier_row(gene_item["evidence_tier"]),
             _gene_availability_badges(gene_item),
             style={
@@ -2202,121 +2239,9 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 "margin": "6px 14px 4px 36px",
             },
         ),
-        rx.el.button(
-            rx.cond(
-                is_expanded,
-                fomantic_icon("minus", size=14, color="#6d28d9"),
-                fomantic_icon("info circle", size=14, color="#6d28d9"),
-            ),
-            rx.cond(
-                is_expanded,
-                rx.el.span("Hide details"),
-                rx.el.span("Details"),
-            ),
-            on_click=ComposeState.toggle_gene_details(gene_sym),
-            title=rx.cond(is_expanded, "Hide gene details", "Show gene details"),
-            style={
-                "background": "#f3f0ff",
-                "border": "1px solid #d4c5f9",
-                "borderRadius": "8px",
-                "padding": "8px 14px",
-                "margin": "6px 14px 8px 36px",
-                "cursor": "pointer",
-                "display": "inline-flex",
-                "alignItems": "center",
-                "gap": "8px",
-                "fontSize": "0.92rem",
-                "fontWeight": "800",
-                "color": "#6d28d9",
-                "whiteSpace": "nowrap",
-                "_hover": {
-                    "background": "#ede9fe",
-                    "borderColor": "#a78bfa",
-                },
-            },
-        ),
-        rx.cond(
-            is_expanded,
-                rx.el.div(
-                    rx.el.div(
-                        _gene_confidence_section(
-                            gene_item["confidence_primary"],
-                            gene_item["confidence_details"],
-                            show_details=True,
-                        ),
-                        style={"margin": "0 14px 6px 36px"},
-                    ),
-                    _gene_selection_text_block("Full description", gene_item["narrative_segments"]),
-                    _gene_selection_text_block("Mechanism", gene_item["mechanism_segments"]),
-                    rx.el.div(
-                        _gene_organizations_section(gene_item["org_entries"]),
-                        style={"margin": "0 14px 6px 36px"},
-                    ),
-                    _gene_selection_text_block(
-                        "Achievements (effect sizes)",
-                        gene_item["achievements_segments"],
-                    ),
-                    _gene_testing_table(gene_item["testing_entries"]),
-                    _gene_selection_text_block(
-                        "Translational gaps",
-                        gene_item["translational_gaps_segments"],
-                    ),
-                    rx.cond(
-                        gene_item["key_reference_segments"].length() > 0,
-                        _gene_key_references_linked(gene_item["key_reference_segments"]),
-                        rx.fragment(),
-                    ),
-                    _gene_selection_text_block("Notes", gene_item["notes_segments"]),
-                    rx.el.div(
-                        rx.el.div(
-                            "Biophysical / metadata",
-                            style={
-                                "fontSize": "0.82rem",
-                                "fontWeight": "600",
-                                "color": "#475569",
-                                "margin": "4px 0 6px 0",
-                            },
-                        ),
-                        _gene_selection_prop_row("Protein length (aa)", gene_item["protein_length_aa"]),
-                        _gene_selection_prop_row("Protein mass (kDa)", gene_item["protein_mass_kda"]),
-                        _gene_selection_prop_row("Exon count", gene_item["exon_count"]),
-                        _gene_selection_prop_row("Genes in system", gene_item["genes_in_system"]),
-                        _gene_selection_prop_row("Recipient organism count", gene_item["recipient_organism_count"]),
-                        _gene_selection_prop_row("Disorder (%)", gene_item["disorder_pct"]),
-                        _gene_selection_prop_row("Isoelectric point (pI)", gene_item["isoelectric_point_pI"]),
-                        _gene_selection_prop_row("GRAVY score", gene_item["gravy_score"]),
-                        _gene_selection_prop_row("Key publication year", gene_item["key_publication_year"]),
-                        style={"padding": "4px 14px 10px 36px"},
-                    ),
-                    rx.cond(
-                        gene_item["paper_url"] != "",
-                        rx.el.div(
-                            rx.el.a(
-                                fomantic_icon("external-link", size=11),
-                                rx.el.span(" Open first linked reference", style={"marginLeft": "4px"}),
-                                href=gene_item["paper_url"],
-                                target="_blank",
-                                style={
-                                    "fontSize": "0.78rem",
-                                    "display": "inline-flex",
-                                    "alignItems": "center",
-                                    "color": "#7c3aed",
-                                },
-                            ),
-                            style={"padding": "0 14px 10px 36px"},
-                        ),
-                        rx.fragment(),
-                    ),
-                    rx.el.div(
-                        _gene_tested_on_fold(gene_item["testing_entries"]),
-                        style={"margin": "6px 14px 10px 36px"},
-                    ),
-                    style={
-                        "borderTop": "1px solid #f3f4f6",
-                        "backgroundColor": "#fafafa",
-                    },
-                ),
-            rx.fragment(),
+        rx.el.div(
+            _gene_information_folds(gene_item, dark=False),
+            style={"margin": "0 14px 10px 36px"},
         ),
         style={
             "borderRadius": "4px",
@@ -2332,11 +2257,10 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
                 "2px solid #e5e7eb",
             ),
             "backgroundColor": rx.cond(included, "#ffffff", "#fafafa"),
-            "transition": "all 0.15s ease",
+            "transition": "background-color 0.15s ease, border-color 0.15s ease",
             "overflow": "hidden",
         },
-        on_mouse_enter=ComposeState.set_hovered_gene_category(gene_item["category"]),
-        on_mouse_leave=ComposeState.clear_hovered_gene_category,
+        class_name="me-compose-gene-card",
     )
 
 
@@ -3082,8 +3006,7 @@ def _rpg_silhouette_marker(
     is_selected = ComposeState.selected_categories.contains(category)
     is_affordable = ComposeState.affordable_categories.contains(category)
     is_enabled = is_selected | is_affordable
-    is_hovered = ComposeState.hovered_gene_category == category
-    visual_active = is_selected | (count > 0) | is_hovered
+    visual_active = is_selected | (count > 0)
     return rx.el.a(
         rx.el.div(
             rx.cond(
@@ -3165,7 +3088,7 @@ def _rpg_silhouette_marker(
                     "background": rx.cond(visual_active, f"linear-gradient(135deg, {color}44, #111827)", f"linear-gradient(135deg, {color}22, rgba(15, 23, 42, 0.9))"),
                     "border": rx.cond(visual_active, f"2px solid {color}", f"1px solid {color}88"),
                     "boxShadow": rx.cond(visual_active, f"0 0 38px {color}", f"0 0 16px {color}33"),
-                    "opacity": rx.cond(is_hovered, "1", rx.cond(is_enabled, rx.cond(visual_active, "1", "0.7"), "0.42")),
+                    "opacity": rx.cond(is_enabled, rx.cond(visual_active, "1", "0.7"), "0.42"),
                     "zIndex": "2",
                 },
             ),
@@ -3648,7 +3571,11 @@ _STRUCTURE_LINK_STYLE: dict = {
 
 
 def _gene_structure_viewer(gene_item: rx.Var) -> rx.Component:
-    """Interactive 3D protein structure viewer or fallback external links."""
+    """Interactive 3D protein structure viewer or fallback external links.
+
+    Mounted only under an open Details panel; 3Dmol is fetched when the viewer
+    node appears, not on initial page load.
+    """
     has_local = gene_item["structure_pdb"] != ""
     has_pdb_url = gene_item["pdb_url"] != ""
     has_af_url = gene_item["alphafold_url"] != ""
@@ -3728,11 +3655,361 @@ def _gene_structure_viewer(gene_item: rx.Var) -> rx.Component:
     )
 
 
+def _gene_fold_text(title: str, segments: rx.Var, dark: bool) -> rx.Component:
+    return rx.cond(
+        segments.length() > 0,
+        rx.el.div(
+            rx.el.div(
+                title,
+                style={
+                    "fontSize": "0.82rem",
+                    "fontWeight": "900",
+                    "letterSpacing": "0.07em",
+                    "textTransform": "uppercase",
+                    "color": "#94a3b8" if dark else "#6b7280",
+                    "marginBottom": "4px",
+                },
+            ),
+            rx.el.div(
+                rx.foreach(segments, _gene_prose_segment),
+                style={
+                    "fontSize": "0.9rem",
+                    "lineHeight": "1.55",
+                    "color": "#cbd5e1" if dark else "#374151",
+                    "whiteSpace": "pre-wrap",
+                },
+            ),
+            style={
+                "padding": "10px 11px",
+                "borderRadius": "7px",
+                "background": "rgba(15, 23, 42, 0.42)" if dark else "#ffffff",
+                "border": (
+                    "1px solid rgba(148, 163, 184, 0.18)"
+                    if dark
+                    else "1px solid #e5e7eb"
+                ),
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_fold_property(label: str, value: rx.Var, dark: bool) -> rx.Component:
+    return rx.cond(
+        value != "",
+        rx.el.div(
+            rx.el.span(
+                label,
+                style={
+                    "fontSize": "0.84rem",
+                    "color": "#94a3b8" if dark else "#6b7280",
+                },
+            ),
+            rx.el.span(
+                value,
+                style={
+                    "fontSize": "0.84rem",
+                    "fontWeight": "700",
+                    "color": "#e2e8f0" if dark else "#374151",
+                    "textAlign": "right",
+                },
+            ),
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "gap": "12px",
+                "padding": "5px 0",
+                "borderBottom": (
+                    "1px solid rgba(148, 163, 184, 0.12)"
+                    if dark
+                    else "1px solid #f3f4f6"
+                ),
+            },
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_fold_button(
+    label: str,
+    icon_name: str,
+    dark: bool,
+) -> rx.Component:
+    idle_background = "rgba(30, 41, 59, 0.56)" if dark else "#ffffff"
+    return rx.el.summary(
+        rx.el.span(
+            fomantic_icon(
+                icon_name,
+                size=15,
+                color="#c4b5fd" if dark else "#6d28d9",
+            ),
+            rx.el.span(label),
+            style={"display": "inline-flex", "alignItems": "center", "gap": "9px"},
+        ),
+        rx.el.span(
+            rx.el.span(
+                "Show",
+                class_name="me-gene-fold-show",
+                style={
+                    "fontSize": "0.76rem",
+                    "fontWeight": "700",
+                    "color": "#c4b5fd" if dark else "#7c3aed",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                },
+            ),
+            rx.el.span(
+                "Hide",
+                class_name="me-gene-fold-hide",
+                style={
+                    "display": "none",
+                    "fontSize": "0.76rem",
+                    "fontWeight": "700",
+                    "color": "#c4b5fd" if dark else "#7c3aed",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.06em",
+                },
+            ),
+            rx.el.span(
+                fomantic_icon(
+                    "chevron down",
+                    size=12,
+                    color="#c4b5fd" if dark else "#6d28d9",
+                ),
+                class_name="me-gene-fold-chevron",
+                style={"display": "inline-flex", "transition": "transform 0.16s ease"},
+            ),
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "justifyContent": "flex-end",
+                "gap": "8px",
+                "minWidth": "72px",
+                "flexShrink": "0",
+            },
+        ),
+        title="Expand or collapse " + label,
+        style={
+            "width": "100%",
+            "boxSizing": "border-box",
+            "minWidth": "0",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "gap": "12px",
+            "padding": "12px 14px",
+            "border": "0",
+            "listStyle": "none",
+            "background": idle_background,
+            "color": "#f5f3ff" if dark else "#6d28d9",
+            "fontSize": "0.96rem",
+            "fontWeight": "900",
+            "cursor": "pointer",
+            "textAlign": "left",
+        },
+    )
+
+
+def _gene_fold_item(
+    section: str,
+    label: str,
+    icon_name: str,
+    content: rx.Component,
+    dark: bool,
+) -> rx.Component:
+    return rx.el.details(
+        _gene_fold_button(
+            label,
+            icon_name,
+            dark,
+        ),
+        content,
+        class_name=f"me-gene-information-fold me-gene-information-fold-{section}",
+        style={
+            "width": "100%",
+            "boxSizing": "border-box",
+            "minWidth": "0",
+            "borderRadius": "9px",
+            "overflow": "hidden",
+            "border": (
+                "1px solid rgba(167, 139, 250, 0.42)"
+                if dark
+                else "1px solid #d4c5f9"
+            ),
+            "boxShadow": "none",
+        },
+    )
+
+
+def _gene_information_folds(gene_item: rx.Var, dark: bool) -> rx.Component:
+    has_organizations = gene_item["org_entries"].length() > 0
+    has_structure = (
+        (gene_item["structure_pdb"] != "")
+        | (gene_item["pdb_url"] != "")
+        | (gene_item["alphafold_url"] != "")
+    )
+    section_style = {
+        "display": "flex",
+        "flexDirection": "column",
+        "gap": "8px",
+        "padding": "12px",
+        "background": "rgba(15, 23, 42, 0.3)" if dark else "#fafafa",
+        "borderTop": (
+            "1px solid rgba(167, 139, 250, 0.3)"
+            if dark
+            else "1px solid #d4c5f9"
+        ),
+    }
+
+    mechanism_content = rx.el.div(
+        _gene_fold_text(
+            "Full description",
+            gene_item["narrative_segments"],
+            dark,
+        ),
+        _gene_fold_text(
+            "Mechanism",
+            gene_item["mechanism_segments"],
+            dark,
+        ),
+        _gene_fold_text(
+            "Translational gaps",
+            gene_item["translational_gaps_segments"],
+            dark,
+        ),
+        _gene_fold_text("Notes", gene_item["notes_segments"], dark),
+        _gene_fold_property("Exon count", gene_item["exon_count"], dark),
+        _gene_fold_property(
+            "Genes in system",
+            gene_item["genes_in_system"],
+            dark,
+        ),
+        style=section_style,
+    )
+    evidence_content = rx.el.div(
+        _gene_confidence_section(
+            gene_item["confidence_primary"],
+            gene_item["confidence_details"],
+            show_details=True,
+        ),
+        _gene_fold_text(
+            "Achievements (effect sizes)",
+            gene_item["achievements_segments"],
+            dark,
+        ),
+        _gene_tested_on_row(gene_item["testing_entries"]),
+        _gene_testing_records(gene_item["testing_entries"]),
+        rx.cond(
+            gene_item["key_reference_segments"].length() > 0,
+            (
+                _rpg_gene_side_references(gene_item["key_reference_segments"])
+                if dark
+                else _gene_key_references_linked(gene_item["key_reference_segments"])
+            ),
+            rx.fragment(),
+        ),
+        _gene_fold_property(
+            "Recipient organism count",
+            gene_item["recipient_organism_count"],
+            dark,
+        ),
+        _gene_fold_property(
+            "Key publication year",
+            gene_item["key_publication_year"],
+            dark,
+        ),
+        style=section_style,
+    )
+    organizations_content = rx.el.div(
+        _gene_organizations_section(gene_item["org_entries"]),
+        style=section_style,
+    )
+    structure_content = rx.el.div(
+        _gene_structure_viewer(gene_item),
+        _gene_fold_property(
+            "Protein length (aa)",
+            gene_item["protein_length_aa"],
+            dark,
+        ),
+        _gene_fold_property(
+            "Protein mass (kDa)",
+            gene_item["protein_mass_kda"],
+            dark,
+        ),
+        _gene_fold_property(
+            "Disorder (%)",
+            gene_item["disorder_pct"],
+            dark,
+        ),
+        _gene_fold_property(
+            "Isoelectric point (pI)",
+            gene_item["isoelectric_point_pI"],
+            dark,
+        ),
+        _gene_fold_property(
+            "GRAVY score",
+            gene_item["gravy_score"],
+            dark,
+        ),
+        style=section_style,
+    )
+
+    return rx.el.div(
+        _gene_fold_item(
+            "mechanism",
+            "Biological mechanism",
+            "dna",
+            mechanism_content,
+            dark,
+        ),
+        _gene_fold_item(
+            "evidence",
+            "Experimental evidence",
+            "flask",
+            evidence_content,
+            dark,
+        ),
+        rx.cond(
+            has_organizations,
+            _gene_fold_item(
+                "organizations",
+                "Labs & therapies",
+                "building",
+                organizations_content,
+                dark,
+            ),
+            rx.fragment(),
+        ),
+        rx.cond(
+            has_structure,
+            _gene_fold_item(
+                "structure",
+                "3D protein structure",
+                "cube",
+                structure_content,
+                dark,
+            ),
+            rx.fragment(),
+        ),
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "gap": "7px",
+            "marginTop": "12px",
+            "paddingTop": "12px",
+            "borderTop": (
+                "1px solid rgba(148, 163, 184, 0.18)"
+                if dark
+                else "1px solid #f3f4f6"
+            ),
+        },
+    )
+
+
 def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
     gene_sym = gene_item["gene"]
     gene_category = gene_item["category"]
     included = ComposeState.included_genes.contains(gene_sym)
-    is_expanded = ComposeState.expanded_genes.contains(gene_sym)
     gene_price = gene_item["price"].to(int)
     cannot_afford = rx.cond(included, False, gene_price > ComposeState.budget_remaining)
 
@@ -3859,7 +4136,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                 },
             ),
             rx.el.div(
-                _gene_confidence_section(gene_item["confidence_primary"], gene_item["confidence_details"]),
+                _gene_confidence_section(gene_item["confidence_primary"]),
                 _gene_evidence_tier_row(gene_item["evidence_tier"]),
                 _gene_availability_badges(gene_item),
                 style={
@@ -3869,81 +4146,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                     "marginTop": "10px",
                 },
             ),
-            rx.el.button(
-                rx.cond(
-                    is_expanded,
-                    fomantic_icon("minus", size=16, color="#e9d5ff"),
-                    fomantic_icon("info circle", size=16, color="#e9d5ff"),
-                ),
-                rx.cond(
-                    is_expanded,
-                    rx.el.span("Hide details"),
-                    rx.el.span("Details"),
-                ),
-                on_click=ComposeState.toggle_gene_details(gene_sym),
-                title=rx.cond(is_expanded, "Hide gene details", "Show gene details"),
-                style={
-                    "background": "rgba(124, 58, 237, 0.22)",
-                    "border": "1px solid rgba(167, 139, 250, 0.65)",
-                    "borderRadius": "8px",
-                    "padding": "10px 16px",
-                    "margin": "12px 0 0 0",
-                    "cursor": "pointer",
-                    "display": "inline-flex",
-                    "alignItems": "center",
-                    "justifyContent": "center",
-                    "gap": "10px",
-                    "fontSize": "1.05rem",
-                    "fontWeight": "900",
-                    "letterSpacing": "0.04em",
-                    "color": "#f5f3ff",
-                    "whiteSpace": "nowrap",
-                    "boxShadow": "0 0 14px rgba(124, 58, 237, 0.18)",
-                    "_hover": {
-                        "background": "rgba(124, 58, 237, 0.34)",
-                        "borderColor": "#c4b5fd",
-                    },
-                },
-            ),
-            rx.cond(
-                is_expanded,
-                rx.el.div(
-                    _gene_confidence_section(
-                        gene_item["confidence_primary"],
-                        gene_item["confidence_details"],
-                        show_details=True,
-                    ),
-                    _gene_selection_text_block("Full description", gene_item["narrative_segments"]),
-                    _gene_selection_text_block("Mechanism", gene_item["mechanism_segments"]),
-                    _gene_organizations_section(gene_item["org_entries"]),
-                    _gene_selection_text_block(
-                        "Achievements (effect sizes)",
-                        gene_item["achievements_segments"],
-                    ),
-                    _gene_testing_table(gene_item["testing_entries"]),
-                    _rpg_gene_side_text(
-                        "Translational gaps",
-                        gene_item["translational_gaps_segments"],
-                    ),
-                    _rpg_gene_side_text("Notes", gene_item["notes_segments"]),
-                    rx.cond(
-                        gene_item["key_reference_segments"].length() > 0,
-                        _rpg_gene_side_references(gene_item["key_reference_segments"]),
-                        rx.fragment(),
-                    ),
-                    _gene_structure_viewer(gene_item),
-                    _gene_tested_on_fold(gene_item["testing_entries"]),
-                    style={
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "gap": "8px",
-                        "marginTop": "14px",
-                        "paddingTop": "12px",
-                        "borderTop": "1px solid rgba(148, 163, 184, 0.18)",
-                    },
-                ),
-                rx.fragment(),
-            ),
+            _gene_information_folds(gene_item, dark=True),
             class_name="me-rpg-gene-body-grid",
             style={"margin": "10px 0 0 26px"},
         ),
@@ -3963,29 +4166,13 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             "opacity": rx.cond(cannot_afford, "0.55", "1"),
             "overflow": "hidden",
         },
-        on_mouse_enter=ComposeState.set_hovered_gene_category(gene_category),
-        on_mouse_leave=ComposeState.clear_hovered_gene_category,
-    )
-
-
-def _rpg_gene_card_for_category(gene_item: rx.Var, category: str) -> rx.Component:
-    return rx.cond(
-        (gene_item["category"] == category) | gene_item["secondary_categories"].contains(category),
-        _rpg_gene_card(gene_item),
-        rx.fragment(),
+        class_name="me-rpg-gene-card",
     )
 
 
 def _foreach_included_catalog_gene(row_fn) -> rx.Component:
-    """Render catalog rows for currently included genes without a reactive full-gene list."""
-    return rx.foreach(
-        ComposeState.gene_catalog,
-        lambda gene_item: rx.cond(
-            ComposeState.included_genes.contains(gene_item["gene"]),
-            row_fn(gene_item),
-            rx.fragment(),
-        ),
-    )
+    """Render full rows only for genes included in the generated artifacts."""
+    return rx.foreach(ComposeState.included_composition_gene_rows, row_fn)
 
 
 def _rpg_category_gene_accordion(category: str) -> rx.Component:
@@ -4000,8 +4187,9 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
 
     gene_grid = rx.el.div(
         rx.foreach(
-            ComposeState.gene_catalog,
-            lambda gene_item: _rpg_gene_card_for_category(gene_item, category),
+            # Full rows for this category only; closed accordions unmount the grid.
+            ComposeState.gene_catalog_by_category[category],
+            _rpg_gene_card,
         ),
         class_name="me-rpg-category-gene-grid",
         style={
@@ -4193,17 +4381,17 @@ def _rpg_gene_library_title() -> rx.Component:
 
 
 def _pdb_viewer_scripts() -> rx.Component:
-    """Load 3Dmol.js from CDN and auto-initialize viewers as they appear in the DOM."""
+    """Auto-initialize 3Dmol for mounted Details viewers and clean up on close."""
     return rx.fragment(
-        rx.script(src="https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js"),
         rx.script(
             """
             (() => {
-                const installerVersion = "compact-unavailable-2026-07-27";
+                const installerVersion = "lazy-structure-2026-08-05";
                 if (window.__mePdbViewerInstalled === installerVersion) return;
                 window.__mePdbViewerInstalled = installerVersion;
 
                 const pdbCache = {};
+                let libraryLoading = false;
                 const is3DmolCanvasError = (err) => String((err && (err.stack || err.message)) || err || "").includes("OffscreenCanvas.transferToImageBitmap");
                 window.addEventListener("error", (event) => {
                     if (is3DmolCanvasError(event.error || event.message)) {
@@ -4310,30 +4498,72 @@ def _pdb_viewer_scripts() -> rx.Component:
                     }
                 };
 
-                const scanAll = () => {
-                    document.querySelectorAll(".me-pdb-viewer:not([data-pdb-init])").forEach(initViewer);
+                const initWithin = (root) => {
+                    if (!root || root.nodeType !== 1) return;
+                    const viewers = [];
+                    const canInit = (el) => {
+                        const fold = el.closest("details.me-gene-information-fold");
+                        return !fold || fold.open;
+                    };
+                    if (
+                        root.matches
+                        && root.matches(".me-pdb-viewer:not([data-pdb-init])")
+                        && canInit(root)
+                    ) viewers.push(root);
+                    if (root.querySelectorAll) {
+                        root.querySelectorAll(".me-pdb-viewer:not([data-pdb-init])").forEach((el) => {
+                            if (canInit(el)) viewers.push(el);
+                        });
+                    }
+                    if (!viewers.length) return;
+                    if (typeof $3Dmol === "undefined") {
+                        if (!libraryLoading) {
+                            libraryLoading = true;
+                            const script = document.createElement("script");
+                            script.src = "https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js";
+                            script.async = true;
+                            script.onload = () => {
+                                libraryLoading = false;
+                                initWithin(document.body);
+                            };
+                            script.onerror = () => {
+                                libraryLoading = false;
+                                viewers.forEach(markUnavailable);
+                            };
+                            document.head.appendChild(script);
+                        }
+                        return;
+                    }
+                    viewers.forEach(initViewer);
                 };
 
                 const tryInit = () => {
-                    if (typeof $3Dmol !== "undefined") {
-                        scanAll();
-                        const obs = new MutationObserver((mutations) => {
-                            for (const m of mutations) {
-                                for (const n of m.removedNodes) {
-                                    if (n.nodeType !== 1) continue;
-                                    if (n.classList && n.classList.contains("me-pdb-viewer")) cleanupViewer(n);
-                                    else if (n.querySelectorAll) n.querySelectorAll(".me-pdb-viewer").forEach((el) => cleanupViewer(el));
-                                }
-                            }
-                            requestAnimationFrame(scanAll);
+                    initWithin(document.body);
+                    document.addEventListener("toggle", (event) => {
+                        const fold = event.target;
+                        if (
+                            !fold.matches
+                            || !fold.matches("details.me-gene-information-fold")
+                        ) return;
+                        if (fold.open) {
+                            initWithin(fold);
+                            return;
+                        }
+                        fold.querySelectorAll(".me-pdb-viewer").forEach((el) => {
+                            cleanupViewer(el);
                         });
-                        obs.observe(document.body, {childList: true, subtree: true});
-                        window.addEventListener("resize", () => requestAnimationFrame(scanAll), {passive: true});
-                        document.addEventListener("toggle", () => requestAnimationFrame(scanAll), true);
-                        document.addEventListener("click", () => requestAnimationFrame(scanAll), {passive: true});
-                    } else {
-                        setTimeout(tryInit, 200);
-                    }
+                    }, true);
+                    const obs = new MutationObserver((mutations) => {
+                        for (const m of mutations) {
+                            for (const n of m.addedNodes) initWithin(n);
+                            for (const n of m.removedNodes) {
+                                if (n.nodeType !== 1) continue;
+                                if (n.classList && n.classList.contains("me-pdb-viewer")) cleanupViewer(n);
+                                else if (n.querySelectorAll) n.querySelectorAll(".me-pdb-viewer").forEach((el) => cleanupViewer(el));
+                            }
+                        }
+                    });
+                    obs.observe(document.body, {childList: true, subtree: true});
                 };
                 if (document.readyState === "loading") {
                     document.addEventListener("DOMContentLoaded", tryInit);
@@ -5370,6 +5600,7 @@ def _rpg_materialization_output() -> rx.Component:
         _shared_report_banner(),
         _materialization_reward_panel(),
         _artifact_inventory_panel(),
+        id="me-report-observer-root",
         class_name="me-rpg-output-panel",
         style={"display": "flex", "flexDirection": "column", "gap": "14px"},
     )
@@ -5436,6 +5667,27 @@ def _rpg_flow_css() -> rx.Component:
         }
         details.me-gene-tested-on-fold[open] > summary::before {
             content: "▾";
+        }
+        details.me-gene-information-fold > summary::-webkit-details-marker {
+            display: none;
+        }
+        details.me-gene-information-fold > summary::marker {
+            content: "";
+        }
+        details.me-gene-information-fold[open] > summary {
+            background: rgba(124, 58, 237, 0.34) !important;
+        }
+        details.me-gene-information-fold[open] > summary .me-gene-fold-show {
+            display: none;
+        }
+        details.me-gene-information-fold[open] > summary .me-gene-fold-hide {
+            display: inline !important;
+        }
+        details.me-gene-information-fold[open] > summary .me-gene-fold-chevron {
+            transform: rotate(180deg);
+        }
+        details.me-gene-information-fold[open] {
+            box-shadow: 0 8px 20px rgba(2, 6, 23, 0.2) !important;
         }
         details.me-rpg-category-accordion[open] .me-rpg-accordion-chevron {
             transform: rotate(90deg);
@@ -5713,6 +5965,25 @@ def _rpg_flow_css() -> rx.Component:
         .me-rpg-body-marker:hover {
             transform: translate(-50%, -50%) scale(1.06) !important;
             filter: brightness(1.12);
+        }
+        @media (prefers-reduced-motion: reduce), (hover: none) and (pointer: coarse), (max-width: 900px) {
+            .me-rpg-body-stage::before,
+            .me-rpg-body-stage::after {
+                filter: none;
+                opacity: 0.35;
+            }
+            .me-rpg-body-image {
+                filter: drop-shadow(0 8px 16px rgba(2, 6, 23, 0.38));
+                transform: none;
+            }
+            .me-rpg-gene-card img,
+            .me-rpg-marker-gene-chip img {
+                filter: invert(1) brightness(1.2) !important;
+            }
+            .me-mobile-body-change-overlay {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
         }
         .me-rpg-marker-icon-node i.icon {
             font-size: 60px !important;
@@ -6965,14 +7236,7 @@ def _choice_section() -> rx.Component:
                         },
                     ),
                     rx.el.div(
-                        rx.foreach(
-                            ComposeState.gene_catalog,
-                            lambda gene_item: rx.cond(
-                                ComposeState.selected_categories.contains(gene_item["category"]),
-                                _gene_checkbox(gene_item),
-                                rx.fragment(),
-                            ),
-                        ),
+                        rx.foreach(ComposeState.selected_gene_catalog, _gene_checkbox),
                         style={"display": "flex", "flexDirection": "column", "gap": "3px", "marginBottom": "12px"},
                     ),
                     rx.el.div(_materialize_hint_bubble("genes"), style={"position": "relative"}),
@@ -9505,7 +9769,13 @@ def _report_hidden_inputs() -> rx.Component:
             read_only=True,
             style={"display": "none"},
         ),
-        _report_hidden_capture_content(),
+        rx.cond(
+            (ComposeState.materialization_artifact_tab == "report")
+            | (ComposeState.materialization_artifact_tab == "share")
+            | ComposeState.report_publishing,
+            _report_hidden_capture_content(),
+            rx.fragment(),
+        ),
     )
 
 
@@ -9571,7 +9841,7 @@ def _share_section_body() -> rx.Component:
                     ComposeState.has_share_card,
                     rx.el.div(
                         rx.el.img(
-                            src=ComposeState.share_card_data_url,
+                            src=ComposeState.share_card_src,
                             alt="Your shareable enhancement card",
                             style=_card_image_style,
                         ),
@@ -10560,6 +10830,7 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
             },
         ),
         _global_notice_toast(),
+        include_report_libs=active_route == "/materialization",
     )
 
 
@@ -10572,7 +10843,7 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
     image=_page_image_url(),
     description=_page_description("/"),
     meta=_page_meta("/"),
-    on_load=[AppState.redirect_legacy_tab, ComposeState.refresh_gene_catalog, ComposeState.check_clean_storage],
+    on_load=[AppState.redirect_legacy_tab, ComposeState.check_clean_storage],
 )
 def index_page() -> rx.Component:
     """Character profile — default RPG loadout builder."""
@@ -10591,7 +10862,6 @@ _NOINDEX_META: list[dict[str, str]] = [
     description=_page_description("/materialization"),
     meta=_NOINDEX_META,
     on_load=[
-        ComposeState.refresh_gene_catalog,
         ComposeState.apply_artex_params,
         ComposeState.apply_saved_report,
         ComposeState.apply_shared_report,

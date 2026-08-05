@@ -227,10 +227,25 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 });
 
 /* ---------- render loop ---------- */
+let frameVisible = true;
+let visibilityObserver = null;
+try {
+  if (window.frameElement && window.parent.IntersectionObserver) {
+    visibilityObserver = new window.parent.IntersectionObserver((entries) => {
+      frameVisible = Boolean(entries[0] && entries[0].isIntersecting);
+    }, { threshold: 0.01 });
+    visibilityObserver.observe(window.frameElement);
+  }
+} catch (_) { /* same-origin observer unavailable */ }
+
 function animate() {
-  requestAnimationFrame(animate);
+  if (document.hidden || !frameVisible) {
+    window.setTimeout(animate, 250);
+    return;
+  }
   controls.update();
   renderer.render(scene, camera);
+  requestAnimationFrame(animate);
 }
 animate();
 

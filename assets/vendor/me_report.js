@@ -208,10 +208,15 @@
 
   function startObserver() {
     if (observerActive || !document.body) return;
+    var root = document.getElementById('me-report-observer-root');
+    if (!root) {
+      if (window.location.pathname === '/materialization') window.setTimeout(startObserver, 250);
+      return;
+    }
     observer = new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i++) {
         var n = mutations[i].target;
-        while (n && n !== document.body) {
+        while (n && n !== root) {
           if (n.id === 'report-qr' ||
               n.id === 'me-report-pdf-long' || n.id === 'me-report-png-card' || n.id === 'me-report-png-card-character' ||
               n.id === 'report-export-animals-json' ||
@@ -221,7 +226,7 @@
       }
       schedule();
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, subtree: true });
     observerActive = true;
   }
   function stopObserver() {

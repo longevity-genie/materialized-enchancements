@@ -628,18 +628,35 @@ def _organizations_lazyframe() -> pl.LazyFrame:
 
 
 _GENES_LF: pl.LazyFrame = _genes_lazyframe()
-_EXPERIMENTS_LF: pl.LazyFrame = _experiments_lazyframe()
-_EXP_DF: pl.DataFrame = _EXPERIMENTS_LF.collect()
+_EXPERIMENTS_LF: pl.LazyFrame | None = None
+
+
+def _get_experiments_lazyframe() -> pl.LazyFrame:
+    """Build the 1k-row experiments frame only when that surface is opened."""
+    global _EXPERIMENTS_LF
+    if _EXPERIMENTS_LF is None:
+        _EXPERIMENTS_LF = _experiments_lazyframe()
+    return _EXPERIMENTS_LF
+
+
 _EXP_HOST_COUNTS: dict[str, int] = {
-    level: int(_EXP_DF.filter(pl.col("Host level") == level).height)
+    level: sum(1 for row in GENE_TESTING if _host_level(str(row.get("host", "") or "")) == level)
     for level in ("Human", "Animal", "Cell / other")
 }
 _EXP_KIND_COUNTS: dict[str, int] = {
-    kind: int(_EXP_DF.filter(pl.col("Kind") == kind).height)
+    kind: sum(
+        1
+        for row in GENE_TESTING
+        if ("Clinical trial" if str(row.get("reference_short", "") or "").startswith("NCT") else "Lab / paper") == kind
+    )
     for kind in ("Clinical trial", "Lab / paper")
 }
 _EXP_POSITIVE_COUNTS: dict[str, int] = {
-    val: int(_EXP_DF.filter(pl.col("Outcome") == val).height)
+    val: sum(
+        1
+        for row in GENE_TESTING
+        if _positive_label(str(row.get("positive", "") or "")) == val
+    )
     for val in ("Positive", "Mixed", "Negative")
 }
 _ORGS_LF: pl.LazyFrame = _organizations_lazyframe()
@@ -1173,7 +1190,7 @@ class KbExperimentsGridState(LazyFrameGridMixin, rx.State):
         if self.lf_grid_loaded:
             return
         yield from self.set_lazyframe(
-            _EXPERIMENTS_LF,
+            _get_experiments_lazyframe(),
             descriptions=_EXP_COL_DESCS,
             # Defer filter dropdown scans — 1k+ rows × many string cols is the
             # main reason Experiments felt slow when the tab opened.

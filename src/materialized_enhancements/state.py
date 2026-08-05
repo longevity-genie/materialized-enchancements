@@ -177,6 +177,31 @@ class SculptureSelectedGene(TypedDict):
     key_publication_year: str
 
 
+class SculptureGeneCard(TypedDict):
+    """Lean row synchronized for collapsed gene cards and selection controls."""
+
+    gene_id: str
+    gene: str
+    manipulation: str
+    manipulation_icon: str
+    category: str
+    category_detail: str
+    secondary_categories: list[str]
+    species_common_names: str
+    species_scientific_names: str
+    short_description: str
+    short_description_segments: list[ProseSegment]
+    evidence_tier: str
+    confidence_primary: dict[str, str]
+    gene_url: str
+    puzzle_src: str
+    species_page_url: str
+    playable: bool
+    price: int
+    has_commercial: bool
+    has_clinical_trial: bool
+
+
 _GENE_PROP_GRID_KEYS: tuple[tuple[str, str], ...] = (
     ("protein_length_aa", "Protein length (aa)"),
     ("protein_mass_kda", "Protein mass (kDa)"),
@@ -345,6 +370,104 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "has_clinical_trial": has_clinical_trial,
         **_gene_props_flat(g["gene"], g["gene_id"]),
     }
+
+
+def build_composition_gene_card(row: SculptureSelectedGene) -> SculptureGeneCard:
+    """Strip a full gene row down to fields required before Details is opened."""
+    return {
+        "gene_id": row["gene_id"],
+        "gene": row["gene"],
+        "manipulation": row["manipulation"],
+        "manipulation_icon": row["manipulation_icon"],
+        "category": row["category"],
+        "category_detail": row["category_detail"],
+        "secondary_categories": row["secondary_categories"],
+        "species_common_names": row["species_common_names"],
+        "species_scientific_names": row["species_scientific_names"],
+        "short_description": row["short_description"],
+        "short_description_segments": row["short_description_segments"],
+        "evidence_tier": row["evidence_tier"],
+        "confidence_primary": row["confidence_primary"],
+        "gene_url": row["gene_url"],
+        "puzzle_src": row["puzzle_src"],
+        "species_page_url": row["species_page_url"],
+        "playable": row["playable"],
+        "price": row["price"],
+        "has_commercial": row["has_commercial"],
+        "has_clinical_trial": row["has_clinical_trial"],
+    }
+
+
+def _empty_sculpture_selected_gene() -> SculptureSelectedGene:
+    """Default Detail payload. Reflex cannot reliably index dict[str, TypedDict] by Var."""
+    return {
+        "gene_id": "",
+        "gene": "",
+        "manipulation": "",
+        "manipulation_icon": "other",
+        "trait": "",
+        "category": "",
+        "category_detail": "",
+        "secondary_categories": [],
+        "species_common_names": "",
+        "species_scientific_names": "",
+        "short_description": "",
+        "short_description_segments": [],
+        "narrative": "",
+        "narrative_segments": [],
+        "mechanism": "",
+        "mechanism_segments": [],
+        "achievements": "",
+        "achievements_segments": [],
+        "evidence_tier": "",
+        "confidence_entries": [],
+        "confidence_primary": dict(_EMPTY_CONFIDENCE_PRIMARY),
+        "confidence_details": [],
+        "confidence_summary": "",
+        "confidence_bucket": "",
+        "testing_entries": [],
+        "translational_gaps": "",
+        "translational_gaps_segments": [],
+        "key_references": "",
+        "key_reference_segments": [],
+        "notes": "",
+        "notes_segments": [],
+        "description": "",
+        "enhancement": "",
+        "paper_url": "",
+        "gene_url": "",
+        "alphafold_url": "",
+        "pdb_url": "",
+        "structure_pdb": "",
+        "puzzle_svg": "",
+        "puzzle_src": "",
+        "species_page_url": "",
+        "included": False,
+        "playable": False,
+        "price": 0,
+        "org_entries": [],
+        "has_commercial": False,
+        "has_clinical_trial": False,
+        "protein_length_aa": "",
+        "protein_mass_kda": "",
+        "exon_count": "",
+        "genes_in_system": "",
+        "recipient_organism_count": "",
+        "disorder_pct": "",
+        "isoelectric_point_pI": "",
+        "gravy_score": "",
+        "key_publication_year": "",
+    }
+
+
+_EMPTY_SCULPTURE_SELECTED_GENE: SculptureSelectedGene = _empty_sculpture_selected_gene()
+
+
+def pad_lean_card_to_selected(card: SculptureGeneCard) -> SculptureSelectedGene:
+    """Lean card plus empty detail fields so foreach rows stay one TypedDict shape."""
+    row = _empty_sculpture_selected_gene()
+    row.update(card)  # type: ignore[typeddict-item]
+    return row  # type: ignore[return-value]
 
 
 def _gene_row_price_cr(gene: dict[str, Any]) -> int:
@@ -633,15 +756,27 @@ def _primary_confidence_sort_key(g: dict[str, Any]) -> tuple[int, str]:
     return (_CONFIDENCE_SORT_RANK.get(value, 9), str(g.get("gene", "")))
 
 
-# Playable-only catalog for the game UI (Compose / RPG / materialization).
-# Knowledgebase keeps GENE_LIBRARY; game surfaces must never render game_enabled=0.
-# Not a reactive @rx.var: selection updates use included_genes only.
-COMPOSITION_GENE_CATALOG: list[SculptureSelectedGene] = [
+# Full rows stay server-side and are synchronized only for selected/expanded genes.
+COMPOSITION_GENE_DETAILS: list[SculptureSelectedGene] = [
     build_composition_gene_row(g, included=False)
     for g in sorted(GAME_GENE_LIBRARY, key=_primary_confidence_sort_key)
 ]
 COMPOSITION_GENE_BY_NAME: dict[str, SculptureSelectedGene] = {
-    row["gene"]: row for row in COMPOSITION_GENE_CATALOG
+    row["gene"]: row for row in COMPOSITION_GENE_DETAILS
+}
+
+# Per-category catalogs carry full SculptureSelectedGene rows. Only the open
+# accordion mounts them (closed folds unmount), so Details fields are on the
+# foreach item — the only Reflex pattern that reliably delivers nested prose.
+# Lean SculptureGeneCard stripping broke Details (empty nested fields on client).
+COMPOSITION_GENE_CATALOG: list[SculptureSelectedGene] = COMPOSITION_GENE_DETAILS
+COMPOSITION_GENE_CATALOG_BY_CATEGORY: dict[str, list[SculptureSelectedGene]] = {
+    category: [
+        row
+        for row in COMPOSITION_GENE_DETAILS
+        if row["category"] == category or category in row["secondary_categories"]
+    ]
+    for category in UNIQUE_CATEGORIES
 }
 
 
@@ -1206,14 +1341,11 @@ class ComposeState(rx.State):
     personal_tag: str = DEFAULT_PERSONAL_TAG
     selected_categories: list[str] = []
     included_genes: list[str] = []
-    expanded_genes: list[str] = []
     # Which Gene library category accordion is open. Empty = all collapsed.
     # Gene cards mount only for this category so closed folds stay out of the DOM.
     gene_library_open_category: str = ""
-    # Full DB-backed gene library for UI cards. Loaded once per process from
-    # gene_data (SQLite/CSV); never rewritten on selection toggles.
-    gene_catalog: list[SculptureSelectedGene] = COMPOSITION_GENE_CATALOG
-    hovered_gene_category: str = ""
+    # Full rows for the open category only (see COMPOSITION_GENE_CATALOG_BY_CATEGORY).
+    gene_catalog_by_category: dict[str, list[SculptureSelectedGene]] = COMPOSITION_GENE_CATALOG_BY_CATEGORY
     mobile_change_overlay_gene: str = ""
     mobile_change_overlay_category: str = ""
     mobile_change_overlay_nonce: int = 0
@@ -1327,8 +1459,6 @@ class ComposeState(rx.State):
         """Open one Gene library category fold (exclusive); mount its gene cards."""
         if category not in UNIQUE_CATEGORIES:
             return
-        if self.gene_library_open_category != category:
-            self.expanded_genes = []
         self.gene_library_open_category = category
 
     def toggle_gene_library_accordion(self, category: str) -> None:
@@ -1337,9 +1467,7 @@ class ComposeState(rx.State):
             return
         if self.gene_library_open_category == category:
             self.gene_library_open_category = ""
-            self.expanded_genes = []
             return
-        self.expanded_genes = []
         self.gene_library_open_category = category
 
     def select_category(self, category: str):  # type: ignore[return]
@@ -1447,33 +1575,12 @@ class ComposeState(rx.State):
         """Clear the active RPG gene loadout."""
         self.selected_categories = []
         self.included_genes = []
-        self.expanded_genes = []
         self.gene_library_open_category = ""
         self._recompute_params()
 
     def refresh_gene_catalog(self) -> None:
-        """Rebind the game gene catalog from the filtered module constant.
-
-        Reflex keeps per-client state across hot reloads, so without this a
-        session started before observational filtering still serves the old
-        full testing lists on character cards.
-        """
-        self.gene_catalog = COMPOSITION_GENE_CATALOG
-
-    def toggle_gene_details(self, gene: str) -> None:
-        # Keep expanded cards on the filtered catalog even if this client token
-        # still holds a pre-filter gene_catalog from an older process.
-        self.refresh_gene_catalog()
-        if gene in self.expanded_genes:
-            self.expanded_genes = [g for g in self.expanded_genes if g != gene]
-        else:
-            self.expanded_genes = [*self.expanded_genes, gene]
-
-    def set_hovered_gene_category(self, category: str) -> None:
-        self.hovered_gene_category = category
-
-    def clear_hovered_gene_category(self) -> None:
-        self.hovered_gene_category = ""
+        """Rebind compact rows after a development hot reload."""
+        self.gene_catalog_by_category = COMPOSITION_GENE_CATALOG_BY_CATEGORY
 
     def _prune_included_genes(self) -> None:
         """Drop included genes no longer in a selected category, or no longer playable.
@@ -1828,7 +1935,13 @@ class ComposeState(rx.State):
         self.sculpture_expanded = not self.sculpture_expanded
 
     def toggle_viewer_expanded(self) -> None:
-        self.viewer_expanded = not self.viewer_expanded
+        opening = not self.viewer_expanded
+        if opening and not self.stl_base64 and self.stl_download_path:
+            stl_path = Path(self.stl_download_path)
+            if stl_path.exists():
+                self.stl_base64 = base64.b64encode(stl_path.read_bytes()).decode("ascii")
+                self.viewer_nonce += 1
+        self.viewer_expanded = opening
 
     def toggle_report_expanded(self) -> None:
         self.report_expanded = not self.report_expanded
@@ -1895,6 +2008,10 @@ class ComposeState(rx.State):
 
     def set_report_views_ready(self, ready: bool) -> None:
         self.report_views_ready = bool(ready)
+        if ready:
+            # Both same-origin viewers have parsed the STL by this point. Drop
+            # the multi-megabyte transfer string from subsequent state deltas.
+            self.stl_base64 = ""
 
     def set_report_copy_feedback(self, value: str) -> None:
         self.report_copy_feedback = value
@@ -2078,7 +2195,11 @@ class ComposeState(rx.State):
 
     @rx.var
     def has_share_card(self) -> bool:
-        return len(self.share_card_data_url) > 200
+        return len(self.share_card_data_url) > 200 or len(self.report_png_url) > 0
+
+    @rx.var
+    def share_card_src(self) -> str:
+        return self.share_card_data_url or self.report_png_url
 
     @rx.var
     def has_published_report(self) -> bool:
@@ -2326,6 +2447,7 @@ class ComposeState(rx.State):
         self.report_png_url = png_url
         self.report_pdf_url = pdf_url
         self.report_params_url = params_url
+        self.share_card_data_url = ""
         self.materialization_artifact_tab = "share"
         yield rx.toast.success("Public link created!")
         yield rx.call_script(_replace_state_js(self.report_public_url))
@@ -2612,13 +2734,13 @@ class ComposeState(rx.State):
 
     @rx.var
     def viewer_iframe_src(self) -> str:
-        if not self.viewer_expanded or not self.stl_base64:
+        if not self.viewer_expanded or not self.stl_download_path:
             return "about:blank"
         return f"/sculpture_viewer/index.html?nonce={self.viewer_nonce}"
 
     @rx.var
     def capture_iframe_src(self) -> str:
-        if not self.stl_base64:
+        if not self.stl_download_path or self.report_views_ready:
             return "about:blank"
         return f"/sculpture_viewer/capture.html?nonce={self.viewer_nonce}"
 
@@ -2642,6 +2764,15 @@ class ComposeState(rx.State):
             out.append({"gene": row["gene"], "category": row["category"]})
         return out
 
+    @rx.var
+    def selected_gene_catalog(self) -> list[SculptureSelectedGene]:
+        """Full primary-category rows for the Materialization choice panel."""
+        selected = set(self.selected_categories)
+        return [
+            row for row in COMPOSITION_GENE_DETAILS
+            if row["category"] in selected
+        ]
+
     def _included_composition_gene_rows(self) -> list[SculptureSelectedGene]:
         """Server-side helper: full rows for currently included genes (reports/email)."""
         rows: list[SculptureSelectedGene] = []
@@ -2652,6 +2783,11 @@ class ComposeState(rx.State):
             selected: SculptureSelectedGene = {**row, "included": True}
             rows.append(selected)
         return rows
+
+    @rx.var
+    def included_composition_gene_rows(self) -> list[SculptureSelectedGene]:
+        """Full rows only for selected genes used by generated report artifacts."""
+        return self._included_composition_gene_rows()
 
     @rx.var
     def selected_animals(self) -> list[dict]:

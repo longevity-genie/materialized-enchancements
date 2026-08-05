@@ -361,35 +361,36 @@ def _sqlite_load_pricing(conn: sqlite3.Connection, library: list[GeneEntry]) -> 
 # CSV loaders — used as fallback when enhancement.db does not exist.
 # ---------------------------------------------------------------------------
 
-def _load_protein_id_lookup(path: Path = CSV_DIR / "gene_properties.csv") -> dict[str, _ProteinInfo]:
-    """Load gene_id → _ProteinInfo from gene_properties.csv."""
-    df = pl.read_csv(path)
-    cols = ["gene_id", "protein_id", "id_type"]
-    has_pdb_col = "pdb_id" in df.columns
-    has_af_col = "has_alphafold" in df.columns
-    if has_pdb_col:
-        cols.append("pdb_id")
-    if has_af_col:
-        cols.append("has_alphafold")
-    df = df.select(cols)
+def _protein_id_lookup_from_rows(rows: list[dict[str, Any]]) -> dict[str, _ProteinInfo]:
+    """Build gene_id → protein identifiers from shared property rows."""
     lookup: dict[str, _ProteinInfo] = {}
-    for row in df.to_dicts():
+    for row in rows:
         pid = str(row.get("protein_id") or "").strip()
         idt = str(row.get("id_type") or "").strip()
-        pdb = str(row.get("pdb_id") or "").strip() if has_pdb_col else ""
-        has_af = str(row.get("has_alphafold") or "").strip().lower() == "true" if has_af_col else False
+        pdb = str(row.get("pdb_id") or "").strip()
+        raw_has_af = row.get("has_alphafold")
+        has_af = bool(raw_has_af) if isinstance(raw_has_af, int | bool) else str(raw_has_af or "").strip().lower() == "true"
         if pid and idt:
-            lookup[row["gene_id"].strip()] = _ProteinInfo(pid, idt, pdb, has_af)
+            lookup[str(row["gene_id"]).strip()] = _ProteinInfo(pid, idt, pdb, has_af)
     return lookup
 
 
 if USE_SQLITE:
     logger.info("Loading gene data from %s", DB_PATH)
     _db = _sqlite_conn()
-    PROTEIN_ID_LOOKUP: dict[str, _ProteinInfo] = _sqlite_load_protein_id_lookup(_db)
+    GENE_PROPERTY_ROWS: list[dict[str, Any]] = [
+        {
+            **dict(row),
+            "isoelectric_point_pI": row["isoelectric_point_pi"],
+            "has_alphafold": bool(row["has_alphafold"]),
+        }
+        for row in _db.execute("SELECT * FROM gene_properties").fetchall()
+    ]
 else:
     logger.info("Loading gene data from CSV files in %s", CSV_DIR)
-    PROTEIN_ID_LOOKUP = _load_protein_id_lookup()
+    GENE_PROPERTY_ROWS = pl.read_csv(CSV_DIR / "gene_properties.csv").to_dicts()
+
+PROTEIN_ID_LOOKUP: dict[str, _ProteinInfo] = _protein_id_lookup_from_rows(GENE_PROPERTY_ROWS)
 
 
 def _gene_protein_url(gene_id: str, gene_display: str) -> str:
