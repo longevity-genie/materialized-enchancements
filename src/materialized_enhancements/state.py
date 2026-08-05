@@ -471,11 +471,7 @@ def pad_lean_card_to_selected(card: SculptureGeneCard) -> SculptureSelectedGene:
 
 
 def _gene_row_price_cr(gene: dict[str, Any]) -> int:
-    return int(
-        resolve_gene_properties_row(str(gene["gene"]), str(gene.get("gene_id", ""))).get(
-            "gene_price", 0
-        )
-    )
+    return GENE_PRICES.get(str(gene["gene"]), 0)
 
 
 def _sum_credits_for_included_genes(
@@ -486,8 +482,8 @@ def _sum_credits_for_included_genes(
     sel = set(selected_categories)
     inc = set(included_genes)
     return sum(
-        _gene_row_price_cr(g)
-        for g in GENE_LIBRARY
+        GENE_PRICES.get(g["gene"], 0)
+        for g in GAME_GENE_LIBRARY
         if g["category"] in sel and g["gene"] in inc
     )
 
@@ -499,7 +495,7 @@ def _count_included_genes_in_choice(
     """How many genes are both included and in a selected category (Choice size)."""
     sel = set(selected_categories)
     inc = set(included_genes)
-    return sum(1 for g in GENE_LIBRARY if g["category"] in sel and g["gene"] in inc)
+    return sum(1 for g in GAME_GENE_LIBRARY if g["category"] in sel and g["gene"] in inc)
 
 
 def _compact_gene_symbol(gene: str) -> str:
@@ -3201,7 +3197,7 @@ class ComposeState(rx.State):
             cat = g["category"]
             if cat not in selected:
                 continue
-            totals[cat] = totals.get(cat, 0) + _gene_row_price_cr(g)
+            totals[cat] = totals.get(cat, 0) + GENE_PRICES.get(g["gene"], 0)
         return totals
 
     @rx.var
@@ -3215,7 +3211,7 @@ class ComposeState(rx.State):
                 continue
             if g["category"] not in selected:
                 continue
-            price = _gene_row_price_cr(g)
+            price = GENE_PRICES.get(g["gene"], 0)
             for cat in gene_display_categories(g):
                 if cat in totals:
                     totals[cat] = totals[cat] + price
@@ -3231,10 +3227,9 @@ class ComposeState(rx.State):
 
     @rx.var
     def can_materialize(self) -> bool:
-        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
         return (
             len(self.selected_categories) > 0
-            and spent > 0
+            and self.budget_spent > 0
             and self.has_personal_tag
         )
 
@@ -3258,9 +3253,8 @@ class ComposeState(rx.State):
 
     @rx.var
     def materialize_requirements_notice(self) -> str:
-        spent = _sum_credits_for_included_genes(self.selected_categories, self.included_genes)
         missing_name = not self.has_personal_tag
-        missing_genes = spent <= 0
+        missing_genes = self.budget_spent <= 0
         if missing_name and missing_genes:
             return "Choose at least one gene and enter a character name before materializing."
         if missing_genes:

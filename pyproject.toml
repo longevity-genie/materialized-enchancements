@@ -5,10 +5,10 @@ description = "Materialized Enhancements — an art+tech hackathon project explo
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  "reflex==0.9.7",
-  "reflex-components-radix==0.9.6",
+  "reflex==0.9.8",
+  "reflex-components-radix==0.9.7",
   "granian>=2.7.9",
-  "polars>=1.43.0",
+  "polars>=1.43.2",
   "pydantic>=2.13.4",
   "enhancement-geometry>=0.2.4",
   "dotenv>=0.9.9",

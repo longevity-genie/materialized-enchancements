@@ -4187,7 +4187,6 @@ def _rpg_category_gene_accordion(category: str) -> rx.Component:
 
     gene_grid = rx.el.div(
         rx.foreach(
-            # Full rows for this category only; closed accordions unmount the grid.
             ComposeState.gene_catalog_by_category[category],
             _rpg_gene_card,
         ),
