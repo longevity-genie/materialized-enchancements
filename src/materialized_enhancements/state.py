@@ -14,6 +14,11 @@ from urllib.parse import quote
 
 import reflex as rx
 
+from materialized_enhancements.ai_prompts import (
+    AiAssistantLink,
+    build_gene_ai_assistant_url,
+    build_profile_ai_links,
+)
 from materialized_enhancements.gene_data import (
     ANIMAL_LIBRARY,
     ANIMAL_PRICES,
@@ -2869,6 +2874,35 @@ class ComposeState(rx.State):
         return ", ".join(self.included_genes)
 
     @rx.var
+    def profile_ai_links(self) -> list[AiAssistantLink]:
+        """Build ChatGPT-first one-click prompts for this exact selected profile."""
+        gene_ids = [
+            row["gene_id"]
+            for row in self._included_composition_gene_rows()
+        ]
+        return build_profile_ai_links(
+            gene_ids=gene_ids,
+            character_name=self.personal_tag,
+            character_note=self.report_character_note,
+        )
+
+    def open_gene_ai(self, gene_id: str, provider: str):
+        """Build the gene prompt on click and open the assistant in a new tab.
+
+        Prompt URLs are large; building them into every catalog row bloated the
+        Reflex state sync by ~2.5MB. Icons stay static; only the clicked gene
+        pays the encode cost.
+        """
+        url = build_gene_ai_assistant_url(gene_id=gene_id, provider=provider)
+        if not url:
+            return
+        yield rx.call_script(
+            "window.open("
+            + json.dumps(url)
+            + ", '_blank', 'noopener,noreferrer')"
+        )
+
+    @rx.var
     def export_composition_genes_json(self) -> str:
         """Included genes for PNG/PDF summary (browser reads as JSON)."""
         payload: list[dict[str, Any]] = []
@@ -3266,10 +3300,10 @@ class ComposeState(rx.State):
     @rx.var
     def onboarding_materialize_guidance(self) -> str:
         if self.materialize_requirements_notice:
-            return f"{self.materialize_requirements_notice} Then press the Materialize button to create your 3D model and report."
+            return f"{self.materialize_requirements_notice} Then press the Materialize button to grow your printable crystal and report."
         return (
-            "You are ready. Press the pulsing Materialize button below to grow your unique "
-            "mathematical Voronoi sculpture and download your personal report."
+            "You are ready. Press the pulsing Materialize button below to grow your printable crystal "
+            "(an abstract form from your genes — not a body figure yet) and download your personal report."
         )
 
     @rx.var

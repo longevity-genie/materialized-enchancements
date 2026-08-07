@@ -20,6 +20,7 @@ from materialized_enhancements.gene_data import (
     GENE_ORG_MAP,
     GENE_TESTING,
     ORG_BY_ID,
+    ORG_GENE_LIST,
     ORG_GENE_MAP,
     ORG_LIBRARY,
 )
@@ -171,6 +172,7 @@ _COMMERCIAL_BADGE_BG: dict[str, str] = {
 _SURFACE_MODES: list[tuple[str, str, str]] = [
     ("genes", "dna", "Genes"),
     ("experiments", "flask", "Experiments"),
+    ("programs", "sitemap", "Programs / therapies"),
     ("organizations", "building", "Organizations"),
     ("available", "shop", "Available now"),
 ]
@@ -185,12 +187,17 @@ _SURFACE_DESCRIPTIONS: dict[str, str] = {
     "experiments": (
         "Browse the experimental and trial corpus by host level, intervention, and outcome."
     ),
+    "programs": (
+        "Cross-link organizations, genes, research programs, therapies, delivery methods, "
+        "and registered trials. Commercial status is not evidence of efficacy."
+    ),
     "organizations": (
         "A curated sample of labs, biotech companies, and clinics working on enhancement "
         "properties of these genes — not a complete map of every disease-focused lab. "
         "Well-studied targets (e.g. APOE) have hundreds of groups worldwide; many "
         "disease-only programs are omitted on purpose. We welcome additions of orgs "
-        "doing enhancement research. Click a row for the organization card."
+        "doing enhancement research. Click a row for the organization card. Person "
+        "names are shown without guessed social-profile links unless independently verified."
     ),
     "available": (
         "Commercial and clinic offerings — expand Details for biology and references."
@@ -453,6 +460,76 @@ def _org_location(country: str, jurisdiction: str) -> str:
     return country_s
 
 
+def _split_key_people(raw: str) -> list[dict[str, str]]:
+    """Split the legacy key_people text without manufacturing identity links.
+
+    Names are intentionally kept as display-only records. A name match is not
+    enough to identify a LinkedIn account, so these rows never receive a
+    guessed profile URL.
+    """
+    text = str(raw or "").strip()
+    if not text:
+        return []
+    chunks = re.split(
+        r";\s*|,\s+(?=[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+)+"
+        r"(?:\s+\([^)]*\))?(?:\s*[;,]|$))",
+        text,
+    )
+    people: list[dict[str, str]] = []
+    for chunk in chunks:
+        display = chunk.strip(" ,;")
+        if not display:
+            continue
+        match = re.match(r"^(?P<name>.+?)\s+\((?P<role>[^)]+)\)$", display)
+        name = match.group("name").strip() if match else display
+        role = match.group("role").strip() if match else ""
+        people.append(
+            {
+                "name": name,
+                "role": role,
+                "profile_url": "",
+                "profile_status": "Unverified",
+                "profile_source": "",
+            }
+        )
+    return people
+
+
+def _organization_sources(org_id: str) -> list[dict[str, str]]:
+    """Collect source links already attached to an organization or its programs."""
+    org = ORG_BY_ID.get(org_id)
+    if not org:
+        return []
+    sources: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def add_source(kind: str, label: str, url: str) -> None:
+        clean_url = str(url or "").strip()
+        if not clean_url or clean_url in seen:
+            return
+        seen.add(clean_url)
+        sources.append({"kind": kind, "label": label, "url": clean_url})
+
+    add_source("Official website", "Organization website", org.get("website", ""))
+    add_source("Organization evidence", "Organization source", org.get("source_url", ""))
+    for entry in ORG_GENE_MAP.get(org_id, []):
+        gene = _GENE_BY_ID.get(entry["gene_id"])
+        gene_name = gene["gene"] if gene else entry["gene_id"]
+        add_source(
+            "Program source",
+            f"{gene_name} — {_stage_label(entry['stage'])}",
+            entry.get("source_url", ""),
+        )
+        trial_id = str(entry.get("trial_id") or "").strip()
+        if trial_id:
+            add_source(
+                "Clinical trial",
+                f"{gene_name} — {trial_id}",
+                f"https://clinicaltrials.gov/study/{trial_id}",
+            )
+    return sources
+
+
 _TOTAL_EXPERIMENTS: int = len(GENE_TESTING)
 _COMMERCIAL_COUNT: int = sum(
     1
@@ -627,6 +704,60 @@ def _organizations_lazyframe() -> pl.LazyFrame:
     return pl.LazyFrame(rows)
 
 
+def _program_type(stage: str) -> str:
+    """Classify an organization↔gene row without implying therapeutic efficacy."""
+    is_offering = stage in {"commercial", "pilot"} or stage.startswith("phase")
+    return "Therapy / offering" if is_offering else "Research program"
+
+
+def _programs_lazyframe() -> pl.LazyFrame:
+    """Expose every organization↔gene row as a cross-linked program record.
+
+    ``organization_genes`` is the database's program relationship. Keeping this
+    view derived from that table means a new Dolt row automatically appears in
+    the UI without copying facts into Python code.
+    """
+    rows: list[dict[str, Any]] = []
+    for entry in ORG_GENE_LIST:
+        org = ORG_BY_ID.get(entry["org_id"])
+        gene = _GENE_BY_ID.get(entry["gene_id"])
+        if not org or not gene:
+            continue
+        trial_id = str(entry.get("trial_id") or "")
+        experiment_rows = sum(
+            1
+            for testing in GENE_TESTING
+            if testing["gene_id"] == entry["gene_id"]
+            and trial_id
+            and trial_id in str(testing.get("reference_short") or "")
+        )
+        rows.append(
+            {
+                "org_id": entry["org_id"],
+                "gene_id": entry["gene_id"],
+                "Program type": _program_type(entry["stage"]),
+                "Organization": org["name"],
+                "Gene": gene["gene"],
+                "Stage": _stage_label(entry["stage"]),
+                "Modality": str(entry.get("delivery_method") or "").replace("_", " "),
+                "Target": str(entry.get("target_organism") or ""),
+                "Trial": trial_id,
+                "Experiment rows": str(experiment_rows) if trial_id else "",
+                "Peer-reviewed": "Yes" if entry.get("peer_reviewed") else "No",
+                "Evidence": str(entry.get("evidence_summary") or ""),
+                "Source": str(entry.get("source_url") or ""),
+            }
+        )
+    rows.sort(
+        key=lambda row: (
+            0 if row["Program type"] == "Therapy / offering" else 1,
+            str(row["Organization"]).casefold(),
+            str(row["Gene"]).casefold(),
+        )
+    )
+    return pl.LazyFrame(rows)
+
+
 _GENES_LF: pl.LazyFrame = _genes_lazyframe()
 _EXPERIMENTS_LF: pl.LazyFrame | None = None
 
@@ -660,6 +791,7 @@ _EXP_POSITIVE_COUNTS: dict[str, int] = {
     for val in ("Positive", "Mixed", "Negative")
 }
 _ORGS_LF: pl.LazyFrame = _organizations_lazyframe()
+_PROGRAMS_LF: pl.LazyFrame = _programs_lazyframe()
 
 _GENE_COL_DESCS: dict[str, str] = {
     "Gene": "Display name",
@@ -696,6 +828,20 @@ _ORG_COL_DESCS: dict[str, str] = {
     "Genes": "Linked enhancement gene names",
     "Best stage": "Furthest pipeline stage across genes",
     "Commercial": "Has at least one commercial offering",
+}
+
+_PROGRAM_COL_DESCS: dict[str, str] = {
+    "Program type": "Research program versus therapy / offering",
+    "Organization": "Organization running or sponsoring the program",
+    "Gene": "Gene linked to the program",
+    "Stage": "Development or offering stage",
+    "Modality": "Delivery or intervention modality",
+    "Target": "Target organism or population",
+    "Trial": "ClinicalTrials.gov identifier when present",
+    "Experiment rows": "Rows in gene_testing matching the linked trial identifier",
+    "Peer-reviewed": "Whether the linked record has peer-reviewed evidence",
+    "Evidence": "Curated evidence summary",
+    "Source": "Program-level source",
 }
 
 def _is_available_stage(stage: str) -> bool:
@@ -814,6 +960,8 @@ class KnowledgebaseState(rx.State):
     o_source_url: str = ""
     o_founded: str = ""
     o_genes: list[dict[str, str]] = []
+    o_people: list[dict[str, str]] = []
+    o_sources: list[dict[str, str]] = []
 
     # Dossier fields (populated on select — avoids 109× rx.cond trees)
     d_gene: str = ""
@@ -853,7 +1001,7 @@ class KnowledgebaseState(rx.State):
         if mode != "organizations":
             self.org_open = False
             self.selected_org_id = ""
-        if mode in ("available", "experiments", "organizations"):
+        if mode in ("available", "experiments", "organizations", "programs"):
             self.dossier_open = False
             self.selected_gene_id = ""
         self.surface = mode
@@ -861,6 +1009,8 @@ class KnowledgebaseState(rx.State):
             yield KbGenesGridState.load_grid
         elif mode == "experiments":
             yield KbExperimentsGridState.load_grid
+        elif mode == "programs":
+            yield KbProgramsGridState.load_grid
         elif mode == "organizations":
             yield KbOrgsGridState.load_grid
 
@@ -925,6 +1075,8 @@ class KnowledgebaseState(rx.State):
         self.o_source_url = str(org.get("source_url") or "")
         founded = org.get("founded_year") or 0
         self.o_founded = str(founded) if founded else ""
+        self.o_people = _split_key_people(str(org.get("key_people") or ""))
+        self.o_sources = _organization_sources(org_id)
 
         gene_rows: list[dict[str, str]] = []
         for oge in ORG_GENE_MAP.get(org_id, []):
@@ -950,6 +1102,14 @@ class KnowledgebaseState(rx.State):
             key=lambda r: (_STAGE_SORT.get(r["stage_raw"], 50), r["gene"].lower())
         )
         self.o_genes = gene_rows
+
+    @rx.event
+    def open_org_from_gene(self, org_id: str):
+        if not org_id:
+            return
+        self.surface = "organizations"
+        self.apply_org_selection(org_id)
+        yield KbOrgsGridState.load_grid
 
     @rx.event
     def toggle_available_details(self, gene_id: str) -> None:
@@ -1050,6 +1210,7 @@ class KnowledgebaseState(rx.State):
                 price = f"${oge['price_usd']:,}"
             org_rows.append(
                 {
+                    "org_id": oge["org_id"],
                     "name": org["name"],
                     "type": _ORG_TYPE_LABELS.get(org["type"], org["type"]),
                     "stage": _stage_label(oge["stage"]),
@@ -1315,6 +1476,71 @@ class KbOrgsGridState(LazyFrameGridMixin, rx.State):
             self.lf_grid_row_selection_model = {"type": "include", "ids": [row_id]}
         kb = await self.get_state(KnowledgebaseState)
         kb.apply_org_selection(org_id)
+
+
+class KbProgramsGridState(LazyFrameGridMixin, rx.State):
+    """Organization↔gene program and therapy DataGrid."""
+
+    @rx.event
+    def load_grid(self):
+        if self.lf_grid_loaded:
+            return
+        yield from self.set_lazyframe(
+            _PROGRAMS_LF,
+            descriptions=_PROGRAM_COL_DESCS,
+            eager_value_options_row_limit=0,
+            column_overrides={
+                "org_id": {"hide": True},
+                "gene_id": {"hide": True},
+                "Program type": _badge_column(
+                    color_map={
+                        "Therapy / offering": "#4ade80",
+                        "Research program": "#c4b5fd",
+                    },
+                    bg_color_map={
+                        "Therapy / offering": "rgba(34, 197, 94, 0.22)",
+                        "Research program": "rgba(124, 58, 237, 0.22)",
+                    },
+                    flex=1.0,
+                ),
+                "Organization": {"flex": 1.4},
+                "Gene": {"flex": 0.9},
+                "Stage": _badge_column(
+                    color_map=_STAGE_BADGE_FG,
+                    bg_color_map=_STAGE_BADGE_BG,
+                    flex=0.75,
+                ),
+                "Modality": {"flex": 1.2},
+                "Target": {"flex": 0.8},
+                "Trial": {"flex": 0.8},
+                "Experiment rows": {"flex": 0.8},
+                "Peer-reviewed": _badge_column(
+                    color_map={"Yes": "#4ade80", "No": "#94a3b8"},
+                    bg_color_map={
+                        "Yes": "rgba(34, 197, 94, 0.22)",
+                        "No": "rgba(148, 163, 184, 0.14)",
+                    },
+                    flex=0.75,
+                ),
+                "Evidence": {"hide": True},
+                "Source": {"hide": True},
+            },
+            non_filterable_fields=["org_id", "gene_id", "Evidence", "Source"],
+        )
+
+    @rx.event
+    async def handle_lf_grid_row_click(self, params: dict[str, Any]) -> None:
+        row = params.get("row", {})
+        org_id = str(row.get("org_id", ""))
+        if not org_id:
+            return
+        row_id = row.get("__row_id__")
+        if row_id is not None:
+            self.lf_grid_row_selection_model = {"type": "include", "ids": [row_id]}
+        kb = await self.get_state(KnowledgebaseState)
+        kb.surface = "organizations"
+        kb.apply_org_selection(org_id)
+        yield KbOrgsGridState.load_grid
 
 
 # ---------------------------------------------------------------------------
@@ -1748,6 +1974,15 @@ _KB_CSS = """
 }
 .kb-org-detail-name { font-weight: 700; font-size: 1.08rem; color: #f8fafc; }
 .kb-org-detail-row { font-size: 0.98rem; color: #94a3b8; margin-top: 5px; line-height: 1.45; }
+.kb-org-people-list, .kb-org-sources-list { display: flex; flex-direction: column; gap: 7px; }
+.kb-org-person-card, .kb-org-source-card {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 8px;
+    padding: 8px 10px; background: rgba(2, 6, 23, 0.28);
+}
+.kb-org-person-card > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; flex: 1 1 auto; }
+.kb-org-unverified { font-size: 0.85rem; color: #fbbf24; }
+.kb-org-source-kind { font-size: 0.78rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .kb-org-gene-stage {
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 0.88rem; font-weight: 700; line-height: 1.15;
@@ -2063,6 +2298,12 @@ def _kb_intro() -> rx.Component:
             rx.el.div(
                 rx.el.span(f"{_TOTAL_EXPERIMENTS:,}", class_name="kb-stat-val"),
                 rx.el.span("experiments", class_name="kb-stat-label"),
+                class_name="kb-stat-item",
+            ),
+            rx.el.span("·", class_name="kb-stat-sep"),
+            rx.el.div(
+                rx.el.span(str(len(ORG_GENE_LIST)), class_name="kb-stat-val"),
+                rx.el.span("programs", class_name="kb-stat-label"),
                 class_name="kb-stat-item",
             ),
             rx.el.span("·", class_name="kb-stat-sep"),
@@ -2387,6 +2628,18 @@ def _organizations_surface() -> rx.Component:
     )
 
 
+def _programs_surface() -> rx.Component:
+    return _grid_shell(
+        KbProgramsGridState,
+        hint=(
+            "Each row is one organization↔gene relationship from Dolt. Filter by stage, "
+            "program type, modality, or peer-review status; click a row for the full organization dossier."
+        ),
+        detail_columns=["Target", "Experiment rows", "Evidence", "Source"],
+        height=_GRID_VIEWPORT_HEIGHT,
+    )
+
+
 def _website_host(url: str) -> str:
     host = url.strip()
     for prefix in ("https://", "http://"):
@@ -2530,6 +2783,7 @@ def _kb_surface() -> rx.Component:
         KnowledgebaseState.surface,
         ("genes", _genes_surface()),
         ("experiments", _experiments_surface()),
+        ("programs", _programs_surface()),
         ("organizations", _organizations_surface()),
         ("available", _available_surface()),
         _genes_surface(),
@@ -2751,7 +3005,12 @@ def _org_dossier_card(entry: dict) -> rx.Component:
         "kb-org-gene-stage kb-stage-phase",
     )
     return rx.el.div(
-        rx.el.div(entry["name"], class_name="kb-org-detail-name"),
+        rx.el.button(
+            entry["name"],
+            class_name="kb-exp-gene-link-btn",
+            on_click=KnowledgebaseState.open_org_from_gene(entry["org_id"]),
+            type="button",
+        ),
         rx.el.div(
             rx.el.span(entry["stage"], class_name=stage_cls),
             entry["type"],
@@ -3118,6 +3377,50 @@ def _org_gene_card(entry: dict) -> rx.Component:
     )
 
 
+def _org_person_card(entry: dict) -> rx.Component:
+    """Render people conservatively: only curated profile_url values become links."""
+    return rx.el.div(
+        rx.el.div(
+            rx.el.span(entry["name"], class_name="kb-org-detail-name"),
+            rx.cond(
+                entry["role"] != "",
+                rx.el.span(f" · {entry['role']}", class_name="kb-org-detail-row"),
+                rx.fragment(),
+            ),
+        ),
+        rx.cond(
+            entry["profile_url"] != "",
+            rx.el.a(
+                "Verified profile",
+                href=entry["profile_url"],
+                target="_blank",
+                rel="noopener noreferrer",
+                class_name="kb-ext-link",
+            ),
+            rx.el.span(
+                "No profile link verified",
+                class_name="kb-org-unverified",
+                title="A name match alone is not sufficient to identify a person.",
+            ),
+        ),
+        class_name="kb-org-person-card",
+    )
+
+
+def _org_source_card(entry: dict) -> rx.Component:
+    return rx.el.div(
+        rx.el.span(entry["kind"], class_name="kb-org-source-kind"),
+        rx.el.a(
+            entry["label"],
+            href=entry["url"],
+            target="_blank",
+            rel="noopener noreferrer",
+            class_name="kb-ext-link",
+        ),
+        class_name="kb-org-source-card",
+    )
+
+
 def _organization_detail_filled() -> rx.Component:
     return rx.el.div(
         rx.el.button(
@@ -3155,12 +3458,12 @@ def _organization_detail_filled() -> rx.Component:
             rx.fragment(),
         ),
         rx.cond(
-            KnowledgebaseState.o_key_people != "",
+            KnowledgebaseState.o_people.length() > 0,
             rx.el.div(
                 rx.el.div("Key people", class_name="kb-detail-section-label"),
                 rx.el.div(
-                    KnowledgebaseState.o_key_people,
-                    class_name="kb-detail-section-text",
+                    rx.foreach(KnowledgebaseState.o_people, _org_person_card),
+                    class_name="kb-org-people-list",
                 ),
                 class_name="kb-detail-section",
             ),
@@ -3212,6 +3515,18 @@ def _organization_detail_filled() -> rx.Component:
                 ),
             ),
             class_name="kb-detail-section",
+        ),
+        rx.cond(
+            KnowledgebaseState.o_sources.length() > 0,
+            rx.el.div(
+                rx.el.div("Evidence & sources", class_name="kb-detail-section-label"),
+                rx.el.div(
+                    rx.foreach(KnowledgebaseState.o_sources, _org_source_card),
+                    class_name="kb-org-sources-list",
+                ),
+                class_name="kb-detail-section",
+            ),
+            rx.fragment(),
         ),
         class_name="kb-detail-panel",
     )

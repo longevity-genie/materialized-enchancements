@@ -39,7 +39,8 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         description=(
             "Build your post-human character from real genes — tardigrade radiation shields, "
             "naked-mole-rat cancer resistance, Greenland shark longevity — backed by scientific "
-            "evidence tiers and real citations. Spend credits and grow a unique, mathematical Voronoi 3D-printable sculpture."
+            "evidence tiers and real citations. Spend credits and grow a unique printable crystal "
+            "from your gene choices (an abstract form — not a full-body figure yet)."
         ),
         changefreq="weekly",
         priority=1.0,
@@ -48,8 +49,9 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/materialization",
         title="Materialization",
         description=(
-            "Materialize your genetic enhancement profile into a unique 3D-printable sculpture, "
-            "shareable report card, and personal enhancement dossier."
+            "Materialize your genetic enhancement profile into a unique printable crystal, "
+            "shareable report card, and personal enhancement dossier. A full-body 3D figure "
+            "is on the roadmap; today the souvenir is this abstract crystal."
         ),
         changefreq="weekly",
         priority=0.9,
@@ -134,7 +136,7 @@ def build_llms_txt() -> str:
     gene_examples = ", ".join(entry["gene"] for entry in GENE_LIBRARY[:8])
     return f"""# Materialized Enhancements
 
-> Materialized Enhancements is an art and synthetic-biology web app that turns selected human genetic enhancement ideas into generative, 3D-printable sculpture.
+> Materialized Enhancements is an art and synthetic-biology web app that turns selected human genetic enhancement ideas into a generative printable crystal (an abstract form from gene choices; a full-body figure is on the roadmap).
 
 ## Canonical Site
 
@@ -151,7 +153,7 @@ def build_llms_txt() -> str:
 - Crawl the public pages listed above for the same default content visible to visitors.
 - The app is a Reflex site with SSR/prerendering enabled; route HTML contains the default visitor-facing text before websocket hydration.
 - The Character Profile page is the primary entry point: it exposes the RPG-style gene loadout builder and the current gene library.
-- The Materialization page explains the generated 3D sculpture/report flow; visitor-specific report links use `/materialization?report=1&name=<base64-url-name>&cats=<category-bitmask>` and regenerate sculpture state client-side.
+- The Materialization page explains the generated printable crystal / report flow; visitor-specific report links use `/materialization?report=1&name=<base64-url-name>&cats=<category-bitmask>` and regenerate sculpture state client-side.
 - Internal Reflex websocket paths such as `/_event/` are not document pages and should not be indexed.
 
 ## Biological Dataset
@@ -167,7 +169,7 @@ def build_llms_txt() -> str:
 
 ## Project Summary
 
-Visitors assemble a character-like profile from real genes found in humans, animals, microbes, and extremophiles. The app maps those biological choices and a personal tag into deterministic sculpture parameters, then provides a generated 3D model, shareable report, PNG/PDF exports, and optional ARTEX publishing.
+Visitors assemble a character-like profile from real genes found in humans, animals, microbes, and extremophiles. The app maps those biological choices and a personal tag into deterministic sculpture parameters, then provides a printable crystal (abstract form — full-body figure is roadmap), shareable report, PNG/PDF exports, and optional ARTEX publishing.
 
 ## Technology Notes
 

@@ -358,7 +358,7 @@ def _landing_tab() -> rx.Component:
                         },
                     ),
                     rx.el.p(
-                        "Real genes. Real science. Your character. Wearable 3D printed model.",
+                        "Real genes. Real science. Your character. A printable crystal from your choices.",
                         style={
                             "color": "#7c3aed",
                             "fontSize": "1.25rem",
@@ -385,7 +385,8 @@ def _landing_tab() -> rx.Component:
                             "and is upfront about contradictions and translational gaps. "
                             "Spend enhancement credits on real genes from extraordinary organisms, "
                             "watch your profile light up by category, then materialize the result as a "
-                            "unique 3D-printable artifact and a personal enhancement report.",
+                            "unique printable crystal (an abstract form grown from your gene choices — "
+                            "not a full-body figure yet) and a personal enhancement report.",
                         ),
                         style=_p_body,
                     ),
@@ -424,8 +425,9 @@ def _landing_tab() -> rx.Component:
                     rx.el.p(
                         "Learn real genetics in a playful way: browse enhancement genes with scientific evidence "
                         "tiers, peer-reviewed citations, and notes on contradictions — see how they are grouped "
-                        "by biological function, then take home a unique souvenir — a 3D-printable form and a "
-                        "personal report generated from your choices.",
+                        "by biological function, then take home a unique souvenir — a printable crystal "
+                        "grown from your choices, plus a personal report. A full-body 3D figure that shows "
+                        "your traits is on the roadmap; today the materialization is this abstract crystal.",
                         style={**_p_muted, "marginBottom": "16px"},
                     ),
                     rx.el.p(
@@ -525,8 +527,9 @@ def _landing_tab() -> rx.Component:
                                 "companies, clinics, and labs offering or developing gene therapies for each enhancement.",
                             ),
                             _roadmap_item(
-                                "A printable human 3D model of your enhanced state",
-                                "a full figure that visibly reflects the traits you chose, not only an abstract form.",
+                                "A printable human 3D body of your enhanced state",
+                                "today Materialize grows an abstract crystal; later, a full figure that visibly "
+                                "reflects the traits you chose.",
                             ),
                             _roadmap_item(
                                 "More art and fabrication options",
@@ -861,7 +864,8 @@ def _budget_gauge() -> rx.Component:
                 rx.el.strong(f"{DEFAULT_BUDGET} enhancement credits", style={"color": "#c4b5fd"}),
                 " and real genes from extraordinary organisms. "
                 "Every upgrade has a biological tradeoff — you cannot maximize everything. "
-                "Once finished, materialize your enhancements into a personal report and a wearable 3D-printable model!",
+                "Once finished, materialize your enhancements into a personal report and a printable crystal "
+                "grown from your gene choices (an abstract form for now — a full-body figure is still on the roadmap).",
                 style={
                     "fontSize": "0.82rem",
                     "lineHeight": "1.45",
@@ -990,7 +994,8 @@ def _sculpture_how_it_works_callout() -> rx.Component:
         rx.el.p(
             "Spend enhancement credits (cr) to choose the genetic enhancement areas you want. "
             "Pick categories (left sidebar), select genes (on the right), and push materialize (on the bottom). "
-            "You will get a printable 3D model and a report you can share with friends.",
+            "You will get a printable crystal grown from your choices — an abstract form, not a body figure yet — "
+            "plus a report you can share with friends.",
             style={
                 "fontSize": "0.88rem",
                 "lineHeight": "1.5",
@@ -1035,9 +1040,8 @@ def _sculpture_left_pane() -> rx.Component:
                 style={"fontSize": "0.78rem", "color": "#9ca3af", "textAlign": "center"},
             ),
             rx.el.p(
-                "Each combination drives a generative algorithm that "
-                "turns your choices into a one-of-a-kind parametric 3D model — "
-                "printable in resin, ceramic, or metal.",
+                "Each combination grows a one-of-a-kind printable crystal — "
+                "an abstract form from your gene choices, printable in resin, ceramic, or metal.",
                 style={
                     "fontSize": "0.78rem",
                     "color": "#9ca3af",
@@ -2232,6 +2236,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
             _gene_confidence_section(gene_item["confidence_primary"]),
             _gene_evidence_tier_row(gene_item["evidence_tier"]),
             _gene_availability_badges(gene_item),
+            _gene_ai_controls(gene_item, dark=False),
             style={
                 "display": "flex",
                 "flexDirection": "column",
@@ -2573,7 +2578,8 @@ def _rpg_schema_hint_panel() -> rx.Component:
             },
         ),
         rx.el.div(
-            "Trait choices procedurally grow an organic mathematical Voronoi sculpture — a unique, printable 3D model.",
+            "Trait choices grow a unique printable crystal — an abstract mathematical form from your genes, "
+            "not a full-body figure (that is still on the roadmap).",
             style={
                 "marginTop": "8px",
                 "color": "#cbd5e1",
@@ -2784,7 +2790,8 @@ def _gene_library_onboarding_tooltip() -> rx.Component:
         detail=(
             "Click a category icon on the body map (or an accordion below) to highlight and jump to it, "
             "then add genes to your character. "
-            "Each gene spends enhancement credits (cr) and shapes your unique mathematical Voronoi 3D model."
+            "Each gene spends enhancement credits (cr) and shapes your printable crystal — "
+            "an abstract form grown from your choices, not a body model yet."
         ),
     )
 
@@ -2903,7 +2910,7 @@ def _rpg_materialization_leg_cta() -> rx.Component:
             ),
             title=rx.cond(
                 ComposeState.can_materialize,
-                "Generate the 3D sculpture and report.",
+                "Grow your printable crystal and report.",
                 ComposeState.materialize_requirements_notice,
             ),
         ),
@@ -3841,6 +3848,90 @@ def _gene_fold_item(
     )
 
 
+def _gene_ai_provider_button(
+    gene_id: rx.Var,
+    *,
+    label: str,
+    provider: str,
+    icon_src: str,
+) -> rx.Component:
+    return rx.el.button(
+        rx.el.img(
+            src=icon_src,
+            alt="",
+            width="14",
+            height="14",
+            style={"width": "14px", "height": "14px", "display": "block"},
+        ),
+        type="button",
+        on_click=ComposeState.open_gene_ai(gene_id, provider),
+        aria_label=f"Ask {label} about this gene",
+        title=f"Ask {label} about this gene",
+        style={
+            "width": "21px",
+            "height": "21px",
+            "padding": "0",
+            "borderRadius": "999px",
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "background": "#f8fafc",
+            "border": "1px solid rgba(148, 163, 184, 0.38)",
+            "cursor": "pointer",
+            "opacity": "0.9",
+        },
+    )
+
+
+def _gene_ai_controls(gene_item: rx.Var, dark: bool) -> rx.Component:
+    gene_id = gene_item["gene_id"]
+    return rx.el.div(
+        rx.el.span(
+            "Ask AI about " + gene_item["gene"],
+            style={
+                "fontSize": "0.65rem",
+                "fontWeight": "700",
+                "color": "#94a3b8" if dark else "#6b7280",
+                "lineHeight": "1.2",
+            },
+        ),
+        rx.el.div(
+            _gene_ai_provider_button(
+                gene_id,
+                label="ChatGPT",
+                provider="chatgpt",
+                icon_src="/images/icons/openai.svg",
+            ),
+            _gene_ai_provider_button(
+                gene_id,
+                label="Claude",
+                provider="claude",
+                icon_src="/images/icons/claude.svg",
+            ),
+            _gene_ai_provider_button(
+                gene_id,
+                label="Grok",
+                provider="grok",
+                icon_src="/images/icons/grok.svg",
+            ),
+            style={
+                "display": "inline-flex",
+                "alignItems": "center",
+                "gap": "6px",
+                "flexShrink": "0",
+            },
+        ),
+        class_name="me-gene-ai-controls",
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "gap": "10px",
+            "flexWrap": "wrap",
+        },
+    )
+
+
 def _gene_information_folds(gene_item: rx.Var, dark: bool) -> rx.Component:
     has_organizations = gene_item["org_entries"].length() > 0
     has_structure = (
@@ -4139,6 +4230,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                 _gene_confidence_section(gene_item["confidence_primary"]),
                 _gene_evidence_tier_row(gene_item["evidence_tier"]),
                 _gene_availability_badges(gene_item),
+                _gene_ai_controls(gene_item, dark=True),
                 style={
                     "display": "flex",
                     "flexDirection": "column",
@@ -4877,6 +4969,14 @@ def _materialization_post_generation_ctas() -> rx.Component:
     if GITHUB_PROJECT_URL:
         actions.append(
             _post_materialization_action_card(
+                "comment",
+                "Feature request",
+                f"{GITHUB_PROJECT_URL.rstrip('/')}/issues",
+                "#c4b5fd",
+            )
+        )
+        actions.append(
+            _post_materialization_action_card(
                 "github",
                 "Star GitHub",
                 GITHUB_PROJECT_URL,
@@ -5107,7 +5207,7 @@ def _materialization_reward_panel() -> rx.Component:
                         },
                     ),
                     rx.el.h2(
-                        "Quest complete: your enhancement character is ready",
+                        "Here is your reward: a 3D-printable crystal!",
                         style={
                             "margin": "10px 0 8px",
                             "color": "#f8fafc",
@@ -5118,16 +5218,31 @@ def _materialization_reward_panel() -> rx.Component:
                         },
                     ),
                     rx.el.p(
-                        "Congratulations. Your selected genes became two take-home rewards: a printable 3D model "
-                        "and a personal enhancement report. This project is also growing into an open enhancement "
-                        "gene knowledgebase for art, education, and future science.",
+                        "You also get a personal enhancement report from the genes you chose.",
                         style={
-                            "margin": "0",
+                            "margin": "0 0 14px 0",
                             "color": "#dbeafe",
                             "fontSize": "1.02rem",
                             "lineHeight": "1.5",
                             "maxWidth": "62rem",
                         },
+                    ),
+                    _profile_ai_panel(),
+                    rx.el.p(
+                        "Want a 3D-printed human or other goodies? "
+                        "Not ready yet — comment on GitHub or donate to help us build it.",
+                        style={
+                            "margin": "0 auto",
+                            "color": "#94a3b8",
+                            "fontSize": "0.9rem",
+                            "lineHeight": "1.4",
+                            "maxWidth": "62rem",
+                            "textAlign": "center",
+                        },
+                    ),
+                    rx.el.div(
+                        _materialization_post_generation_ctas(),
+                        style={"marginTop": "4px"},
                     ),
                     style={"minWidth": "0", "flex": "1 1 560px"},
                 ),
@@ -5155,49 +5270,15 @@ def _materialization_reward_panel() -> rx.Component:
                 },
             ),
             rx.el.div(
-                rx.el.div(
-                    "Help grow the enhancement atlas",
-                    style={
-                        "marginBottom": "5px",
-                        "color": "#cbd5e1",
-                        "fontSize": "0.98rem",
-                        "fontWeight": "900",
-                        "textAlign": "center",
-                    },
-                ),
-                rx.el.div(
-                    "Join the movement: share feedback, suggest genes, or support the next version.",
-                    style={
-                        "margin": "0 auto 10px",
-                        "maxWidth": "48rem",
-                        "color": "#94a3b8",
-                        "fontSize": "0.9rem",
-                        "fontWeight": "700",
-                        "lineHeight": "1.35",
-                        "textAlign": "center",
-                    },
-                ),
-                _materialization_post_generation_ctas(),
-                style={
-                    "marginTop": "16px",
-                    "padding": "13px 14px 14px",
-                    "textAlign": "center",
-                    "borderRadius": "14px",
-                    "background": "rgba(15, 23, 42, 0.46)",
-                    "border": "1px solid rgba(196, 181, 253, 0.20)",
-                    "boxShadow": "inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-                },
-            ),
-            rx.el.div(
                 _reward_artifact_choice(
-                    "Printable 3D model",
-                    "Ready to inspect, download, and print.",
+                    "Printable crystal",
+                    "Abstract form from your genes — not a body figure yet.",
                     "cube",
                     model_active,
                     ComposeState.show_model_artifact_tab,
                     "Open model",
                     image_src="/images/icons/shapes.jpg",
-                    image_alt="Printed Materialized Enhancements 3D shapes",
+                    image_alt="Printed Materialized Enhancements crystal forms",
                 ),
                 _reward_artifact_choice(
                     "Personal enhancement report",
@@ -7070,7 +7151,7 @@ def _model_generation_story_panel() -> rx.Component:
                 fomantic_icon("magic", size=18, color="#c4b5fd"),
                 rx.el.div(
                     rx.el.h3(
-                        "How this 3D model was generated",
+                        "How this crystal was generated",
                         style={
                             "margin": "0 0 6px 0",
                             "color": "#f8fafc",
@@ -7082,8 +7163,9 @@ def _model_generation_story_panel() -> rx.Component:
                     rx.el.p(
                         "The app takes ",
                         rx.el.strong(ComposeState.param_pool_size, style={"color": "#ffffff"}),
-                        " selected genes to procedurally grow a unique mathematical Voronoi shape. ",
-                        "Biophysical properties dictate its cellular complexity, seeded by your choices.",
+                        " selected genes and grows a unique abstract crystal from their biophysical properties. "
+                        "This is a printable souvenir of your choices — not a full-body figure "
+                        "(that enhancement body model is still on the roadmap).",
                         style={
                             "margin": "0",
                             "fontSize": "1rem",
@@ -7710,7 +7792,7 @@ def _sculpture_section_body() -> rx.Component:
                     style={"textAlign": "center", "marginBottom": "16px"},
                 ),
                 rx.el.p(
-                    "Building your printable 3D model…",
+                    "Growing your printable crystal…",
                     style={"color": "#e0d6f7", "fontSize": "1.05rem", "textAlign": "center", "marginBottom": "12px", "fontWeight": "500"},
                 ),
                 rx.el.div(
@@ -7743,7 +7825,7 @@ def _sculpture_section_body() -> rx.Component:
                 style={"padding": "40px 12px"},
             ),
             rx.el.p(
-                "Click Materialize from Character profile to build a printable 3D model.",
+                "Click Materialize from Character profile to grow your printable crystal.",
                 style={"color": "#9ca3af", "fontSize": "0.9rem", "textAlign": "center", "padding": "24px 12px"},
             ),
         ),
@@ -7762,7 +7844,7 @@ def _sculpture_section() -> rx.Component:
         _section_header(
             expanded=ComposeState.viewer_expanded,
             icon_name="cube",
-            title="Printable 3D model",
+            title="Printable crystal",
             on_toggle=ComposeState.toggle_viewer_expanded,
             right_badge=rx.cond(
                 ComposeState.generating,
@@ -9812,6 +9894,102 @@ def _share_action_button(icon_name: str, label: str, bg: str, js_call: str) -> r
     )
 
 
+def _profile_ai_link(link: rx.Var) -> rx.Component:
+    return rx.el.a(
+        rx.el.span(
+            rx.el.img(
+                src=link["icon_src"],
+                alt="",
+                width="24",
+                height="24",
+                style={
+                    "width": "24px",
+                    "height": "24px",
+                    "display": "block",
+                },
+            ),
+            style={
+                "width": "36px",
+                "height": "36px",
+                "borderRadius": "999px",
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "background": "#f8fafc",
+                "border": "1px solid rgba(148, 163, 184, 0.38)",
+                "boxShadow": "0 2px 7px rgba(0, 0, 0, 0.2)",
+            },
+        ),
+        rx.el.span(
+            link["label"],
+            style={
+                "fontSize": "0.68rem",
+                "fontWeight": "700",
+                "color": "#cbd5e1",
+            },
+        ),
+        href=link["url"],
+        target="_blank",
+        rel="noopener noreferrer",
+        aria_label="Explain this profile with " + link["label"],
+        title="Imagine and explain this profile with " + link["label"],
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "gap": "3px",
+            "minWidth": "54px",
+            "textDecoration": "none",
+        },
+    )
+
+
+def _profile_ai_panel() -> rx.Component:
+    return rx.el.div(
+        rx.el.div(
+            fomantic_icon("comments outline", size=17, color="#c4b5fd"),
+            rx.el.span(
+                "Describe and draw your enhanced character with AI",
+                style={
+                    "fontSize": "0.94rem",
+                    "fontWeight": "900",
+                    "color": "#f3f0ff",
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "8px",
+            },
+        ),
+        rx.el.div(
+            rx.foreach(ComposeState.profile_ai_links, _profile_ai_link),
+            style={
+                "display": "flex",
+                "justifyContent": "flex-start",
+                "gap": "10px",
+                "flexWrap": "wrap",
+            },
+        ),
+        id="profile-ai-panel",
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "gap": "14px",
+            "flexWrap": "wrap",
+            "width": "fit-content",
+            "maxWidth": "100%",
+            "margin": "2px auto 12px",
+            "padding": "9px 12px",
+            "borderRadius": "10px",
+            "border": "1px solid rgba(167, 139, 250, 0.3)",
+            "background": "rgba(76, 29, 149, 0.16)",
+        },
+    )
+
+
 def _share_section_body() -> rx.Component:
     """Share tab: auto-generated card image + social buttons, no gating."""
     _card_image_style = {
@@ -10085,7 +10263,7 @@ def _tab_menu(active_route: str) -> rx.Component:
                     style={"color": "#94a3b8"},
                 ),
                 rx.el.span(
-                    "Wearable 3D Printed Model",
+                    "Printable Crystal From Your Genes",
                     style={"color": "#a78bfa", "fontWeight": "900"},
                 ),
                 style={
