@@ -46,7 +46,7 @@ _HERO_PORTRAIT_UPLOAD_ID = "hero-portrait-upload"
 def _page_meta(route_path: str) -> list[dict[str, str]]:
     base = public_app_url()
     route = _ROUTE_METADATA[route_path]
-    title = f"{_SITE_TITLE} | {route.title}"
+    title = _SITE_TITLE if route_path == "/" else f"{_SITE_TITLE} | {route.title}"
     image_url = _page_image_url()
     canonical_url = f"{base}/" if route_path == "/" else f"{base}{route_path}"
     return [
@@ -79,7 +79,7 @@ def _category_tooltip(category: str) -> str:
 
 
 def _page_title(route_path: str) -> str:
-    return f"{_SITE_TITLE} | {_ROUTE_METADATA[route_path].title}"
+    return _SITE_TITLE if route_path == "/" else f"{_SITE_TITLE} | {_ROUTE_METADATA[route_path].title}"
 
 
 def _page_description(route_path: str) -> str:
@@ -473,6 +473,14 @@ def _landing_tab() -> rx.Component:
                             _contact_link(
                                 "Anton on LinkedIn",
                                 "https://www.linkedin.com/in/antonkulaga/",
+                            ),
+                            _contact_link(
+                                "Telegram community (dedicated topic)",
+                                "https://t.me/+4ON9YyZF4SM0M2Nk",
+                            ),
+                            _contact_link(
+                                "LinkedIn showcase",
+                                "https://www.linkedin.com/showcase/138363945/",
                             ),
                             style={
                                 "display": "flex",

@@ -37,10 +37,9 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/",
         title="Character Profile",
         description=(
-            "Build your post-human character from real genes — tardigrade radiation shields, "
-            "naked-mole-rat cancer resistance, Greenland shark longevity — backed by scientific "
-            "evidence tiers and real citations. Spend credits and grow a unique printable crystal "
-            "from your gene choices (an abstract form — not a full-body figure yet)."
+            "Build your post-human character from real genes - tardigrade radiation shields, "
+            "naked-mole-rat cancer resistance, axolotl regeneration - backed by scientific "
+            "evidence tiers and real citations, and 3D-print the result."
         ),
         changefreq="weekly",
         priority=1.0,
@@ -51,7 +50,7 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         description=(
             "Materialize your genetic enhancement profile into a unique printable crystal, "
             "shareable report card, and personal enhancement dossier. A full-body 3D figure "
-            "is on the roadmap; today the souvenir is this abstract crystal."
+            "is on the roadmap - today the souvenir is this abstract crystal."
         ),
         changefreq="weekly",
         priority=0.9,
@@ -70,7 +69,7 @@ PUBLIC_ROUTES: tuple[CrawlerRoute, ...] = (
         path="/knowledgebase",
         title="Enhancement Knowledgebase",
         description=(
-            "The world's most comprehensive open knowledgebase on genetic enhancement — "
+            "The world's most comprehensive open knowledgebase on genetic enhancement - "
             "curated genes across species, experimental and clinical evidence, and the "
             "labs and clinics building them. Searchable, version-controlled, and open source."
         ),
@@ -169,7 +168,7 @@ def build_llms_txt() -> str:
 
 ## Project Summary
 
-Visitors assemble a character-like profile from real genes found in humans, animals, microbes, and extremophiles. The app maps those biological choices and a personal tag into deterministic sculpture parameters, then provides a printable crystal (abstract form — full-body figure is roadmap), shareable report, PNG/PDF exports, and optional ARTEX publishing.
+Visitors assemble a character-like profile from real genes found in humans, animals, microbes, and extremophiles. The app maps those biological choices and a personal tag into deterministic sculpture parameters, then provides a printable crystal (abstract form - full-body figure is roadmap), shareable report, PNG/PDF exports, and optional ARTEX publishing.
 
 ## Technology Notes
 
