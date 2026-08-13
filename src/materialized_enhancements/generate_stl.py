@@ -385,7 +385,7 @@ def generate(
         raise typer.Exit(1)
 
 
-GENE_PROPS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "input" / "gene_properties.csv"
+GENE_PROPS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "db_backup" / "gene_properties.csv"
 STL_REPORT_PATH = OUTPUT_DIR / "stl_report.csv"
 
 
@@ -403,7 +403,7 @@ def _build_stl_gene_map(stl_dir: Path) -> dict[str, dict[str, str]]:
         pdb_id = str(row.get("pdb_id") or "").strip()
         protein_id = str(row.get("protein_id") or "").strip()
         category = str(row.get("category") or "").strip()
-        has_af = str(row.get("has_alphafold") or "").strip().lower() == "true"
+        has_af = str(row.get("has_alphafold") or "").strip().lower() in {"true", "1"}
 
         if pdb_id:
             lookup[pdb_id] = {"gene_id": gene_id, "gene": gene, "pdb_id": pdb_id, "protein_id": protein_id, "category": category, "source": "rcsb"}

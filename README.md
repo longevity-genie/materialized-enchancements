@@ -89,15 +89,15 @@ The gene library is more than game data — it is a curated knowledge base of re
 
 Whether you are a researcher studying gene transfer, a biohacker evaluating enhancement options, or a transhumanist tracking which therapies are already available in alternative jurisdictions — the database gives you structured, evidence-graded data to work from. We are expanding it to include providers and clinics offering gene therapies today.
 
-109 genes catalogued (80 playable in the RPG, 29 knowledge-base-only pending biophysical data) · 6 parent categories · 71 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,023 experimental evidence records · 729 registered clinical trials · 108 organizations (69 academic labs, 36 biotech companies, 3 clinics) · 850 unique DOI-linked references.
+136 genes catalogued (89 playable in the RPG, 47 knowledge-base-only pending biophysical data) · 6 parent categories · 72 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,238 experimental evidence records · 751 registered clinical trials · 109 organizations (69 academic labs, 37 biotech companies, 3 clinics) · 973 unique DOI-linked references.
 
 
 | Category                 | Total | Playable | Example organisms                                                                    |
 | ------------------------ | ----- | -------- | ------------------------------------------------------------------------------------ |
-| Longevity & Genome       | 25    | 20       | Greenland shark, Naked mole-rat, African elephant, Orange roughy                     |
-| Environmental Adaptation | 19    | 17       | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium         |
+| Longevity & Genome       | 44    | 25       | Greenland shark, Naked mole-rat, African elephant, Orange roughy, Mouse              |
+| Environmental Adaptation | 20    | 17       | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium         |
+| Stress Resistance        | 23    | 15       | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon, Fruit fly     |
 | Expression               | 17    | 11       | Crystal jellyfish, Golden silk orbweaver, Humboldt squid, Venus flower basket sponge |
-| Stress Resistance        | 16    | 11       | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon                |
 | Regeneration             | 16    | 11       | Axolotl, Planarian, Spiny mouse, Immortal jellyfish, American lobster                |
 | Perception               | 16    | 10       | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin            |
 

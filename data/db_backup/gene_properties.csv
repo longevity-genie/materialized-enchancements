@@ -3,74 +3,96 @@ acomys_regen,Acomys regen. program,,,,false,,,,,20,0,,,,2012,Regeneration,6
 acr3_pteris,PvACR3,E3URE9,uniprot,,true,ACR3,379,41.6,,1,2,9.2,9.35,0.785,2025,Environmental Adaptation,5
 afp_fish,AFP / AFGP,P04002,uniprot,1WFB,true,AFP Type I,113,12.2,3,1,5,5,5.5,-0.1,2019,Environmental Adaptation,5
 aldh3a2_parrot,ALDH3A2,,,,false,ALDH3A2,,,,1,2,,,,2024,Expression,4
-angptl3_base_edit,ANGPTL3,Q9Y5C1,uniprot,6EUA,true,ANGPTL3,460,53.6,,1,5,25.9,6.24,-0.739,2023,Longevity & Genome,17
-apoc3_lof,APOC3,P02656,uniprot,2JQ3,true,APOC3,99,10.9,,1,1,25.3,5.23,-0.086,2024,Longevity & Genome,16
+angptl3_base_edit,ANGPTL3,Q9Y5C1,uniprot,6EUA,true,ANGPTL3,460,53.6,7,1,5,25.9,6.24,-0.739,2023,Longevity & Genome,17
+apoc3_lof,APOC3,P02656,uniprot,2JQ3,true,APOC3,99,10.9,4,1,1,25.3,5.23,-0.086,2024,Longevity & Genome,16
 apoe_edit,APOE,P02649,uniprot,7FCR,true,APOE,317,36.2,4,1,2,25,5.5,-0.65,2025,Longevity & Genome,7
 aqp1,AQP1,P29972,uniprot,4CSK,true,AQP1,269,28.6,4,1,2,3,7.7,0.45,2013,Environmental Adaptation,4
 asc2_bat,ASC2 (Bat),,,,false,,,,,1,0,,,,2023,Longevity & Genome,7
-asgr1_lof,ASGR1,P07306,uniprot,1DV8,true,ASGR1,291,33.2,,1,1,24.7,5.28,-0.7,2016,Longevity & Genome,8
-atoh1_gfi1_pou4f3_haircell,ATOH1 + GFI1 + POU4F3,A0A0C6E596,uniprot,,true,ATOH1,274,28.4,,3,2,81,9.8,-0.628,2024,Regeneration,7
+asgr1_lof,ASGR1,P07306,uniprot,1DV8,true,ASGR1,291,33.2,8,1,1,24.7,5.28,-0.7,2016,Longevity & Genome,8
+atg5_oe,ATG5,Q9H1Y0,uniprot,4TQ1,true,Autophagy protein 5,275,32.4,8,1,1,3.6,5.48,-0.468,,Longevity & Genome,7
+atoh1_gfi1_pou4f3_haircell,ATOH1 + GFI1 + POU4F3,A0A0C6E596,uniprot,,true,ATOH1,274,28.4,1,3,2,81,9.8,-0.628,2024,Regeneration,7
 avlige_rotifer,AvLigE,,,,false,,,,,1,0,,,,2023,Stress Resistance,5
+bub1b_t23,BUB1B (BubR1),O60566,uniprot,6TLJ,true,Mitotic checkpoint serine/threonine-protein kinase BUB1 beta,1050,119.5,23,1,1,51.2,5.2,-0.54,,Longevity & Genome,8
 cahs_d,CAHS D,P0DOW5,uniprot,,true,CAHS D,227,23.5,2,1,3,85,10.2,-1.45,2015,Stress Resistance,6
 cbp_gecko,CBP,A0ABM1JV99,uniprot,,false,CBP,150,14.5,1,72,0,3,7.5,0.55,2015,Expression,20
-cetp_lof,CETP,P11597,uniprot,2OBD,true,CETP,493,54.8,,1,1,4.9,5.7,0.175,2017,Longevity & Genome,6
+cdc42_casin,"CDC42 (activity inhibition, CASIN)",P60953,uniprot,3VHL,true,Cell division control protein 42 homolog,191,21.3,6,1,1,6.8,6.14,-0.157,2020,Longevity & Genome,9
+cetp_lof,CETP,P11597,uniprot,2OBD,true,CETP,493,54.8,16,1,1,4.9,5.7,0.175,2017,Longevity & Genome,6
 chrna1_mongoose,CHRNA1,P02708,uniprot,4ZJS,true,Acetylcholine receptor subunit alpha,457,51.8,10,5,1,12,5.4,0.11,2015,Environmental Adaptation,6
 cirbp,CIRBP,Q14011,uniprot,5TBX,true,CIRBP,172,18.6,6,1,1,55,9.4,-0.85,2017,Environmental Adaptation,4
+cisd2,CISD2,Q8N5K1,uniprot,4OOA,true,CDGSH iron-sulfur domain-containing protein 2,135,15.3,3,1,1,2.2,9.66,-0.063,,Longevity & Genome,9
 clock_bmal1_dolphin,CLOCK / BMAL1,A0A6J3RDU0,uniprot,,true,CLOCK,855,95.4,20,2,0,22,6.2,-0.55,2024,Environmental Adaptation,8
 cltx,Chlorotoxin,P45639,uniprot,7X43,true,Chlorotoxin,36,4,2,1,3,0,8.2,-0.25,2006,Expression,3
+clu_secreted,"CLU (clusterin / apolipoprotein J, secreted isoform)",P10909,uniprot,7ZET,true,Clusterin,449,52.49,9,1,2,0,5.83,-0.665,2012,Stress Resistance,7
 cpdp_potoroo,CPD Photolyase,Q28811,uniprot,,true,Deoxyribodipyrimidine photo-lyase,532,61.6,3,1,3,11,8.2,-0.52,2005,Environmental Adaptation,6
 cry4a_robin,CRY4a,,,,false,CRY4,590,66,12,1,0,15,6.2,-0.3,2021,Perception,5
 csmg_snail,CSMG,,,,false,,,,,25,0,,,,2019,Expression,4
+ctf1_ko,CTF1 (cardiotrophin-1),Q16619,uniprot,,true,Cardiotrophin-1,201,21.2,3,1,1,20.9,9.18,-0.105,2013,Longevity & Genome,6
 cyp2j19_bdh1l_keto,CYP2J19 + BDH1L,A0A8V1A1M2,uniprot,,true,CYP2J19,496,57,,2,6,0,7.63,-0.045,2025,Expression,4
 dsup,Dsup,P0DOW4,uniprot,,true,Dsup,445,49,4,1,5,72,9.8,-1.3,2016,Stress Resistance,6
-ectabc_halomonas,ectABC,O52251,uniprot,,true,ectC,137,15.5,,1,2,15.3,4.87,-0.593,2023,Environmental Adaptation,8
+ectabc_halomonas,ectABC,O52251,uniprot,,true,ectC,137,15.5,1,1,2,15.3,4.87,-0.593,2023,Environmental Adaptation,8
 epas1_tibetan,EPAS1,Q99814,uniprot,1P97,true,EPAS1,870,96.8,16,1,1,35,5.4,-0.62,2014,Environmental Adaptation,6
 epg_catfish,EPG (Electric Organ),,,,false,,,,,6,0,,,,2014,Perception,5
-fgf18_cartilage,FGF18,O76093,uniprot,4CJM,true,FGF18,207,24,,1,1,34.3,9.86,-0.707,2025,Regeneration,10
+fgf18_cartilage,FGF18,O76093,uniprot,4CJM,true,FGF18,207,24,5,1,1,34.3,9.86,-0.707,2025,Regeneration,10
 fgf21_stgfbr2,FGF21 / sTGFβR2,Q9NSA1,uniprot,6M6E,true,FGF21,209,22.3,3,2,2,30,5.4,-0.48,2019,Longevity & Genome,5
 fluc,Luciferase / Luciferin,P08659,uniprot,3RIX,true,Luciferase,550,60.7,7,2,5,8,6.4,-0.35,2006,Expression,10
 foxo3,FOXO3,O43524,uniprot,2K86,true,FOXO3,673,71.3,3,1,2,45,5.2,-0.72,2015,Longevity & Genome,5
 fst344,FST,P19883,uniprot,,true,FST,344,38,6,1,4,15,5.5,-0.42,2014,Regeneration,6
 fth1b_shark,FTH1B (Shark),,,,false,,,,,1,0,,,,2016,Stress Resistance,5
+g6pd,G6PD,P11413,uniprot,6JYU,true,Glucose-6-phosphate 1-dehydrogenase,515,59.3,13,1,1,5.6,6.39,-0.37,,Stress Resistance,6
 gaafp_glaciozyma,GaAFP,,,,false,,,,,1,0,,,,2012,Environmental Adaptation,4
+gdf15_oe,GDF15 (NAG-1 / MIC-1),Q99988,uniprot,,true,Growth/differentiation factor 15,308,34.1,2,1,1,31.5,9.79,-0.363,,Longevity & Genome,8
 gfp,GFP,P42212,uniprot,6L27,true,GFP,238,26.9,1,1,9,2,5.8,-0.55,1994,Expression,8
-ghr_laron,GHR,P10912,uniprot,1A22,true,GHR,638,71.5,,1,1,59.6,4.76,-0.412,2024,Longevity & Genome,12
+ghr_laron,GHR,P10912,uniprot,1A22,true,GHR,638,71.5,10,1,1,59.6,4.76,-0.412,2024,Longevity & Genome,12
 glassin_sponge,Glassin,,,,false,,,,,1,0,,,,2013,Expression,4
 glut5_khk_nmr,GLUT5/KHK (NMR),,,,false,,,,,2,0,,,,2021,Longevity & Genome,6
 greenland_shark_repair,GS DNA-repair / TP53,,,,false,TP53,393,43.7,11,81,0,30,6.3,-0.68,2024,Longevity & Genome,4
+grn_aav,GRN (progranulin),P28799,uniprot,,true,Progranulin,593,63.5,13,1,1,21.2,6.43,-0.231,,Longevity & Genome,9
+gsr_glutathione_recycling,GSR (glutathione reductase / GSR-1),P00390,uniprot,1ALG,true,"Glutathione reductase, mitochondrial",522,56.26,13,1,2,0,8.38,-0.049,2013,Stress Resistance,5
 h1f0_shark,H1F0 (Shark),,,,false,,,,,1,0,,,,2016,Longevity & Genome,5
 has2_nmr,HAS2,Q92819,uniprot,,true,HAS2,552,63.2,4,1,1,8,7.6,-0.05,2013,Longevity & Genome,5
 hkt15_einkorn,TmHKT1;5-A (Nax2 locus),A4ZGN5,uniprot,,true,HKT8,517,57.3,,1,1,9.3,8.04,0.363,2012,Environmental Adaptation,6
 hsf1_pv,HSF1,A0A9J6CAY1,uniprot,,true,HSF1,529,57,12,1,0,45,5,-0.8,2018,Stress Resistance,7
 hsp104_potentiated,Hsp104 (potentiated variants A503S / A503V / V426L),P31539,uniprot,5KNE,true,HSP104,908,102,,3,2,5.7,5.31,-0.468,2014,Stress Resistance,12
+hspa1a_ehsp70,HSPA1A (Hsp70) — exogenous recombinant protein,P0DMV8,uniprot,5BN8,true,Heat shock 70 kDa protein 1A,641,70.1,1,1,1,7.3,5.48,-0.383,,Stress Resistance,6
+igf1r_het,IGF1R,P08069,uniprot,5U8R,true,Insulin-like growth factor 1 receptor,1367,154.8,21,1,1,24.8,5.58,-0.401,,Longevity & Genome,7
+ikbkb_brain_ko,"IKBKB (IKK-beta, brain-restricted loss)",O14920,uniprot,4KIK,true,Inhibitor of nuclear factor kappa-B kinase subunit beta,756,86.6,22,1,1,14.3,5.38,-0.496,2013,Longevity & Genome,8
 kcnma1_skate,KCNMA1,Q12791,uniprot,6V5A,true,KCNMA1,1236,137.6,29,1,1,10,6.5,-0.42,2015,Perception,8
 klotho,Klotho,Q9UEF7,uniprot,8TOH,true,KL,1012,116,5,1,1,10,5.5,-0.33,2010,Longevity & Genome,5
 lin28a,Lin28a,Q9H9Z2,uniprot,2CQF,true,LIN28A,209,22.7,4,1,2,20,9,-0.7,2011,Regeneration,8
-lmna_abe_g608g,LMNA,P02545,uniprot,1IFR,true,LMNA,664,74.1,,1,2,31,6.57,-0.863,2021,Longevity & Genome,9
+lmna_abe_g608g,LMNA,P02545,uniprot,1IFR,true,LMNA,664,74.1,13,1,2,31,6.57,-0.863,2021,Longevity & Genome,9
 lrrc10_cardiac,LRRC10,,,,false,,,,,1,0,,,,2021,Regeneration,6
 mahs_tardigrade,MAHS,,,,false,,,,,1,0,,,,2015,Stress Resistance,5
 masp1,MaSp1,P19837,uniprot,,true,Spidroin-1,748,60.6,2,1,7,80,4.5,-0.65,2018,Expression,6
 mb_seal,MB / GSH,R9RY82,uniprot,,true,MB,154,17.2,3,2,0,2,7.3,-0.38,2020,Environmental Adaptation,4
+mcat,mCAT (mitochondrially targeted catalase),P04040,uniprot,1DGF,true,Catalase,527,59.8,13,1,1,5.1,6.9,-0.586,,Stress Resistance,7
 mefp5_mussel,Mefp-5 (mfp-5),Q8WTE8,uniprot,,true,Mefp-5 (mfp-5),98,11.2,,1,1,75.5,9.74,-0.92,2012,Expression,7
 melanin_pathway,Melanin,,,,false,TYR,532,60.8,1,5,0,5,6.8,-0.15,2007,Stress Resistance,5
 mgmt_p140k,MGMT,P16455,uniprot,1QNT,true,MGMT,207,21.7,5,1,1,8,7.4,-0.3,2010,Longevity & Genome,8
+mif_ko,MIF (macrophage migration inhibitory factor),P14174,uniprot,3HOF,true,Macrophage migration inhibitory factor,115,12.5,3,1,1,0,7.72,-0.002,2010,Longevity & Genome,8
 mstn_ko,MSTN,O14793,uniprot,5NTU,true,MSTN,375,42.8,3,1,8,18,5.7,-0.38,2004,Regeneration,6
+mtor_hypomorph,MTOR,P42345,uniprot,8ERA,true,Serine/threonine-protein kinase mTOR,2549,288.9,58,1,1,17.9,6.73,-0.193,,Longevity & Genome,9
 mupks_budgerigar,MuPKS,,,,false,MuPKS,,,,1,2,,,,2017,Expression,5
 newtic1_newt,Newtic1,,,,false,,,,,1,0,,,,2016,Regeneration,5
-ngf_corneal_nerve,NGF (β-NGF),P01138,uniprot,1SG1,true,NGF,241,27,,1,1,52.3,9.94,-0.363,2026,Regeneration,15
-oil_droplet_apocarotenoid,BCO2 / RDH12 / RETSAT (apocarotenoid oil-droplet pathway),H0YPV0,uniprot,,true,BCO2,613,68.8,,3,3,9.6,7.63,-0.319,2016,Perception,7
-opn5_deep_brain,OPN5 (Opsin 5 / neuropsin),D9N3D0,uniprot,,true,OPN5,378,42,,2,2,21.4,8.77,0.451,2010,Perception,6
-osk_partial_reprog,OCT4 / SOX2 / KLF4 (OSK),P20263,uniprot,1OCP,true,Pou5f1,352,38.2,,3,4,57.7,6.05,-0.411,2020,Longevity & Genome,15
+ngf_corneal_nerve,NGF (β-NGF),P01138,uniprot,1SG1,true,NGF,241,27,3,1,1,52.3,9.94,-0.363,2026,Regeneration,15
+nudt1_mth1_tg,NUDT1 (MTH1),P36639,uniprot,6EQ4,true,Oxidized purine nucleoside triphosphate hydrolase,156,18,4,1,1,1.3,4.68,-0.335,2013,Stress Resistance,7
+oil_droplet_apocarotenoid,BCO2 / RDH12 / RETSAT (apocarotenoid oil-droplet pathway),H0YPV0,uniprot,,true,BCO2,613,68.8,12,3,3,9.6,7.63,-0.319,2016,Perception,7
+opn5_deep_brain,OPN5 (Opsin 5 / neuropsin),D9N3D0,uniprot,,true,OPN5,378,42,7,2,2,21.4,8.77,0.451,2010,Perception,6
+osk_partial_reprog,OCT4 / SOX2 / KLF4 (OSK),P20263,uniprot,1OCP,true,Pou5f1,352,38.2,5,3,4,57.7,6.05,-0.411,2020,Longevity & Genome,15
+pappa_ko,PAPPA,Q13219,uniprot,8A7D,true,Pappalysin-1,1627,181,22,1,1,19.2,5.76,-0.43,,Longevity & Genome,8
 parietopsin_lizard,"Parietopsin (+ pinopsin, GNAO1)",Q1L4C8,uniprot,,true,"Parietopsin (+ pinopsin, GNAO1)",346,38.7,,2,2,11.6,7.41,0.601,2012,Perception,5
 pcsk9_edit,PCSK9,Q8NBP7,uniprot,6U26,true,PCSK9,692,74.3,12,1,3,12,6.1,-0.32,2021,Longevity & Genome,7
-pdc_adh8a_carp,"PDC (E1alpha3/E1beta2, betaD319N) + ADH8a",A0A288DUG2,uniprot,,true,"PDC (E1alpha3/E1beta2, betaD319N) + ADH8a",360,39.6,,3,2,0,6.52,-0.007,2017,Stress Resistance,8
+pdc_adh8a_carp,"PDC (E1alpha3/E1beta2, betaD319N) + ADH8a",A0A288DUG2,uniprot,,true,"PDC (E1alpha3/E1beta2, betaD319N) + ADH8a",360,39.6,4,3,2,0,6.52,-0.007,2017,Stress Resistance,8
+pgc1a_gut_stem,"PPARGC1A (dPGC-1/spargel, gut-stem-cell-restricted overexpression)",Q9UBK2,uniprot,1XB7,true,PPAR gamma coactivator 1-alpha,798,91.03,13,1,2,34.2,5.58,-1.104,2011,Longevity & Genome,8
 piezo2,PIEZO2,Q9H5I5,uniprot,,true,PIEZO2,2752,318.1,56,1,3,10,6,-0.15,2010,Perception,7
 pif,Pif,C7G0B5,uniprot,,true,Protein PIF,1007,115.4,5,1,1,37,5.5,-1.1,2009,Expression,10
-plaur_car_senolytic,PLAUR (uPAR) — anti-uPAR CAR construct,Q03405,uniprot,1YWH,true,PLAUR,335,37,,1,3,15.2,6.19,-0.419,2024,Longevity & Genome,13
+plaur_car_senolytic,PLAUR (uPAR) — anti-uPAR CAR construct,Q03405,uniprot,1YWH,true,PLAUR,335,37,7,1,3,15.2,6.19,-0.419,2024,Longevity & Genome,13
 pot1_turritopsis,POT1 / SIRT3 / RTEL1,,,,false,POT1,634,71.4,22,3,0,18,6,-0.4,2025,Regeneration,4
+pparg_pro12ala,"PPARG (Pro12Ala, PPARγ2 variant)",P37231,uniprot,9F7W,true,Peroxisome proliferator-activated receptor gamma,505,57.6,7,1,1,31.3,5.61,-0.308,,Longevity & Genome,7
 ppri_ppra,PprI / PprA,Q9RXY7,uniprot,,true,PprA,300,33,1,2,2,10,5,-0.25,2016,Stress Resistance,5
-pr_marine_photoheterotroph,PR (green-light-absorbing proteorhodopsin),Q9F7P4,uniprot,2L6X,true,PR (green-light-absorbing proteorhodopsin),249,27.3,,1,1,4,5.06,0.809,2007,Environmental Adaptation,6
+pr_marine_photoheterotroph,PR (green-light-absorbing proteorhodopsin),Q9F7P4,uniprot,2L6X,true,PR (green-light-absorbing proteorhodopsin),249,27.3,1,1,1,4,5.06,0.809,2007,Environmental Adaptation,6
 prestin_echo,Prestin,D7PC76,uniprot,7S8X,true,SLC26A5,744,81.4,21,1,0,4,6,0.08,2010,Perception,6
+prkar2b_ko,PRKAR2B (PKA RII-beta),P31323,uniprot,,true,cAMP-dependent protein kinase type II-beta regulatory subunit,418,46.3,11,1,1,20.6,4.53,-0.4,2009,Longevity & Genome,6
+pten_extra_copy,PTEN,P60484,uniprot,1D5R,true,"Phosphatidylinositol 3,4,5-trisphosphate 3-phosphatase and dual-",403,47.2,9,1,1,22.3,5.94,-0.69,,Longevity & Genome,7
 ptugt1_indigo,PtUGT1 (indican synthase),A0A2Z5UHQ8,uniprot,,true,PtUGT-71like,497,54.3,,1,4,4.6,5.59,-0.099,2024,Expression,4
 pvlea,PvLEA,Q1XI25,uniprot,,true,PvLEA4,300,33,2,27,3,90,6.5,-1.2,2014,Stress Resistance,5
 pvlil_rotifer,PvLiL,,,,false,,,,,1,0,,,,2023,Stress Resistance,4
@@ -78,32 +100,37 @@ pvpimt,PvPIMT,S6CDF7,uniprot,,true,PCMT1,227,24.6,4,14,0,12,6.8,-0.3,2014,Longev
 rbm3,RBM3,P98179,uniprot,7EB1,true,RNA-binding protein 3,157,17.2,7,1,3,49,9.8,-1.15,2015,Environmental Adaptation,5
 reflectin,Reflectin,I7LGW2,uniprot,,true,Reflectin A1,294,32,1,6,0,40,3.9,-0.8,2019,Expression,12
 resilin,Resilin,Q9V7U0,uniprot,,true,Pro-resilin,620,58.6,4,1,2,94,4.4,-1,2011,Expression,10
-rgy_pyrococcus,Reverse gyrase (RGY / TopR),P95479,uniprot,,true,rgy,1214,140,,2,4,0,7.51,-0.303,2017,Environmental Adaptation,4
+rgy_pyrococcus,Reverse gyrase (RGY / TopR),P95479,uniprot,,true,rgy,1214,140,1,2,4,0,7.51,-0.303,2017,Environmental Adaptation,4
 rh1_spinyfin,RH1 (Spinyfin),,,,false,,,,,14,0,,,,2019,Perception,5
+rps6kb1_ko,RPS6KB1 (S6K1),P23443,uniprot,3WF7,true,Ribosomal protein S6 kinase beta-1,525,59.1,14,1,1,37.3,6.21,-0.491,,Longevity & Genome,6
 s100a10_deer,S100A10 (Deer),,,,false,,,,,1,0,,,,2023,Regeneration,5
 scaldh21_moss,ScALDH21,ACT10823,ncbi_protein,,false,ALDH21,483,53,,1,3,0,5.83,-0.136,2023,Stress Resistance,6
 scn4aa,SCN4AA,A0A4W4FPH1,uniprot,,false,scn4aa,1820,208,27,1,0,2,5.4,-0.02,2019,Environmental Adaptation,12
-sirt6_cent_variant,"SIRT6 (centSIRT6, N308K/A313S)",Q8N6T7,uniprot,3K35,true,SIRT6,355,39.1,,2,4,20.8,9.31,-0.499,2022,Longevity & Genome,6
-slc30a8_ko,SLC30A8,Q8IWU4,uniprot,6XPD,true,SLC30A8,369,40.8,,1,1,18.2,6.11,0.403,2025,Longevity & Genome,12
+sirt1_brasto,SIRT1 (brain-restricted overexpression),Q96EB6,uniprot,5BTR,true,NAD-dependent protein deacetylase sirtuin-1,747,81.7,8,1,1,50.1,4.55,-0.551,,Longevity & Genome,6
+sirt4_fatbody,"SIRT4 (mitochondrial sirtuin, fat-body/adipose overexpression)",Q9Y6E7,uniprot,,true,"NAD-dependent protein lipoamidase sirtuin-4, mitochondrial",314,35.19,4,1,1,0,8.7,-0.241,2018,Stress Resistance,6
+sirt6_cent_variant,"SIRT6 (centSIRT6, N308K/A313S)",Q8N6T7,uniprot,3K35,true,SIRT6,355,39.1,7,2,4,20.8,9.31,-0.499,2022,Longevity & Genome,6
+slc30a8_ko,SLC30A8,Q8IWU4,uniprot,6XPD,true,SLC30A8,369,40.8,10,1,1,18.2,6.11,0.403,2025,Longevity & Genome,12
 smedwi,PIWI / SMEDWI,Q2Q5Y8,uniprot,,true,SMEDWI-2,861,98.5,1,3,0,12,9.2,-0.52,2015,Regeneration,10
 sod2,SOD2,P04179,uniprot,9NSJ,true,SOD2,222,24.7,5,1,2,5,8.4,-0.28,2012,Stress Resistance,1
-sor_pyrococcus,SOR (superoxide reductase),P82385,uniprot,1DO6,true,sorA,124,14.3,,1,3,0,5.69,-0.517,2016,Stress Resistance,5
-sostdc1_usag1_tooth,SOSTDC1 (USAG-1),A0A8U0MID0,uniprot,,true,SOSTDC1,206,23.3,,1,2,48.5,9.78,-0.65,2021,Regeneration,12
+sor_pyrococcus,SOR (superoxide reductase),P82385,uniprot,1DO6,true,sorA,124,14.3,1,1,3,0,5.69,-0.517,2016,Stress Resistance,5
+sostdc1_usag1_tooth,SOSTDC1 (USAG-1),A0A8U0MID0,uniprot,,true,SOSTDC1,206,23.3,2,1,2,48.5,9.78,-0.65,2021,Regeneration,12
 sting_bat,STING,L5JUR0,uniprot,,true,STING1,379,42.2,8,1,1,5,5.8,0.02,2020,Environmental Adaptation,6
 suckerin_squid,Suckerin,,,,false,,,,,1,0,,,,2014,Expression,5
 sws1_bird,SWS1,P03999,uniprot,,true,OPN1SW,345,38.7,5,1,2,8,5.3,0.05,1998,Perception,7
-t1r1_t1r3_hummingbird,TAS1R1 / TAS1R3 (T1R1-T1R3 heterodimer),A0A088DBT6,uniprot,,true,T1R1,826,90.5,,2,4,8.1,5.95,0.122,2022,Perception,4
+t1r1_t1r3_hummingbird,TAS1R1 / TAS1R3 (T1R1-T1R3 heterodimer),A0A088DBT6,uniprot,,true,T1R1,826,90.5,6,2,4,8.1,5.95,0.122,2022,Perception,4
 tapetum,Tapetum lucidum,,,,false,CRYGN,587,65.3,7,4,0,12,6.8,-0.25,2015,Perception,7
+tcf3_e2a_knockdown,TCF3 / E2A (HLH-2 in nematodes; knockdown),P15923,uniprot,2MH0,true,Transcription factor E2-alpha,654,67.6,19,1,2,56.4,6.01,-0.593,2020,Longevity & Genome,7
 tdr1,TDR1,,,,false,TDR1,350,39,1,1,1,35,8.5,-0.7,2024,Stress Resistance,6
 tert,TERT,O14746,uniprot,5UGW,true,TERT,1132,127,16,1,2,15,9.9,-0.47,2016,Regeneration,6
 tka_tkg_hagfish,TKalpha / TKgamma (thread biopolymer filament subunits alpha and gamma),Q90501,uniprot,,true,TKalpha / TKgamma (thread biopolymer filament subunits alpha,643,66.7,,2,4,49.3,8.64,-0.248,2026,Expression,6
-tmat_tmm_myroides,TMAT/TMM,,,,false,,,,,2,0,,,,2022,Environmental Adaptation,4
+tmat_tmm_myroides,TMAT/TMM,,,,false,,,,1,2,0,,,,2022,Environmental Adaptation,4
 tmc1,TMC1,Q8TDI8,uniprot,8XOQ,true,TMC1,760,87.8,24,1,4,10,7.8,-0.05,2015,Perception,7
 tp53_elephant,TP53 (elephant),P04637,uniprot,3D06,true,TP53,393,43.7,11,1,1,30,6.3,-0.68,2015,Longevity & Genome,5
 tp53_rtg9,TP53-RTG9,G3UDE4,uniprot,,true,TP53,360,40,1,20,1,25,6.5,-0.6,2023,Longevity & Genome,5
 tps_pv,TPS,C9K4M3,uniprot,,true,TPS1,500,56,3,2,2,8,5.8,-0.2,2020,Environmental Adaptation,5
 trpa1_viper,TRPA1,D4P383,uniprot,,true,TRPA1,1119,127.5,27,1,0,8,6.5,-0.15,2010,Perception,9
 trpv1s_vampire_bat,TRPV1s (Vampire bat),,,,false,,,,,1,0,,,,2011,Perception,5
+ucp1,UCP1,P25874,uniprot,8HBV,true,Mitochondrial brown fat uncoupling protein 1,307,33,6,1,1,23.5,9.26,0.206,,Environmental Adaptation,8
 uhrf1_deer,UHRF1 (Deer),,,,false,,,,,1,0,,,,2023,Regeneration,5
 v2r_snake_vno,V2R vomeronasal receptor family (snake-specific expansion),A0A6P9DVG7,uniprot,,true,LOC117678254,918,102.9,,1,3,6.6,6.1,0.047,2018,Perception,3
 vegf_therapy,VEGF,P15692,uniprot,1MKK,true,VEGFA,412,46,8,1,5,20,9.2,-0.55,2001,Regeneration,5

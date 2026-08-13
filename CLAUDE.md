@@ -200,15 +200,15 @@ data, change it in Dolt.
 
 | Table | PK | Rows | Description |
 |---|---|---|---|
-| `genes` | `gene_id` | 109 | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
-| `species` | `species_id` | 71 | Organism lookup (taxonomy, life-history) |
-| `gene_species` | `(gene_id, species_id)` | 115 | Many-to-many gene↔species join |
-| `gene_properties` | `gene_id` | 109 | Pricing, biophysical data, protein IDs |
-| `gene_confidence` | `id` (auto) | 195 | Confidence assessments per gene |
-| `gene_testing` | `id` (auto) | 1023 | Experimental evidence records (294 lab + 729 from ClinicalTrials.gov) |
+| `genes` | `gene_id` | 136 | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
+| `species` | `species_id` | 72 | Organism lookup (taxonomy, life-history) |
+| `gene_species` | `(gene_id, species_id)` | 173 | Many-to-many gene↔species join |
+| `gene_properties` | `gene_id` | 136 | Pricing, biophysical data, protein IDs |
+| `gene_confidence` | `id` (auto) | 291 | Confidence assessments per gene |
+| `gene_testing` | `id` (auto) | 1238 | Experimental evidence records (487 lab + 751 from ClinicalTrials.gov) |
 | `species_svg_map` | `species_id` | 52 | Species → silhouette SVG mapping |
-| `organizations` | `org_id` | 108 | Labs, companies, and clinics working on these genes |
-| `organization_genes` | `id` (auto) | 114 | What each organization offers/researches per gene |
+| `organizations` | `org_id` | 109 | Labs, companies, and clinics working on these genes |
+| `organization_genes` | `id` (auto) | 115 | What each organization offers/researches per gene |
 
 All tables have foreign key constraints back to `genes` and/or `species` (and `organization_genes` references both `organizations` and `genes`). The schema uses `TEXT` for string columns (not `VARCHAR`) to avoid length-limit issues between SQLite and Dolt.
 
@@ -223,7 +223,7 @@ The UI signal bars and the bold Confidence pill read **`confidence_primary`** (=
 - **Not Very High:** commercial / Prospera / BioViva / Libella GT *sales* without peer-reviewed efficacy stay off primary. If there is real human clinic exposure with acceptable safety (no serious AEs in known circles) → **High** secondary (`safety acceptable; efficacy unproven`); if safety is also unknown → **Medium** secondary.
 - Insect/plant/yeast/planarian source biology and biochem reconstitution stay **secondary** — never High/Very High primary.
 
-**Audit rule for agents:** when reviewing confidence / commercial / human-testing evidence, **never use SQL `LIMIT`**. Truncated result sets have already caused missed obvious genes (Klotho, VEGF, FST, TERT). Always join full `gene_confidence` primaries against all of `organization_genes` (especially `stage='commercial'`) and human-positive `gene_testing` rows with no row cap.
+**Audit rule for agents:** when reviewing confidence / commercial / human-testing evidence, **never use SQL `LIMIT`**. Truncated result sets have already caused missed obvious genes (Klotho, VEGF, FST, TERT). Always join full `gene_confidence` primaries against all of `organization_genes` (especially `stage='commercial'`) and human-positive `gene_testing` rows with no row cap. **`gene_confidence` on existing genes gets flagged, not overwritten** — even when demonstrably broken.
 
 Examples:
 - **Primary** — mammal/human translation. SMEDWI → `Low` / `mammalian regeneration transfer`. Resilin → `Low` / `vertebrate tissue integration` (never Medium biomaterial properties). GFP reporter → `High` / mammalian use (not Very High — not a human clinical enhancer). PCSK9 / NGF / APOC3 → `Very High` (works in humans).
@@ -395,6 +395,15 @@ a CloudFront domain, but *writes* upload to
 push` prints a signed-URL `Forbidden` and **exits 0** — the push silently does
 nothing. Always confirm the remote actually moved:
 `dolt fetch origin && dolt diff main remotes/origin/main --stat` (empty = pushed).
+
+### OpenGenes ingestion standing rules
+
+- Coverage is OpenGenes genes with at least one intervention experiment (`lifespan_change` row), not the full symbol universe and not any pre-filtered CSV. Compute the denominator from that table every pass.
+- Do not overwrite existing `gravy_score` / `isoelectric_point_pI` / `disorder_pct` on pre-existing genes. Stored values are not reproducible by a single method; mixing scales corrupts the sculpture median. New genes use one documented method (`resolve_engine.py`).
+- A blank resolver `pdb_id` means no structure covering half the protein — never overwrite a stored `pdb_id` with a blank.
+- `trait` → `category` is strictly 1:1. A trait that already exists under another category cannot be reused.
+- OpenGenes maps one invertebrate experiment onto every human paralogue (MAPK8/9/10, NOTCH1/2/3, FOXO1/FOXO4, …). Counting rows per HGNC symbol inflates families; two cards from one experiment is a defect.
+- The four `lifespan_percent_change_*` columns are separate statistics, not a range. `_min` is change in **minimum** lifespan and is never a headline. Check `significance_mean` / `significance_median` — 0 or null means not significant.
 
 ### Gene card copy (`genes.short_description`)
 
@@ -723,3 +732,48 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - Mobile USB debugging: connect an Android phone with USB debugging enabled, run `adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8000 tcp:8000` to forward ports, then `adb shell svc power stayon usb` to prevent auto-lock during debugging. Open Chrome on the phone at `localhost:3000`. Take screenshots with `adb exec-out screencap -p > /tmp/screenshot.png`. For Chrome DevTools MCP access, also run `adb forward tcp:9222 localabstract:chrome_devtools_remote`. Mobile CSS uses `@media (hover: none) and (pointer: coarse)` for touch-device detection; ensure Chrome is in mobile site mode (not "Request desktop site") when testing.
 - **`uv run serve` must force `spawn` ASGI workers (fork-after-Rayon deadlock).** Reflex compiles the app in the parent process, which builds Polars' Rayon pool; Granian then creates its worker via `multiprocessing`, which defaults to `fork` on Linux. The child inherits the pool's locks without its threads, so the **first parallel Polars call in a request** — a grid `sort()`, or the `unique()` behind filter value options — blocks forever inside `collect()` with no traceback while the port still listens. `run.py::_force_spawn_worker_processes()` calls `multiprocessing.set_start_method("spawn", force=True)` from `_setup()`; do not remove it. `serve()` also keeps the external `/_health` watchdog that FATAL-logs and SIGKILLs the process group on repeated timeouts. Full write-up: [`docs/granian-polars-sort-deadlock.md`](docs/granian-polars-sort-deadlock.md).
 - **Knowledgebase grids require `reflex-mui-datagrid>=0.3.13` (PyPI, not a local path):** lazy Polars `filter→sort→slice→collect` with full Rayon, materialized **off** the ASGI thread via a shared, never-shut-down executor (do not cap `POLARS_MAX_THREADS`, do not full-frame Python-sort, do not use a `with`-scoped `ThreadPoolExecutor` — its `shutdown(wait=True)` waits out the query the timeout was abandoning); free-text filters must not flip to `singleSelect` on filter-icon click; filter/sort/scroll failures must clear `lf_grid_loading` and report into `lf_grid_stats` so one grid cannot stall the app.
+
+
+### `gene_testing.positive` — what the flag records
+
+`positive` records **what happened in the experiment**, not whether the row helps the card's argument.
+
+| value | meaning |
+|---|---|
+| `true` | the manipulation produced the benefit the card claims |
+| `false` | it did not, or it produced a cost — **including an opposite-direction result** (a knockout that shortens lifespan is `false` on an overexpression card) |
+| `mixed` | outcome not established: a registered trial still running, safety-only endpoints, or the gene measured as a biomarker rather than administered |
+
+Measured on the current data: 713 of the 749 `mixed` rows are registered trials, where the value means
+*status*, not *partly worked*. On the 487 non-trial lab rows it means outcome valence.
+
+This field is **not** a record of species (see `host`), of trial registration (see the `NCT` prefix in
+`reference_short`), or of clinical availability (see `delivery` and `organization_genes.stage`).
+
+Outcome and support come apart, and both matter:
+
+- **Direct** — the proposed manipulation delivers the benefit. `cisd2` overexpression, +19.3% mean → `true`.
+- **Dose-response arm** — the opposite manipulation produces the opposite effect, *and the direct arm exists
+  in the same system*. `cisd2` knockout, −22.3% median → `false` (harm was the outcome) but **strong
+  corroboration**; the card is better for having it. Say so in the text.
+- **Necessity only** — a loss-of-function phenotype with **no** gain arm. Wolfram syndrome 2 for CISD2, MVA
+  for BUB1B. This shows the gene matters; it is **not** evidence that surplus helps, and must never be
+  written as if it were. Put it in a secondary confidence row labelled as the deficiency side.
+
+Direction alone never sets the flag: `sod2`'s own *overexpression* rows are `false` because 2x expression
+gave no lifespan extension, and 21 of 161 gain-on-gain lab rows are `false` library-wide.
+
+**Exception — replacement therapy.** When the enhancement is restoring a deficient protein to normal rather
+than pushing above normal, the loss-of-function phenotype IS the indication. `grn_aav` legitimately rests on
+GRN haploinsufficiency; its `manipulation` field declares the asymmetry. Restoration cards may rest on
+deficiency evidence; enhancement-above-normal cards may not.
+
+**Screening query** — candidates, not verdicts (a dose-response row is good evidence with a wrong flag):
+
+```sql
+SELECT t.gene_id, t.intervention, t.key_result
+FROM gene_testing t JOIN genes g ON g.gene_id = t.gene_id
+WHERE t.positive = 'true'
+  AND g.manipulation NOT LIKE '%knockout%' AND g.manipulation NOT LIKE '%loss-of-function%'
+  AND (t.intervention LIKE '%knock%' OR t.intervention LIKE '%RNAi%' OR t.intervention LIKE '%deficien%');
+```
