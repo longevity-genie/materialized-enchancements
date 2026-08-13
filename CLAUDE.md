@@ -205,7 +205,7 @@ data, change it in Dolt.
 | `gene_species` | `(gene_id, species_id)` | 173 | Many-to-many gene↔species join |
 | `gene_properties` | `gene_id` | 136 | Pricing, biophysical data, protein IDs |
 | `gene_confidence` | `id` (auto) | 291 | Confidence assessments per gene |
-| `gene_testing` | `id` (auto) | 1238 | Experimental evidence records (487 lab + 751 from ClinicalTrials.gov) |
+| `gene_testing` | `id` (auto) | 1134 | Experimental evidence records (383 lab + 751 from ClinicalTrials.gov) |
 | `species_svg_map` | `species_id` | 52 | Species → silhouette SVG mapping |
 | `organizations` | `org_id` | 109 | Labs, companies, and clinics working on these genes |
 | `organization_genes` | `id` (auto) | 115 | What each organization offers/researches per gene |
@@ -404,6 +404,7 @@ nothing. Always confirm the remote actually moved:
 - `trait` → `category` is strictly 1:1. A trait that already exists under another category cannot be reused.
 - OpenGenes maps one invertebrate experiment onto every human paralogue (MAPK8/9/10, NOTCH1/2/3, FOXO1/FOXO4, …). Counting rows per HGNC symbol inflates families; two cards from one experiment is a defect.
 - The four `lifespan_percent_change_*` columns are separate statistics, not a range. `_min` is change in **minimum** lifespan and is never a headline. Check `significance_mean` / `significance_median` — 0 or null means not significant.
+- **`gene_testing` is one row per independent experiment/study, not per endpoint.** OpenGenes `lifespan_change` often stores one cohort/sex/diet/founder-line/statistic per row. Importing those 1:1 produces a table that looks like duplicate interventions. Collapse them into one `key_result` / `effect_size`. See *`gene_testing` granularity* below. This applies to older cards too, not only new ingest.
 
 ### Gene card copy (`genes.short_description`)
 
@@ -732,7 +733,53 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 - Mobile USB debugging: connect an Android phone with USB debugging enabled, run `adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8000 tcp:8000` to forward ports, then `adb shell svc power stayon usb` to prevent auto-lock during debugging. Open Chrome on the phone at `localhost:3000`. Take screenshots with `adb exec-out screencap -p > /tmp/screenshot.png`. For Chrome DevTools MCP access, also run `adb forward tcp:9222 localabstract:chrome_devtools_remote`. Mobile CSS uses `@media (hover: none) and (pointer: coarse)` for touch-device detection; ensure Chrome is in mobile site mode (not "Request desktop site") when testing.
 - **`uv run serve` must force `spawn` ASGI workers (fork-after-Rayon deadlock).** Reflex compiles the app in the parent process, which builds Polars' Rayon pool; Granian then creates its worker via `multiprocessing`, which defaults to `fork` on Linux. The child inherits the pool's locks without its threads, so the **first parallel Polars call in a request** — a grid `sort()`, or the `unique()` behind filter value options — blocks forever inside `collect()` with no traceback while the port still listens. `run.py::_force_spawn_worker_processes()` calls `multiprocessing.set_start_method("spawn", force=True)` from `_setup()`; do not remove it. `serve()` also keeps the external `/_health` watchdog that FATAL-logs and SIGKILLs the process group on repeated timeouts. Full write-up: [`docs/granian-polars-sort-deadlock.md`](docs/granian-polars-sort-deadlock.md).
 - **Knowledgebase grids require `reflex-mui-datagrid>=0.3.13` (PyPI, not a local path):** lazy Polars `filter→sort→slice→collect` with full Rayon, materialized **off** the ASGI thread via a shared, never-shut-down executor (do not cap `POLARS_MAX_THREADS`, do not full-frame Python-sort, do not use a `with`-scoped `ThreadPoolExecutor` — its `shutdown(wait=True)` waits out the query the timeout was abandoning); free-text filters must not flip to `singleSelect` on filter-icon click; filter/sort/scroll failures must clear `lf_grid_loading` and report into `lf_grid_stats` so one grid cannot stall the app.
+- **`gene_testing` is one row per study, not per endpoint.** GDF15 Wang 2014 (2 founder lines × 2 diets) and ASGR1 Nioi 2016 (cholesterol, CAD, MI, …) were the defect class. Collapse sexes/diets/founder lines/secondary endpoints into `key_result`; keep rows that differ in `positive`, organism, or intervention class. Cosmetic host strings (`Mouse` vs `Mus musculus`) are the same host. OpenGenes `lifespan_change` is one-cohort-per-statistic — never import 1:1.
 
+
+### `gene_testing` granularity — one row per experiment, not per endpoint
+
+`gene_testing` is the visitor-facing evidence table. **One row = one independent
+experiment or study**, not one measured effect. Sexes, diets, founder lines, tissues,
+and secondary endpoints from the same manipulation go in `key_result` / `effect_size`
+on that row (see Kurosu 2005 on `klotho`: female +19% and male ~20–30% share one row).
+
+Splitting them is the defect that made GDF15 look like four identical overexpression
+rows (Wang 2014: two founder lines × two diets) and ASGR1 look like eight Nioi 2016
+rows (cholesterol, CAD, MI, allele frequency, …). OpenGenes `lifespan_change` is the
+usual source — it stores one cohort per statistic — but older cards had the same
+pattern before that ingest. Do not reintroduce it.
+
+**Collapse when** the rows share `gene_id`, paper (`reference_short` / `doi`), host
+organism, intervention class, and `positive`, and differ only by sex, diet, founder
+line, age-at-treatment, tissue readout, or another endpoint of the same manipulation.
+
+**Keep separate when:**
+
+- **`positive` differs** — a failed or opposite-direction arm is a different scientific
+  claim (`g6pd` females extended, males did not; SIRT1 +14-copy BRASTO worked, +16-copy
+  did not).
+- **The host is a different organism** — mouse vs human neurons, fly vs yeast vs plant.
+  Cosmetic host-string variants of the same organism (`Mouse` vs `Mus musculus` vs
+  `Mouse (12-month-old)`) are **not** different hosts; normalise and collapse.
+- **The intervention class differs** — knockout vs overexpression, gene therapy vs
+  natural variant, constitutively-active vs dominant-negative.
+- **Delivery is a scientifically different construct** that the paper is about —
+  mitochondrial vs nuclear vs peroxisomal catalase (`mcat`); copy-number lines that
+  diverged in outcome. Founder-line numbers and “line 1377 vs 1398” are **not** this;
+  those collapse.
+
+NCT trial rows stay one-per-NCT. Never use `LIMIT` when auditing this table.
+
+**Screening query** — leftover endpoint splits (candidates, not verdicts; `mcat`'s three
+targeting localisations are a legitimate keep):
+
+```sql
+SELECT gene_id, reference_short, host, intervention, positive, COUNT(*) n
+FROM gene_testing
+WHERE reference_short NOT LIKE 'NCT%'
+GROUP BY 1,2,3,4,5
+HAVING n > 1;
+```
 
 ### `gene_testing.positive` — what the flag records
 
@@ -744,8 +791,8 @@ Category icon mapping lives in `state.py → CATEGORY_ICONS` (Fomantic UI icon n
 | `false` | it did not, or it produced a cost — **including an opposite-direction result** (a knockout that shortens lifespan is `false` on an overexpression card) |
 | `mixed` | outcome not established: a registered trial still running, safety-only endpoints, or the gene measured as a biomarker rather than administered |
 
-Measured on the current data: 713 of the 749 `mixed` rows are registered trials, where the value means
-*status*, not *partly worked*. On the 487 non-trial lab rows it means outcome valence.
+Measured on the current data: 713 of the 745 `mixed` rows are registered trials, where the value means
+*status*, not *partly worked*. On the 383 non-trial lab rows it means outcome valence.
 
 This field is **not** a record of species (see `host`), of trial registration (see the `NCT` prefix in
 `reference_short`), or of clinical availability (see `delivery` and `organization_genes.stage`).

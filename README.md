@@ -89,7 +89,7 @@ The gene library is more than game data — it is a curated knowledge base of re
 
 Whether you are a researcher studying gene transfer, a biohacker evaluating enhancement options, or a transhumanist tracking which therapies are already available in alternative jurisdictions — the database gives you structured, evidence-graded data to work from. We are expanding it to include providers and clinics offering gene therapies today.
 
-136 genes catalogued (89 playable in the RPG, 47 knowledge-base-only pending biophysical data) · 6 parent categories · 72 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,238 experimental evidence records · 751 registered clinical trials · 109 organizations (69 academic labs, 37 biotech companies, 3 clinics) · 973 unique DOI-linked references.
+136 genes catalogued (89 playable in the RPG, 47 knowledge-base-only pending biophysical data) · 6 parent categories · 72 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,134 experimental evidence records · 751 registered clinical trials · 109 organizations (69 academic labs, 37 biotech companies, 3 clinics) · 973 unique DOI-linked references.
 
 
 | Category                 | Total | Playable | Example organisms                                                                    |
@@ -148,7 +148,8 @@ Scientists and biologists can propose new genes — **no Python code changes nee
 6. **Add confidence assessment** to `gene_confidence.csv`:
   - At minimum: `gene_id,value` (e.g. `klotho_overexp,Medium-High`)
 7. **Add experimental evidence** to `gene_testing.csv`:
-  - One row per independent experiment/study
+  - One row per independent experiment/study — **not** one row per endpoint, sex, diet, founder line, or secondary statistic from the same manipulation. Fold those into `key_result` / `effect_size`.
+  - Keep a second row only when `positive`, the host organism, or the intervention class actually differs (failed arm, opposite construct, different species).
   - Include both positive and negative results (`positive` = `true` or `false`)
 8. **Regenerate the SQLite database**: `uv run python scripts/seed_db.py`
 9. **Test locally**: `uv run start` — the app should show the new gene in the correct category
@@ -370,7 +371,10 @@ Multiple rows per gene are allowed (e.g. different assessors or dimensions).
 | `year`             | yes      | Publication year                                                     |
 
 
-Multiple rows per gene — each row is one independent experiment/study.
+Multiple rows per gene — each row is one independent experiment/study, not one
+measured effect. Sexes, diets, founder lines, and secondary endpoints of the same
+manipulation belong in `key_result` / `effect_size` on that row. Keep a separate
+row when `positive`, the host organism, or the intervention class differs.
 
 #### Table: `species_svg_map` — organism silhouette mapping
 
