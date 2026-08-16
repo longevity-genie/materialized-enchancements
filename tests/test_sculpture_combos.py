@@ -1,8 +1,12 @@
-"""Exhaustive test of all 2^N category combos for sculpture parameter viability.
+"""Exhaustive test of all 2^N category combos plus every playable gene.
 
-Iterates every possible subset of UNIQUE_CATEGORIES (including the empty set),
-computes sculpture params with name="Test", builds a PipelineConfig, and
-validates all values stay within declared ranges and pass geometry checks.
+Iterates every subset of UNIQUE_CATEGORIES (including the empty set) and every
+gene in GAME_GENE_LIBRARY, computes sculpture params with name="Test", builds a
+PipelineConfig, and validates values stay within declared ranges.
+
+The combo suite uses the playable library only — the same pool ComposeState
+sends to generate_sculpture. Knowledge-base-only genes (game_enabled=0) are
+not selectable and must not change medians.
 
 Fast iteration:
   uv run pytest tests/test_sculpture_combos.py -x
@@ -12,69 +16,55 @@ Fast iteration:
 
 from __future__ import annotations
 
-from typing import List
-
-from enhancement_geometry.config import MAX_MODEL_SPAN, PipelineConfig, validate_geometry_limits
+import pytest
+from enhancement_geometry.config import PipelineConfig
 from enhancement_geometry.pipeline import run_pipeline
 
-from materialized_enhancements.gene_data import GENE_LIBRARY, UNIQUE_CATEGORIES
+from materialized_enhancements.gene_data import (
+    GAME_GENE_LIBRARY,
+    UNIQUE_CATEGORIES,
+    GeneEntry,
+)
 from materialized_enhancements.sculpture import (
-    DEFAULT_SCALE,
-    MAX_RADIUS,
     MIN_SEED_COUNT,
-    MIN_RADIUS,
-    NUM_CIRCLES,
-    _DST_RANGES,
     build_pipeline_config,
     compute_sculpture_params,
 )
-from tests.conftest import ALL_COMBOS
+from tests.conftest import ALL_COMBOS, PLAYABLE_GENE_IDS, assert_sculpture_params_viable
 
 NAME = "Test"
 
-# _remap rounds to 3 decimals; nominal _DST_RANGES bounds can be tight vs rounded output.
-_DST_SLACK = 0.02
 
-
-def test_sculpture_combo_invariants(mask: int, selected: List[str]) -> None:
+def test_sculpture_combo_invariants(mask: int, selected: list[str]) -> None:
     """All range and geometry checks for one category combo in one pass."""
     params = compute_sculpture_params(
         name=NAME,
         selected_categories=selected,
         all_categories=UNIQUE_CATEGORIES,
-        gene_library=GENE_LIBRARY,
+        gene_library=GAME_GENE_LIBRARY,
     )
     config = build_pipeline_config(params)
+    assert_sculpture_params_viable(params, config)
 
-    lo, hi = _DST_RANGES["radius"]
-    assert lo - _DST_SLACK <= params["radius"] <= hi + _DST_SLACK, f"radius {params['radius']}"
 
-    lo_s, hi_s = _DST_RANGES["spacing"]
-    assert lo_s - _DST_SLACK <= params["spacing"] <= hi_s + _DST_SLACK, f"spacing {params['spacing']}"
-
-    lo_p, hi_p = _DST_RANGES["points"]
-    assert lo_p - _DST_SLACK <= params["points"] <= hi_p + _DST_SLACK, f"points {params['points']}"
-
-    lo_e, hi_e = _DST_RANGES["extrusion"]
-    assert lo_e - _DST_SLACK <= params["extrusion"] <= hi_e + _DST_SLACK, f"extrusion {params['extrusion']}"
-
-    assert params["scale_x"] == DEFAULT_SCALE
-    assert params["scale_y"] == DEFAULT_SCALE
-
-    radii = params["radii"]
-    assert len(radii) == NUM_CIRCLES
-    for i, r in enumerate(radii):
-        assert MIN_RADIUS <= r <= MAX_RADIUS, f"radii[{i}]={r}"
-
-    assert params["seed_count"] >= MIN_SEED_COUNT, f"seed_count {params['seed_count']}"
-    assert 0 <= params["seed"] <= 9999, f"seed {params['seed']}"
-
-    max_width, max_height = validate_geometry_limits(config.radii, config.z_increment)
-    assert max_width <= MAX_MODEL_SPAN + 1e-9, f"width {max_width}"
-    assert max_height <= MAX_MODEL_SPAN + 1e-9, f"height {max_height}"
-
-    eff = config.effective_extrusion
-    assert -3.0 <= eff <= 3.0, f"effective_extrusion {eff}"
+@pytest.mark.parametrize(
+    "gene",
+    GAME_GENE_LIBRARY,
+    ids=PLAYABLE_GENE_IDS,
+)
+def test_playable_gene_sculpture_params(gene: GeneEntry) -> None:
+    """Every in-game gene must produce a viable singleton sculpture config."""
+    params = compute_sculpture_params(
+        name=NAME,
+        selected_categories=[gene["category"]],
+        all_categories=UNIQUE_CATEGORIES,
+        gene_library=[gene],
+    )
+    config = build_pipeline_config(params)
+    assert_sculpture_params_viable(params, config)
+    assert params["pool_size"] >= 1, (
+        f"{gene['gene_id']} resolved no gene_properties row"
+    )
 
 
 def test_combo_count() -> None:
@@ -84,11 +74,18 @@ def test_combo_count() -> None:
     assert n >= 6, f"Expected at least 6 categories, got {n}"
 
 
+def test_playable_gene_param_suite_covers_library() -> None:
+    """The per-gene suite must stay in lockstep with GAME_GENE_LIBRARY."""
+    assert len(PLAYABLE_GENE_IDS) == len(GAME_GENE_LIBRARY)
+    assert len(PLAYABLE_GENE_IDS) == len(set(PLAYABLE_GENE_IDS))
+    assert set(PLAYABLE_GENE_IDS) == {g["gene_id"] for g in GAME_GENE_LIBRARY}
+
+
 def test_all_seeds_deterministic() -> None:
     """Same name + same combo must always produce the same seed (see sculpture.py CRC^bitmask)."""
     for mask, selected in ALL_COMBOS:
-        p1 = compute_sculpture_params(NAME, selected, UNIQUE_CATEGORIES, GENE_LIBRARY)
-        p2 = compute_sculpture_params(NAME, selected, UNIQUE_CATEGORIES, GENE_LIBRARY)
+        p1 = compute_sculpture_params(NAME, selected, UNIQUE_CATEGORIES, GAME_GENE_LIBRARY)
+        p2 = compute_sculpture_params(NAME, selected, UNIQUE_CATEGORIES, GAME_GENE_LIBRARY)
         assert p1["seed"] == p2["seed"], f"Non-deterministic seed for mask={mask}"
 
 
@@ -96,7 +93,7 @@ def test_different_combos_produce_different_seeds() -> None:
     """Most distinct category combos should produce distinct seeds (collision rate < 5%)."""
     seeds = set()
     for mask, selected in ALL_COMBOS:
-        params = compute_sculpture_params(NAME, selected, UNIQUE_CATEGORIES, GENE_LIBRARY)
+        params = compute_sculpture_params(NAME, selected, UNIQUE_CATEGORIES, GAME_GENE_LIBRARY)
         seeds.add(params["seed"])
     collision_rate = 1.0 - len(seeds) / len(ALL_COMBOS)
     assert collision_rate < 0.05, (
@@ -107,7 +104,7 @@ def test_different_combos_produce_different_seeds() -> None:
 
 def test_single_gene_selection_keeps_geometry_seed_floor() -> None:
     """Active-gene filtering must not emit degenerate low-cell Voronoi configs."""
-    gene = next(g for g in GENE_LIBRARY if g["gene_id"] == "gfp")
+    gene = next(g for g in GAME_GENE_LIBRARY if g["gene_id"] == "gfp")
     params = compute_sculpture_params(
         name=NAME,
         selected_categories=[gene["category"]],

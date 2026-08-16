@@ -10,7 +10,7 @@ from typing import List
 import pytest
 from enhancement_geometry.pipeline import run_pipeline
 
-from materialized_enhancements.gene_data import GENE_LIBRARY, UNIQUE_CATEGORIES
+from materialized_enhancements.gene_data import GAME_GENE_LIBRARY, UNIQUE_CATEGORIES
 from materialized_enhancements.sculpture import (
     build_pipeline_config,
     compute_sculpture_params,
@@ -35,7 +35,7 @@ def test_cell_filter_fix(mask: int) -> None:
         name=NAME,
         selected_categories=selected,
         all_categories=UNIQUE_CATEGORIES,
-        gene_library=GENE_LIBRARY,
+        gene_library=GAME_GENE_LIBRARY,
     )
     config = build_pipeline_config(params)
     t0 = time.monotonic()

@@ -6,12 +6,15 @@ data/enhancement.db via scripts/export_db_csv.py). No mocks, no fakes.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import polars as pl
 import pytest
 
-CSV_DIR = Path(__file__).resolve().parents[1] / "data" / "db_backup"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+README_PATH = REPO_ROOT / "README.md"
+CSV_DIR = REPO_ROOT / "data" / "db_backup"
 
 GENE_LIBRARY_PATH = CSV_DIR / "gene_library.csv"
 SPECIES_PATH = CSV_DIR / "species.csv"
@@ -19,6 +22,24 @@ GENE_SPECIES_PATH = CSV_DIR / "gene_species.csv"
 GENE_PROPERTIES_PATH = CSV_DIR / "gene_properties.csv"
 GENE_CONFIDENCE_PATH = CSV_DIR / "gene_confidence.csv"
 GENE_TESTING_PATH = CSV_DIR / "gene_testing.csv"
+ORGANIZATIONS_PATH = CSV_DIR / "organizations.csv"
+
+_README_STATS_RE = re.compile(
+    r"(?P<genes>\d+) genes catalogued \((?P<playable>\d+) playable in the RPG, "
+    r"(?P<kb_only>\d+) knowledge-base-only pending biophysical data\) · "
+    r"(?P<categories>\d+) parent categories · "
+    r"(?P<species>\d+) source species across all (?P<kingdoms>\d+) kingdoms of life "
+    r"\((?P<kingdom_list>[^)]+)\) · "
+    r"(?P<evidence>[\d,]+) experimental evidence records · "
+    r"(?P<trials>[\d,]+) registered clinical trials · "
+    r"(?P<orgs>\d+) organizations \((?P<academic>\d+) academic labs, "
+    r"(?P<biotech>\d+) biotech companies, (?P<clinics>\d+) clinics\) · "
+    r"(?P<dois>[\d,]+) unique DOI-linked references\."
+)
+_README_CATEGORY_ROW_RE = re.compile(
+    r"^\| (?P<category>[A-Za-z &]+?) +\| +(?P<total>\d+) +\| +(?P<playable>\d+) +\|",
+    re.MULTILINE,
+)
 
 VALID_CATEGORIES = {
     "Stress Resistance",
@@ -29,7 +50,9 @@ VALID_CATEGORIES = {
     "Expression",
 }
 
-VALID_EVIDENCE_TIERS = {"T1", "T2", "T2–T3", "T3", "T4", "T5", "T6", "T7"}
+VALID_EVIDENCE_TIERS = {
+    "T1", "T2", "T2–T3", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T9-limited", "T10",
+}
 
 VALID_CONFIDENCE_VALUES = {
     "Low", "Low-Medium", "Medium-Low", "Medium", "Medium-High",
@@ -95,6 +118,13 @@ def playable_gene_ids(gene_library: pl.DataFrame) -> set[str]:
 @pytest.fixture(scope="module")
 def species_ids(species: pl.DataFrame) -> set[str]:
     return set(species["species_id"].to_list())
+
+
+@pytest.fixture(scope="module")
+def organizations() -> pl.DataFrame:
+    return pl.read_csv(ORGANIZATIONS_PATH).with_columns(
+        pl.col("org_id").str.strip_chars()
+    )
 
 
 # ── Primary key uniqueness ──────────────────────────────────────────────
@@ -309,7 +339,6 @@ class TestRequiredFields:
         "Achievements (effect sizes)",
         "Highest Evidence Tier",
         "Translational Gaps",
-        "Key References (DOIs)",
     ]
 
     @pytest.mark.parametrize("col", REQUIRED_LIBRARY_COLS)
@@ -322,6 +351,20 @@ class TestRequiredFields:
         if empties.height > 0:
             ids = empties["gene_id"].to_list()
             pytest.fail(f"Column '{col}' is empty for gene_ids: {ids}")
+
+    def test_playable_genes_have_key_references(
+        self, gene_library: pl.DataFrame, playable_gene_ids: set[str]
+    ) -> None:
+        empties = gene_library.filter(
+            pl.col("gene_id").is_in(sorted(playable_gene_ids))
+            & (
+                pl.col("Key References (DOIs)").is_null()
+                | (pl.col("Key References (DOIs)").str.strip_chars() == "")
+            )
+        )
+        if empties.height > 0:
+            ids = empties["gene_id"].to_list()
+            pytest.fail(f"Playable genes missing Key References (DOIs): {ids}")
 
     REQUIRED_SPECIES_COLS = [
         "scientific_name",
@@ -381,3 +424,106 @@ class TestLoaderIntegration:
         )
 
         assert sum(CATEGORY_COUNTS.values()) == len(GENE_LIBRARY)
+
+    def test_playable_library_matches_game_enabled(
+        self, playable_gene_ids: set[str]
+    ) -> None:
+        from materialized_enhancements.gene_data import GAME_GENE_LIBRARY
+
+        loaded = {g["gene_id"] for g in GAME_GENE_LIBRARY}
+        assert loaded == playable_gene_ids
+
+
+class TestReadmeMatchesLibrary:
+    """README headline stats and category table must match the Dolt/CSV library."""
+
+    def test_headline_stats(
+        self,
+        gene_library: pl.DataFrame,
+        species: pl.DataFrame,
+        gene_testing: pl.DataFrame,
+        organizations: pl.DataFrame,
+    ) -> None:
+        text = README_PATH.read_text(encoding="utf-8")
+        match = _README_STATS_RE.search(text)
+        assert match is not None, (
+            "README knowledge-base stats sentence is missing or reformatted"
+        )
+
+        playable = (
+            gene_library.filter(pl.col("game_enabled") == 1)
+            if "game_enabled" in gene_library.columns
+            else gene_library
+        )
+        kb_only = gene_library.height - playable.height
+        categories = gene_library["Category"].str.strip_chars().unique().to_list()
+        kingdoms = species["kingdom"].str.strip_chars().unique().to_list()
+        nct = gene_testing.filter(pl.col("reference_short").str.starts_with("NCT"))
+        dois = (
+            gene_testing.filter(
+                pl.col("doi").is_not_null() & (pl.col("doi").str.strip_chars() != "")
+            )["doi"]
+            .str.strip_chars()
+            .unique()
+            .to_list()
+        )
+        org_types = organizations.group_by("type").len().to_dicts()
+        type_counts = {row["type"]: int(row["len"]) for row in org_types}
+
+        def _int(key: str) -> int:
+            return int(match.group(key).replace(",", ""))
+
+        assert _int("genes") == gene_library.height
+        assert _int("playable") == playable.height
+        assert _int("kb_only") == kb_only
+        assert _int("categories") == len(categories)
+        assert _int("species") == species.height
+        assert _int("kingdoms") == len(kingdoms)
+        assert {part.strip() for part in match.group("kingdom_list").split(",")} == set(
+            kingdoms
+        )
+        assert _int("evidence") == gene_testing.height
+        assert _int("trials") == nct.height
+        assert _int("orgs") == organizations.height
+        assert _int("academic") == type_counts.get("academic_lab", 0)
+        assert _int("biotech") == type_counts.get("biotech_company", 0)
+        assert _int("clinics") == type_counts.get("clinic", 0)
+        assert _int("dois") == len(dois)
+
+    def test_category_table(self, gene_library: pl.DataFrame) -> None:
+        text = README_PATH.read_text(encoding="utf-8")
+        rows = {
+            match.group("category").strip(): (
+                int(match.group("total")),
+                int(match.group("playable")),
+            )
+            for match in _README_CATEGORY_ROW_RE.finditer(text)
+        }
+        expected_total = (
+            gene_library.group_by(pl.col("Category").str.strip_chars())
+            .len()
+            .to_dicts()
+        )
+        playable = (
+            gene_library.filter(pl.col("game_enabled") == 1)
+            if "game_enabled" in gene_library.columns
+            else gene_library
+        )
+        expected_playable = (
+            playable.group_by(pl.col("Category").str.strip_chars())
+            .len()
+            .to_dicts()
+        )
+        totals = {row["Category"]: int(row["len"]) for row in expected_total}
+        playables = {row["Category"]: int(row["len"]) for row in expected_playable}
+
+        assert set(rows) == set(totals), (
+            f"README category table keys {sorted(rows)} != library {sorted(totals)}"
+        )
+        for category, (total, playable_n) in rows.items():
+            assert total == totals[category], (
+                f"README {category} total {total} != {totals[category]}"
+            )
+            assert playable_n == playables.get(category, 0), (
+                f"README {category} playable {playable_n} != {playables.get(category, 0)}"
+            )

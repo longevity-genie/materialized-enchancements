@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from materialized_enhancements.gene_data import ORG_GENE_LIST
 from materialized_enhancements.pages.knowledgebase import (
+    _GENES_LF,
     _organization_sources,
     _program_type,
     _programs_lazyframe,
@@ -56,3 +57,13 @@ def test_organization_sources_are_deduplicated() -> None:
 
     assert urls
     assert len(urls) == len(set(urls))
+
+
+def test_genes_grid_exposes_protein_ids_and_stl() -> None:
+    rows = _GENES_LF.collect().to_dicts()
+    assert rows
+    assert {"Protein ID", "PDB", "STL", "Mass (kDa)"}.issubset(rows[0])
+    afp = next(row for row in rows if row["gene_id"] == "afp_fish")
+    assert afp["Protein ID"] == "P04002"
+    assert afp["PDB"] == "1WFB"
+    assert afp["STL"]

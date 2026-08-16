@@ -15,7 +15,7 @@ import pytest
 from enhancement_geometry.config import PipelineConfig
 from enhancement_geometry.pipeline import run_pipeline
 
-from materialized_enhancements.gene_data import GENE_LIBRARY, UNIQUE_CATEGORIES
+from materialized_enhancements.gene_data import GAME_GENE_LIBRARY, UNIQUE_CATEGORIES
 from materialized_enhancements.sculpture import (
     build_pipeline_config,
     compute_sculpture_params,
@@ -39,7 +39,7 @@ def _get_config_for_mask(mask: int) -> PipelineConfig:
         name=NAME,
         selected_categories=selected,
         all_categories=UNIQUE_CATEGORIES,
-        gene_library=GENE_LIBRARY,
+        gene_library=GAME_GENE_LIBRARY,
     )
     return build_pipeline_config(params)
 

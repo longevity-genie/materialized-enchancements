@@ -14,7 +14,7 @@ An RPG-style character creator for speculative human enhancement. Spend enhancem
 
 Upgrading human DNA is not science fiction — it is already happening in adults today. In alternative jurisdictions like Prospera, medical tourists are actively receiving gene therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). The next decade will bring harder questions about what traits people might choose. Nature has already evolved extreme survival modules: tardigrade radiation shields, whale DNA repair, axolotl regeneration, bat immune tolerance, and cephalopod expression systems.
 
-**Materialized Enhancements** turns that biology into a playful experience. Learn real genetics along the way: every gene card cites peer-reviewed papers with DOIs, shows a tiered evidence grade (T2–T6), and is upfront about contradictions and translational gaps. Pick your favourites, then take home a unique souvenir — a 3D-printable form and a personal report generated from your choices.
+**Materialized Enhancements** turns that biology into a playful experience. Learn real genetics along the way: every gene card cites peer-reviewed papers with DOIs, shows a tiered evidence grade (T1–T10), and is upfront about contradictions and translational gaps. Pick your favourites, then take home a unique souvenir — a 3D-printable form and a personal report generated from your choices.
 
 ---
 
@@ -102,7 +102,7 @@ Whether you are a researcher studying gene transfer, a biohacker evaluating enha
 | Perception               | 16    | 10       | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin            |
 
 
-Each gene has an **evidence tier** (T2–T6), a **confidence level**, quantified achievements with citations, and honest notes about limitations, contradictions, and translational gaps.
+Each gene has an **evidence tier** (T1–T10), a **confidence level**, quantified achievements with citations, and honest notes about limitations, contradictions, and translational gaps.
 
 ### Browse, query, and contribute
 

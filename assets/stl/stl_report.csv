@@ -66,3 +66,11 @@ gsr_glutathione_recycling,GSR (glutathione reductase / GSR-1),Stress Resistance,
 "","","","","","",cartoon,5MEO_cartoon.stl,4072,111.4 x 180.0 x 100.9,180.0,46.89,6,1,false,1.8,easy
 "","","","","","",cartoon,5VAQ_cartoon.stl,10256,47.4 x 94.8 x 180.0,180.0,52.45,9,1,false,3.8,easy
 "","","","","","",cartoon,9QNG_cartoon.stl,4856,71.3 x 143.4 x 180.0,180.0,71.08,9,1,false,2.5,easy
+tmat_tmm_myroides,TMAT/TMM,Environmental Adaptation,8ZXK,A0A0B5RUB0,rcsb,cartoon,8ZXK_cartoon.stl,253102,149.4 x 139.1 x 180.0,180.0,974.81,292,1,false,1.3,hard
+gaafp_glaciozyma,GaAFP,Environmental Adaptation,"",I1E4B7,alphafold,cartoon,I1E4B7_predicted_cartoon.stl,147708,162.0 x 176.4 x 180.0,180.0,509.08,217,1,false,1.1,hard
+glut5_khk_nmr,GLUT5/KHK (NMR),Longevity & Genome,"",A0A0P6JEK5,alphafold,cartoon,A0A0P6JEK5_predicted_cartoon.stl,248440,141.0 x 99.3 x 180.0,180.0,782.68,277,1,false,1.8,hard
+lrrc10_cardiac,LRRC10,Regeneration,"",Q5U8X4,alphafold,cartoon,Q5U8X4_predicted_cartoon.stl,128708,180.0 x 95.7 x 159.1,180.0,303.63,134,1,false,1.9,medium
+mahs_tardigrade,MAHS,Stress Resistance,"",A0A1D1V3Z0,alphafold,cartoon,A0A1D1V3Z0_predicted_cartoon.stl,91190,174.8 x 126.5 x 180.0,180.0,275.29,30,1,false,1.4,medium
+newtic1_newt,Newtic1,Regeneration,"",A0A346B5K2,alphafold,cartoon,A0A346B5K2_predicted_cartoon.stl,138148,123.6 x 142.6 x 180.0,180.0,206.26,27,1,false,1.5,medium
+suckerin_squid,Suckerin,Expression,"",U5NYJ1,alphafold,cartoon,U5NYJ1_predicted_cartoon.stl,192440,150.4 x 118.9 x 180.0,180.0,387.5,176,1,false,1.5,medium
+trpv1s_vampire_bat,TRPV1s (Vampire bat),Perception,"",G1DJ75,alphafold,cartoon,G1DJ75_predicted_cartoon.stl,367510,125.5 x 141.1 x 180.0,180.0,651.91,353,1,false,1.4,hard

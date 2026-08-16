@@ -32,13 +32,14 @@ from materialized_enhancements.gene_data import (
     ORG_BY_ID,
     SPECIES_GENE_IDS,
     SPECIES_LOOKUP,
-    STL_DIR,
     STL_REPORT,
     UNIQUE_CATEGORIES,
     _DIFFICULTY_ORDER,
     gene_display_categories,
     is_playable_gene,
+    read_protein_stl,
     species_wikipedia_url,
+    stl_display_for_gene,
 )
 from materialized_enhancements.puzzle import HUMAN_SPECIES_ID, build_jigsaw_svg
 from materialized_enhancements.sculpture import (
@@ -162,6 +163,18 @@ class SculptureSelectedGene(TypedDict):
     alphafold_url: str
     pdb_url: str
     structure_pdb: str
+    protein_id: str
+    protein_id_label: str
+    pdb_id: str
+    reference_protein: str
+    stl_file: str
+    stl_difficulty: str
+    stl_dimensions_mm: str
+    stl_triangles: str
+    stl_shells: str
+    stl_source_label: str
+    stl_print_size_label: str
+    stl_render_label: str
     puzzle_svg: str
     puzzle_src: str
     species_page_url: str
@@ -227,6 +240,20 @@ def _gene_props_flat(gene: str, gene_id: str) -> dict[str, str]:
         v = raw.get(key)
         out[key] = "" if v is None else str(v)
     return out
+
+
+def _stl_fields_flat(gene: str, gene_id: str) -> dict[str, str]:
+    display = stl_display_for_gene(gene, gene_id)
+    return {
+        "stl_file": display["file"],
+        "stl_difficulty": display["difficulty"],
+        "stl_dimensions_mm": display["dimensions_mm"],
+        "stl_triangles": display["triangles"],
+        "stl_shells": display["shells"],
+        "stl_source_label": display["source_label"],
+        "stl_print_size_label": display["print_size_label"],
+        "stl_render_label": display["render_label"],
+    }
 
 
 def _gene_org_display_entries(gene_id: str) -> list[dict[str, str]]:
@@ -364,6 +391,11 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "alphafold_url": g.get("alphafold_url", ""),
         "pdb_url": g.get("pdb_url", ""),
         "structure_pdb": g.get("structure_pdb", ""),
+        "protein_id": g.get("protein_id", ""),
+        "protein_id_label": g.get("protein_id_label", ""),
+        "pdb_id": g.get("pdb_id", ""),
+        "reference_protein": g.get("reference_protein", ""),
+        **_stl_fields_flat(str(g.get("gene", "")), str(g.get("gene_id", ""))),
         "puzzle_svg": puzzle_svg,
         "puzzle_src": f"/{quote(puzzle_svg)}" if puzzle_svg else "",
         "species_page_url": g.get("species_page_url", ""),
@@ -444,6 +476,18 @@ def _empty_sculpture_selected_gene() -> SculptureSelectedGene:
         "alphafold_url": "",
         "pdb_url": "",
         "structure_pdb": "",
+        "protein_id": "",
+        "protein_id_label": "",
+        "pdb_id": "",
+        "reference_protein": "",
+        "stl_file": "",
+        "stl_difficulty": "",
+        "stl_dimensions_mm": "",
+        "stl_triangles": "",
+        "stl_shells": "",
+        "stl_source_label": "",
+        "stl_print_size_label": "",
+        "stl_render_label": "",
         "puzzle_svg": "",
         "puzzle_src": "",
         "species_page_url": "",
@@ -2180,15 +2224,12 @@ class ComposeState(rx.State):
 
     def download_protein_stl(self, gene_name: str):  # type: ignore[return]
         """Download an individual protein structure STL file."""
-        info = STL_REPORT.get(gene_name)
-        if not info:
-            yield rx.toast.error(f"No STL data for {gene_name}")
+        payload = read_protein_stl(gene=gene_name)
+        if payload is None:
+            yield rx.toast.error(f"No printable protein file for {gene_name}")
             return
-        stl_path = STL_DIR / info["file"]
-        if not stl_path.exists():
-            yield rx.toast.error(f"STL file not found: {info['file']}")
-            return
-        yield rx.download(data=stl_path.read_bytes(), filename=info["file"])
+        data, filename = payload
+        yield rx.download(data=data, filename=filename)
 
     @rx.var
     def can_publish_report(self) -> bool:

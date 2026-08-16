@@ -3585,6 +3585,132 @@ _STRUCTURE_LINK_STYLE: dict = {
 }
 
 
+def _gene_id_chip(
+    label: rx.Var | str,
+    value: rx.Var,
+    href: rx.Var,
+    dark: bool,
+) -> rx.Component:
+    """Visible accession chip; links out when a database URL exists."""
+    text_color = "#e2e8f0" if dark else "#374151"
+    muted = "#94a3b8" if dark else "#6b7280"
+    chip = rx.el.span(
+        rx.el.span(label, style={"color": muted, "fontWeight": "600", "marginRight": "5px"}),
+        rx.el.span(value, style={"fontWeight": "800", "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace"}),
+        style={"fontSize": "0.78rem", "color": text_color},
+    )
+    return rx.cond(
+        value != "",
+        rx.cond(
+            href != "",
+            rx.el.a(
+                chip,
+                href=href,
+                target="_blank",
+                rel="noopener noreferrer",
+                title="Open accession",
+                style={"textDecoration": "none", "borderBottom": "1px dotted rgba(167, 139, 250, 0.55)"},
+            ),
+            chip,
+        ),
+        rx.fragment(),
+    )
+
+
+def _gene_protein_id_row(gene_item: rx.Var, dark: bool) -> rx.Component:
+    """UniProt / NCBI / PDB accessions plus a reference-protein fallback."""
+    return rx.el.div(
+        _gene_id_chip(gene_item["protein_id_label"], gene_item["protein_id"], gene_item["gene_url"], dark),
+        _gene_id_chip("PDB", gene_item["pdb_id"], gene_item["pdb_url"], dark),
+        rx.cond(
+            (gene_item["protein_id"] == "") & (gene_item["reference_protein"] != ""),
+            rx.el.span(
+                "Ref ",
+                gene_item["reference_protein"],
+                style={
+                    "fontSize": "0.78rem",
+                    "color": "#94a3b8" if dark else "#6b7280",
+                    "fontWeight": "600",
+                },
+            ),
+            rx.fragment(),
+        ),
+        style={"display": "flex", "alignItems": "center", "gap": "10px", "flexWrap": "wrap"},
+    )
+
+
+def _gene_stl_block(gene_item: rx.Var, dark: bool) -> rx.Component:
+    """Printable protein STL download and print metadata."""
+    text = "#cbd5e1" if dark else "#374151"
+    muted = "#94a3b8" if dark else "#6b7280"
+    return rx.cond(
+        gene_item["stl_file"] != "",
+        rx.el.div(
+            rx.el.div(
+                rx.el.span(
+                    "Printable protein",
+                    style={
+                        "fontSize": "0.82rem",
+                        "fontWeight": "900",
+                        "letterSpacing": "0.06em",
+                        "textTransform": "uppercase",
+                        "color": muted,
+                    },
+                ),
+                rx.el.button(
+                    fomantic_icon("download", size=11, color="#c4b5fd" if dark else "#6d28d9"),
+                    rx.el.span(" STL", style={"fontSize": "0.74rem", "fontWeight": "700"}),
+                    on_click=ComposeState.download_protein_stl(gene_item["gene"]),
+                    type="button",
+                    title="Download printable protein STL",
+                    style={
+                        "display": "inline-flex",
+                        "alignItems": "center",
+                        "gap": "3px",
+                        "padding": "4px 9px",
+                        "borderRadius": "6px",
+                        "border": "1px solid rgba(124, 58, 237, 0.35)",
+                        "background": "rgba(124, 58, 237, 0.16)",
+                        "color": "#c4b5fd" if dark else "#6d28d9",
+                        "cursor": "pointer",
+                    },
+                ),
+                style={"display": "flex", "alignItems": "center", "justifyContent": "space-between", "gap": "8px"},
+            ),
+            rx.el.div(
+                rx.cond(
+                    gene_item["stl_source_label"] != "",
+                    rx.el.span(gene_item["stl_source_label"]),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    gene_item["stl_difficulty"] != "",
+                    rx.el.span(" · ", gene_item["stl_difficulty"], " print"),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    gene_item["stl_dimensions_mm"] != "",
+                    rx.el.span(" · ", gene_item["stl_dimensions_mm"], " mm"),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    gene_item["stl_triangles"] != "",
+                    rx.el.span(" · ", gene_item["stl_triangles"], " tris"),
+                    rx.fragment(),
+                ),
+                style={"fontSize": "0.78rem", "color": text, "marginTop": "4px"},
+            ),
+            style={
+                "padding": "10px 11px",
+                "borderRadius": "7px",
+                "background": "rgba(15, 23, 42, 0.42)" if dark else "#ffffff",
+                "border": "1px solid rgba(167, 139, 250, 0.28)" if dark else "1px solid #d4c5f9",
+            },
+        ),
+        rx.fragment(),
+    )
+
+
 def _gene_structure_viewer(gene_item: rx.Var) -> rx.Component:
     """Interactive 3D protein structure viewer or fallback external links.
 
@@ -3600,7 +3726,8 @@ def _gene_structure_viewer(gene_item: rx.Var) -> rx.Component:
             has_pdb_url,
             rx.el.a(
                 fomantic_icon("database", size=13, color="#a78bfa"),
-                " RCSB PDB",
+                " RCSB PDB ",
+                gene_item["pdb_id"],
                 href=gene_item["pdb_url"],
                 target="_blank",
                 rel="noopener noreferrer",
@@ -3946,6 +4073,11 @@ def _gene_information_folds(gene_item: rx.Var, dark: bool) -> rx.Component:
         (gene_item["structure_pdb"] != "")
         | (gene_item["pdb_url"] != "")
         | (gene_item["alphafold_url"] != "")
+        | (gene_item["protein_id"] != "")
+        | (gene_item["pdb_id"] != "")
+        | (gene_item["stl_file"] != "")
+        | (gene_item["protein_mass_kda"] != "")
+        | (gene_item["reference_protein"] != "")
     )
     section_style = {
         "display": "flex",
@@ -4024,7 +4156,9 @@ def _gene_information_folds(gene_item: rx.Var, dark: bool) -> rx.Component:
         style=section_style,
     )
     structure_content = rx.el.div(
+        _gene_protein_id_row(gene_item, dark),
         _gene_structure_viewer(gene_item),
+        _gene_stl_block(gene_item, dark),
         _gene_fold_property(
             "Protein length (aa)",
             gene_item["protein_length_aa"],
@@ -4083,7 +4217,7 @@ def _gene_information_folds(gene_item: rx.Var, dark: bool) -> rx.Component:
             has_structure,
             _gene_fold_item(
                 "structure",
-                "3D protein structure",
+                "Protein & printable STL",
                 "cube",
                 structure_content,
                 dark,
@@ -4214,6 +4348,10 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
                     ),
                     _secondary_categories_row(gene_item),
                     _rpg_gene_species_label(gene_item),
+                    rx.el.div(
+                        _gene_protein_id_row(gene_item, True),
+                        style={"marginTop": "6px"},
+                    ),
                     style={"flex": "1", "minWidth": "0"},
                 ),
                 style={

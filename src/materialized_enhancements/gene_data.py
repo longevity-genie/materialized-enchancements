@@ -69,6 +69,10 @@ class GeneEntry(TypedDict):
     alphafold_url: str
     pdb_url: str
     structure_pdb: str
+    protein_id: str
+    protein_id_label: str
+    pdb_id: str
+    reference_protein: str
     puzzle_svg: str
     species_page_url: str
     testing_entries: list[dict[str, str]]
@@ -150,6 +154,12 @@ _LIBRARY_COLUMN_MAP: dict[str, str] = {
 
 _PROTEIN_DB_URLS: dict[str, str] = {
     "uniprot": "https://www.uniprot.org/uniprotkb/{id}",
+    "ncbi_protein": "https://www.ncbi.nlm.nih.gov/protein/{id}",
+}
+
+_ID_TYPE_LABELS: dict[str, str] = {
+    "uniprot": "UniProt",
+    "ncbi_protein": "NCBI Protein",
 }
 
 
@@ -391,6 +401,19 @@ else:
     GENE_PROPERTY_ROWS = pl.read_csv(CSV_DIR / "gene_properties.csv").to_dicts()
 
 PROTEIN_ID_LOOKUP: dict[str, _ProteinInfo] = _protein_id_lookup_from_rows(GENE_PROPERTY_ROWS)
+_PROPS_BY_GENE_ID: dict[str, dict[str, Any]] = {
+    str(row.get("gene_id") or "").strip(): row
+    for row in GENE_PROPERTY_ROWS
+    if str(row.get("gene_id") or "").strip()
+}
+
+
+def protein_id_type_label(id_type: str) -> str:
+    """Human label for a gene_properties.id_type value."""
+    key = id_type.strip().lower()
+    if not key:
+        return ""
+    return _ID_TYPE_LABELS.get(key, key.replace("_", " ").title())
 
 
 def _gene_protein_url(gene_id: str, gene_display: str) -> str:
@@ -549,6 +572,12 @@ def load_gene_library(path: Path = DATA_PATH) -> list[GeneEntry]:
         row["alphafold_url"] = _gene_alphafold_url(gid)
         row["pdb_url"] = _gene_pdb_url(gid)
         row["structure_pdb"] = resolve_structure_pdb(gid)
+        info = PROTEIN_ID_LOOKUP.get(gid)
+        row["protein_id"] = info.protein_id if info else ""
+        row["protein_id_label"] = protein_id_type_label(info.id_type) if info else ""
+        row["pdb_id"] = info.pdb_id if info else ""
+        prop_row = _PROPS_BY_GENE_ID.get(gid, {})
+        row["reference_protein"] = str(prop_row.get("reference_protein") or "").strip()
         conf_list = [dict(c) for c in GENE_CONFIDENCE_MAP.get(gid, [])]
         primaries = [c for c in conf_list if c["primary"]]
         details = [c for c in conf_list if not c["primary"]]
@@ -946,3 +975,87 @@ def _load_stl_report() -> dict[str, StlReportEntry]:
 
 
 STL_REPORT: dict[str, StlReportEntry] = _load_stl_report()
+STL_REPORT_BY_GENE_ID: dict[str, StlReportEntry] = {
+    entry["gene_id"]: entry for entry in STL_REPORT.values() if entry["gene_id"]
+}
+
+
+class StlDisplay(TypedDict):
+    file: str
+    difficulty: str
+    dimensions_mm: str
+    triangles: str
+    shells: str
+    source_label: str
+    print_size_label: str
+    render_label: str
+    watertight: str
+
+
+_EMPTY_STL_DISPLAY: StlDisplay = {
+    "file": "",
+    "difficulty": "",
+    "dimensions_mm": "",
+    "triangles": "",
+    "shells": "",
+    "source_label": "",
+    "print_size_label": "",
+    "render_label": "",
+    "watertight": "",
+}
+
+
+def resolve_stl_entry(gene: str = "", gene_id: str = "") -> StlReportEntry | None:
+    """Look up a protein STL report row by display name or gene_id."""
+    name = gene.strip()
+    if name and name in STL_REPORT:
+        return STL_REPORT[name]
+    gid = gene_id.strip()
+    if gid:
+        return STL_REPORT_BY_GENE_ID.get(gid)
+    return None
+
+
+def stl_display_for_gene(gene: str = "", gene_id: str = "") -> StlDisplay:
+    """Visitor-facing STL metadata, or empty strings when no printable file exists."""
+    info = resolve_stl_entry(gene, gene_id)
+    if info is None:
+        return dict(_EMPTY_STL_DISPLAY)
+    src = info.get("structure_source", "")
+    pdb = info.get("pdb_id", "")
+    protein_id = info.get("protein_id", "")
+    if src == "alphafold":
+        source_label = "AlphaFold predicted"
+    elif pdb:
+        source_label = f"PDB {pdb}"
+    elif protein_id:
+        source_label = protein_id
+    else:
+        source_label = ""
+    style = str(info.get("render_style", "") or "")
+    max_dim = float(info.get("max_dim_mm", 0.0) or 0.0)
+    return {
+        "file": str(info.get("file", "") or ""),
+        "difficulty": str(info.get("difficulty", "") or ""),
+        "dimensions_mm": str(info.get("dimensions_mm", "") or ""),
+        "triangles": str(info.get("triangles", 0) or ""),
+        "shells": str(info.get("shells", 0) or ""),
+        "source_label": source_label,
+        "print_size_label": f"{max_dim:.0f}mm" if max_dim > 0 else "",
+        "render_label": style.capitalize() if style else "",
+        "watertight": "yes" if info.get("watertight") else "no",
+    }
+
+
+def read_protein_stl(gene: str = "", gene_id: str = "") -> tuple[bytes, str] | None:
+    """Return (bytes, filename) for a protein STL, or None if missing."""
+    info = resolve_stl_entry(gene, gene_id)
+    if info is None:
+        return None
+    filename = str(info.get("file", "") or "")
+    if not filename:
+        return None
+    stl_path = STL_DIR / filename
+    if not stl_path.is_file():
+        return None
+    return stl_path.read_bytes(), filename

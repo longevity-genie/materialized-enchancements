@@ -1,20 +1,21 @@
 """Resolve and validate UniProt IDs and AlphaFold availability for all genes.
 
-Reads gene_properties.csv + gene_species.csv + species.csv, queries UniProt and
-AlphaFold REST APIs, and writes validated protein_id / id_type back to
-gene_properties.csv.  Genes whose UniProt accession cannot be confirmed get
-their protein_id cleared so the UI hides the link instead of showing a broken
-text-search URL.
+Reads the live CSV mirror (data/db_backup) plus gene_species/species, queries
+UniProt and AlphaFold REST APIs, and writes protein_id / id_type / pdb_id
+back.  When data/enhancement.db exists, only the changed gene_properties rows
+are updated in SQLite so game_enabled and other tables stay untouched.
 
 Usage::
 
-    uv run resolve-proteins            # resolve & validate, update CSV
-    uv run resolve-proteins --dry-run  # show what would change, don't write
+    uv run resolve-proteins --missing-only   # genes with no protein_id
+    uv run resolve-proteins --missing-only --dry-run
+    uv run resolve-proteins --all            # re-validate every UniProt row
 """
 
 from __future__ import annotations
 
 import logging
+import sqlite3
 import time
 from pathlib import Path
 
@@ -25,10 +26,12 @@ import typer
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "input"
-GENE_PROPS_PATH = DATA_DIR / "gene_properties.csv"
-SPECIES_PATH = DATA_DIR / "species.csv"
-GENE_SPECIES_PATH = DATA_DIR / "gene_species.csv"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CSV_DIR = REPO_ROOT / "data" / "db_backup"
+DB_PATH = REPO_ROOT / "data" / "enhancement.db"
+GENE_PROPS_PATH = CSV_DIR / "gene_properties.csv"
+SPECIES_PATH = CSV_DIR / "species.csv"
+GENE_SPECIES_PATH = CSV_DIR / "gene_species.csv"
 
 UNIPROT_SEARCH = "https://rest.uniprot.org/uniprotkb/search"
 UNIPROT_ENTRY = "https://rest.uniprot.org/uniprotkb/{accession}.json"
@@ -61,6 +64,28 @@ _GENE_NAME_OVERRIDES: dict[str, list[str]] = {
     "pvpimt": ["PvPIMT", "PIMT"],
     "tdr1": ["TDR1"],
     "reflectin": ["Reflectin", "reflectin A"],
+    "aldh3a2_parrot": ["ALDH3A2"],
+    "asc2_bat": ["ASC2", "PYDC2"],
+    "avlige_rotifer": ["AvLigE", "LigE"],
+    "csmg_snail": ["CSMG"],
+    "epg_catfish": ["EPG"],
+    "fth1b_shark": ["FTH1B", "FTH1"],
+    "gaafp_glaciozyma": ["GaAFP", "AFP"],
+    "glassin_sponge": ["glassin"],
+    "glut5_khk_nmr": ["SLC2A5", "GLUT5", "KHK"],
+    "h1f0_shark": ["H1F0", "H1-0"],
+    "lrrc10_cardiac": ["LRRC10"],
+    "mahs_tardigrade": ["MAHS"],
+    "mupks_budgerigar": ["MuPKS"],
+    "newtic1_newt": ["Newtic1"],
+    "pvlil_rotifer": ["PvLiL"],
+    "rh1_spinyfin": ["RH1", "RHO"],
+    "s100a10_deer": ["S100A10"],
+    "suckerin_squid": ["suckerin"],
+    "tmat_tmm_myroides": ["TMAT", "TMM"],
+    "trpv1s_vampire_bat": ["TRPV1"],
+    "uhrf1_deer": ["UHRF1"],
+    "xrcc5_roughy": ["XRCC5"],
 }
 
 _SKIP_GENES: set[str] = {
@@ -238,19 +263,86 @@ def _search_uniprot(
     return best.get("primaryAccession")
 
 
-def _gene_search_names(gene_id: str, gene_display: str) -> list[str]:
+def _gene_search_names(gene_id: str, gene_display: str, reference_protein: str = "") -> list[str]:
     """Return a list of gene name variants to try, in priority order."""
+    names: list[str] = []
     if gene_id in _GENE_NAME_OVERRIDES:
-        return _GENE_NAME_OVERRIDES[gene_id]
-    name = gene_display.strip()
-    primary = name.split("/")[0].strip().split("(")[0].strip()
-    return [primary]
+        names.extend(_GENE_NAME_OVERRIDES[gene_id])
+    else:
+        name = gene_display.strip()
+        primary = name.split("/")[0].strip().split("(")[0].strip()
+        if primary:
+            names.append(primary)
+    ref = reference_protein.strip()
+    if ref and ref not in names:
+        names.append(ref)
+    seen: set[str] = set()
+    out: list[str] = []
+    for name in names:
+        key = name.casefold()
+        if name and key not in seen:
+            seen.add(key)
+            out.append(name)
+    return out
+
+
+def _as_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"true", "1", "yes"}
+
+
+def _search_accession(
+    client: httpx.Client,
+    search_names: list[str],
+    sci_names: list[str],
+) -> tuple[str | None, str]:
+    """Try gene-field then full-text UniProt search. Return (accession, query label)."""
+    for use_gene_field, prefix in ((True, "gene"), (False, "text")):
+        for name_variant in search_names:
+            for sci_name in sci_names:
+                resolved = _search_uniprot(client, name_variant, sci_name, use_gene_field=use_gene_field)
+                if resolved:
+                    return resolved, f"{prefix}:{name_variant}"
+                time.sleep(0.2)
+    return None, ""
+
+
+def _apply_sqlite_updates(updates: list[dict[str, object]]) -> None:
+    """Patch changed gene_properties rows in enhancement.db without rebuilding it."""
+    if not updates or not DB_PATH.is_file():
+        return
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.executemany(
+        """UPDATE gene_properties
+           SET protein_id = ?, id_type = ?, pdb_id = ?, has_alphafold = ?
+           WHERE gene_id = ?""",
+        [
+            (
+                str(row["protein_id"]),
+                str(row["id_type"]),
+                str(row["pdb_id"]),
+                1 if row["has_alphafold"] else 0,
+                str(row["gene_id"]),
+            )
+            for row in updates
+        ],
+    )
+    conn.commit()
+    conn.close()
+    log.info("Updated %d gene_properties row(s) in %s", len(updates), DB_PATH)
 
 
 def resolve(
-    dry_run: bool = typer.Option(False, "--dry-run", help="Print changes without writing CSV"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print changes without writing"),
+    missing_only: bool = typer.Option(
+        True,
+        "--missing-only/--all",
+        help="Only genes with no protein_id (default). --all re-validates existing UniProt rows.",
+    ),
 ) -> None:
-    """Resolve and validate UniProt protein IDs and PDB structures for all genes."""
+    """Resolve and validate UniProt protein IDs and PDB structures."""
     props_df = pl.read_csv(GENE_PROPS_PATH)
     species_lookup = _load_species_lookup()
     gene_species = _load_gene_species()
@@ -258,27 +350,35 @@ def resolve(
     if "pdb_id" not in props_df.columns:
         props_df = props_df.with_columns(pl.lit("").alias("pdb_id"))
     if "has_alphafold" not in props_df.columns:
-        props_df = props_df.with_columns(pl.lit("").alias("has_alphafold"))
+        props_df = props_df.with_columns(pl.lit(False).alias("has_alphafold"))
 
     rows = props_df.to_dicts()
     changes: list[str] = []
+    sqlite_updates: list[dict[str, object]] = []
 
     with httpx.Client(timeout=15.0, headers={"User-Agent": "materialized-enhancements/1.0"}) as client:
         for row in rows:
-            gene_id = row["gene_id"].strip()
-            gene_display = str(row.get("gene", "")).strip()
+            gene_id = str(row["gene_id"]).strip()
+            gene_display = str(row.get("gene", "") or "").strip()
             existing_pid = str(row.get("protein_id") or "").strip()
             existing_idt = str(row.get("id_type") or "").strip()
             existing_pdb = str(row.get("pdb_id") or "").strip()
-            existing_af = str(row.get("has_alphafold") or "").strip()
+            existing_af = _as_bool(row.get("has_alphafold"))
+            reference_protein = str(row.get("reference_protein") or "").strip()
 
             if gene_id in _SKIP_GENES:
                 log.info("%-30s SKIP (non-protein gene)", gene_id)
                 continue
 
+            if missing_only and existing_pid:
+                continue
+
+            if existing_pid and existing_idt != "uniprot":
+                log.info("%-30s SKIP existing %s %s", gene_id, existing_idt, existing_pid)
+                continue
+
             sids = gene_species.get(gene_id, [])
             sci_names = [species_lookup[s] for s in sids if s in species_lookup]
-
             prot_len = int(row.get("protein_length_aa") or 0)
 
             if existing_pid and existing_idt == "uniprot":
@@ -286,48 +386,25 @@ def resolve(
                 if entry:
                     pdb_id = _extract_best_pdb(entry, client=client, protein_length_aa=prot_len)
                     has_af = _check_alphafold(client, existing_pid)
-                    af_val = "true" if has_af else ""
+                    if not pdb_id and existing_pdb:
+                        pdb_id = existing_pdb
                     if pdb_id != existing_pdb:
                         changes.append(f"{gene_id}: pdb {existing_pdb or '(empty)'} → {pdb_id or '(none)'}")
-                    if af_val != existing_af:
-                        changes.append(f"{gene_id}: has_alphafold {existing_af or '(empty)'} → {af_val or '(false)'}")
+                    if has_af != existing_af:
+                        changes.append(f"{gene_id}: has_alphafold {existing_af} → {has_af}")
                     row["pdb_id"] = pdb_id
-                    row["has_alphafold"] = af_val
+                    row["has_alphafold"] = has_af
+                    if pdb_id != existing_pdb or has_af != existing_af:
+                        sqlite_updates.append(row)
                     log.info("%-30s VALID  %s  pdb=%s  alphafold=%s",
                              gene_id, existing_pid, pdb_id or "none", has_af)
                 else:
-                    log.warning("%-30s INVALID UniProt %s — clearing", gene_id, existing_pid)
-                    changes.append(f"{gene_id}: cleared invalid UniProt {existing_pid}")
-                    row["protein_id"] = ""
-                    row["id_type"] = ""
-                    row["pdb_id"] = ""
-                    row["has_alphafold"] = ""
+                    log.warning("%-30s INVALID UniProt %s — leaving stored value", gene_id, existing_pid)
                 time.sleep(0.3)
                 continue
 
-            search_names = _gene_search_names(gene_id, gene_display)
-            resolved = None
-            winning_query = ""
-            for name_variant in search_names:
-                for sci_name in sci_names:
-                    resolved = _search_uniprot(client, name_variant, sci_name, use_gene_field=True)
-                    if resolved:
-                        winning_query = f"gene:{name_variant}"
-                        break
-                    time.sleep(0.2)
-                if resolved:
-                    break
-
-            if not resolved:
-                for name_variant in search_names:
-                    for sci_name in sci_names:
-                        resolved = _search_uniprot(client, name_variant, sci_name, use_gene_field=False)
-                        if resolved:
-                            winning_query = f"text:{name_variant}"
-                            break
-                        time.sleep(0.2)
-                    if resolved:
-                        break
+            search_names = _gene_search_names(gene_id, gene_display, reference_protein)
+            resolved, winning_query = _search_accession(client, search_names, sci_names)
 
             if resolved:
                 entry = _fetch_uniprot_entry(client, resolved)
@@ -341,16 +418,13 @@ def resolve(
                     changes.append(f"{gene_id}: resolved → {resolved}, pdb={pdb_id or 'none'}")
                     row["protein_id"] = resolved
                     row["id_type"] = "uniprot"
-                    row["pdb_id"] = pdb_id
-                    row["has_alphafold"] = "true" if has_af else ""
+                    row["pdb_id"] = pdb_id or ""
+                    row["has_alphafold"] = has_af
+                    sqlite_updates.append(row)
                 else:
                     log.warning("%-30s resolved %s but validation failed", gene_id, resolved)
             else:
                 log.warning("%-30s NOT FOUND (tried %s in %s)", gene_id, search_names, sci_names)
-                row["protein_id"] = ""
-                row["id_type"] = ""
-                row["pdb_id"] = ""
-                row["has_alphafold"] = ""
 
             time.sleep(0.3)
 
@@ -359,9 +433,10 @@ def resolve(
     for c in changes:
         print(f"  {c}")
 
-    if not dry_run and changes:
+    if not dry_run and sqlite_updates:
         out_df = pl.DataFrame(rows, schema=props_df.schema)
         out_df.write_csv(GENE_PROPS_PATH)
+        _apply_sqlite_updates(sqlite_updates)
         print(f"\nWritten to {GENE_PROPS_PATH}")
     elif dry_run:
         print("\n(dry-run mode — no files written)")

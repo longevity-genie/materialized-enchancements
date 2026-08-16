@@ -24,7 +24,7 @@ from typing import List, NamedTuple, Optional
 import pytest
 from enhancement_geometry import export_stl, run_pipeline_with_retry
 
-from materialized_enhancements.gene_data import GENE_LIBRARY, UNIQUE_CATEGORIES
+from materialized_enhancements.gene_data import GAME_GENE_LIBRARY, UNIQUE_CATEGORIES
 from materialized_enhancements.sculpture import build_pipeline_config, compute_sculpture_params
 
 CURA_ENGINE = "CuraEngine"
@@ -128,7 +128,7 @@ def sculpture_stl(tmp_path_factory: pytest.TempPathFactory) -> Path:
         name="SliceTest",
         selected_categories=list(UNIQUE_CATEGORIES),
         all_categories=UNIQUE_CATEGORIES,
-        gene_library=GENE_LIBRARY,
+        gene_library=GAME_GENE_LIBRARY,
     )
     config = build_pipeline_config(params)
     result, _ = run_pipeline_with_retry(config, max_attempts=10, verbose=False)

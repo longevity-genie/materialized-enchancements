@@ -23,7 +23,10 @@ from materialized_enhancements.gene_data import (
     ORG_GENE_LIST,
     ORG_GENE_MAP,
     ORG_LIBRARY,
+    read_protein_stl,
+    stl_display_for_gene,
 )
+from materialized_enhancements.sculpture import resolve_gene_properties_row
 from materialized_enhancements.state import CATEGORY_COLORS
 
 # Watch data-kb-gene on the dossier panel and reset scroll when the gene changes.
@@ -182,7 +185,8 @@ _SURFACE_DESCRIPTIONS: dict[str, str] = {
         f"Browse all {len(GENE_LIBRARY)} curated enhancement genes — more than the "
         f"{len(GAME_GENE_LIBRARY)} selectable in the game. Some entries are "
         "knowledge-base-only until their model inputs are ready. Click a row for the "
-        "full dossier — mechanism, evidence, organizations, and references."
+        "full dossier — mechanism, evidence, protein IDs, printable STL, organizations, "
+        "and references."
     ),
     "experiments": (
         "Browse the experimental and trial corpus by host level, intervention, and outcome."
@@ -561,6 +565,11 @@ _CATEGORY_BADGE_FG, _CATEGORY_BADGE_BG = _category_badge_maps()
 _EVIDENCE_BADGE_FG, _EVIDENCE_BADGE_BG = _evidence_badge_maps()
 
 
+def _gene_mass_kda(gene_id: str, gene: str) -> str:
+    raw = resolve_gene_properties_row(gene, gene_id).get("protein_mass_kda")
+    return "" if raw is None else str(raw)
+
+
 def _genes_lazyframe() -> pl.LazyFrame:
     rows: list[dict[str, Any]] = []
     for g in GENE_LIBRARY:
@@ -580,6 +589,10 @@ def _genes_lazyframe() -> pl.LazyFrame:
                 "Manipulation": g["manipulation"],
                 "Confidence": str(conf.get("value", "")),
                 "Short description": g["short_description"],
+                "Protein ID": g.get("protein_id", ""),
+                "PDB": g.get("pdb_id", ""),
+                "STL": stl_display_for_gene(str(g.get("gene", "")), gid)["difficulty"],
+                "Mass (kDa)": _gene_mass_kda(gid, str(g.get("gene", ""))),
             }
         )
     # Default order: alphabetical by display name. MUI column sorts override this.
@@ -802,6 +815,10 @@ _GENE_COL_DESCS: dict[str, str] = {
     "Tests": "Experimental / trial rows",
     "Orgs": "Organizations linked to this gene",
     "Best stage": "Most advanced org development stage",
+    "Protein ID": "UniProt accession or NCBI protein ID",
+    "PDB": "Experimental PDB structure ID",
+    "STL": "Printable protein mesh difficulty when an STL exists",
+    "Mass (kDa)": "Protein mass in kilodaltons",
 }
 
 _EXP_COL_DESCS: dict[str, str] = {
@@ -985,6 +1002,22 @@ class KnowledgebaseState(rx.State):
     d_alphafold_url: str = ""
     d_pdb_url: str = ""
     d_paper_url: str = ""
+    d_protein_id: str = ""
+    d_protein_id_label: str = ""
+    d_pdb_id: str = ""
+    d_reference_protein: str = ""
+    d_protein_length_aa: str = ""
+    d_protein_mass_kda: str = ""
+    d_exon_count: str = ""
+    d_disorder_pct: str = ""
+    d_isoelectric_point_pI: str = ""
+    d_gravy_score: str = ""
+    d_stl_file: str = ""
+    d_stl_difficulty: str = ""
+    d_stl_dimensions_mm: str = ""
+    d_stl_triangles: str = ""
+    d_stl_shells: str = ""
+    d_stl_source_label: str = ""
     d_testing: list[dict[str, str]] = []
     d_orgs: list[dict[str, str]] = []
     d_references: list[dict[str, str]] = []
@@ -1179,6 +1212,26 @@ class KnowledgebaseState(rx.State):
         self.d_alphafold_url = str(gene.get("alphafold_url", "") or "")
         self.d_pdb_url = str(gene.get("pdb_url", "") or "")
         self.d_paper_url = str(gene.get("paper_url", "") or "")
+        self.d_protein_id = str(gene.get("protein_id", "") or "")
+        self.d_protein_id_label = str(gene.get("protein_id_label", "") or "")
+        self.d_pdb_id = str(gene.get("pdb_id", "") or "")
+        self.d_reference_protein = str(gene.get("reference_protein", "") or "")
+        props = resolve_gene_properties_row(str(gene.get("gene", "")), gene_id)
+        self.d_protein_length_aa = "" if props.get("protein_length_aa") is None else str(props["protein_length_aa"])
+        self.d_protein_mass_kda = "" if props.get("protein_mass_kda") is None else str(props["protein_mass_kda"])
+        self.d_exon_count = "" if props.get("exon_count") is None else str(props["exon_count"])
+        self.d_disorder_pct = "" if props.get("disorder_pct") is None else str(props["disorder_pct"])
+        self.d_isoelectric_point_pI = (
+            "" if props.get("isoelectric_point_pI") is None else str(props["isoelectric_point_pI"])
+        )
+        self.d_gravy_score = "" if props.get("gravy_score") is None else str(props["gravy_score"])
+        stl = stl_display_for_gene(str(gene.get("gene", "")), gene_id)
+        self.d_stl_file = stl["file"]
+        self.d_stl_difficulty = stl["difficulty"]
+        self.d_stl_dimensions_mm = stl["dimensions_mm"]
+        self.d_stl_triangles = stl["triangles"]
+        self.d_stl_shells = stl["shells"]
+        self.d_stl_source_label = stl["source_label"]
         self.d_references = _parse_key_references(str(gene.get("key_references", "") or ""))
 
         testing_rows: list[dict[str, str]] = []
@@ -1230,6 +1283,15 @@ class KnowledgebaseState(rx.State):
     def select_gene(self, gene_id: str) -> None:
         self.apply_gene_selection(gene_id, dossier_tab="overview")
 
+    @rx.event
+    def download_protein_stl(self, gene_name: str):
+        payload = read_protein_stl(gene=gene_name)
+        if payload is None:
+            yield rx.toast.error(f"No printable protein file for {gene_name}")
+            return
+        data, filename = payload
+        yield rx.download(data=data, filename=filename)
+
 
 class KbGenesGridState(LazyFrameGridMixin, rx.State):
     """Genes DataGrid."""
@@ -1264,6 +1326,9 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
                     bg_color_map=_STAGE_BADGE_BG,
                     flex=0.85,
                 ),
+                "Protein ID": {"flex": 0.85},
+                "PDB": {"flex": 0.55},
+                "STL": {"flex": 0.5},
                 # Secondary fields → row accordion (▸), not the grid.
                 "Species": {"hide": True},
                 "Tests": {"hide": True, "type": "number"},
@@ -1271,6 +1336,7 @@ class KbGenesGridState(LazyFrameGridMixin, rx.State):
                 "Manipulation": {"hide": True},
                 "Confidence": {"hide": True},
                 "Short description": {"hide": True},
+                "Mass (kDa)": {"hide": True},
             },
             non_filterable_fields=["Short description", "gene_id"],
         )
@@ -1951,6 +2017,30 @@ _KB_CSS = """
     background: rgba(124, 58, 237, 0.22); border-radius: 6px; padding: 5px 10px;
 }
 .kb-ext-link:hover { color: #e9d5ff; }
+.kb-id-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.kb-id-chip {
+    font-size: 0.82rem; font-weight: 700; color: #e9d5ff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(124, 58, 237, 0.22); border: 1px solid rgba(167, 139, 250, 0.35);
+    border-radius: 6px; padding: 3px 8px; text-decoration: none;
+}
+a.kb-id-chip:hover { color: #f5f3ff; border-color: rgba(196, 181, 253, 0.7); }
+.kb-prop-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 6px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.kb-prop-label { font-size: 0.92rem; color: #94a3b8; }
+.kb-prop-value {
+    font-size: 0.92rem; font-weight: 700; color: #e2e8f0; text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.kb-stl-download {
+    margin-top: 10px; border: 1px solid rgba(167, 139, 250, 0.45);
+    background: rgba(124, 58, 237, 0.22); color: #e9d5ff;
+    border-radius: 8px; padding: 8px 12px; font-size: 0.92rem; font-weight: 700;
+    cursor: pointer;
+}
+.kb-stl-download:hover { background: rgba(124, 58, 237, 0.34); }
 .kb-test-table a.kb-ext-link {
     background: transparent; padding: 0; text-decoration: underline;
 }
@@ -3073,8 +3163,123 @@ def _dossier_organizations() -> rx.Component:
     )
 
 
+def _kb_prop_row(label: str, value: rx.Var) -> rx.Component:
+    return rx.cond(
+        value != "",
+        rx.el.div(
+            rx.el.span(label, class_name="kb-prop-label"),
+            rx.el.span(value, class_name="kb-prop-value"),
+            class_name="kb-prop-row",
+        ),
+        rx.fragment(),
+    )
+
+
+def _kb_prop_id_row(label: rx.Var, value: rx.Var, href: rx.Var) -> rx.Component:
+    linked = rx.el.a(
+        value,
+        href=href,
+        target="_blank",
+        rel="noopener noreferrer",
+        class_name="kb-inline-link",
+    )
+    return rx.cond(
+        value != "",
+        rx.el.div(
+            rx.el.span(label, class_name="kb-prop-label"),
+            rx.cond(href != "", linked, rx.el.span(value, class_name="kb-prop-value")),
+            class_name="kb-prop-row",
+        ),
+        rx.fragment(),
+    )
+
+
+def _dossier_stl_block() -> rx.Component:
+    return rx.cond(
+        KnowledgebaseState.d_stl_file != "",
+        rx.el.div(
+            rx.el.div("Printable protein", class_name="kb-detail-section-label"),
+            rx.el.div(
+                rx.cond(
+                    KnowledgebaseState.d_stl_source_label != "",
+                    rx.el.div(KnowledgebaseState.d_stl_source_label, class_name="kb-detail-section-text"),
+                    rx.fragment(),
+                ),
+                rx.el.div(
+                    rx.cond(
+                        KnowledgebaseState.d_stl_difficulty != "",
+                        rx.el.span(KnowledgebaseState.d_stl_difficulty, " print"),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        KnowledgebaseState.d_stl_dimensions_mm != "",
+                        rx.el.span(" · ", KnowledgebaseState.d_stl_dimensions_mm, " mm"),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        KnowledgebaseState.d_stl_triangles != "",
+                        rx.el.span(" · ", KnowledgebaseState.d_stl_triangles, " tris"),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        KnowledgebaseState.d_stl_shells != "",
+                        rx.el.span(" · ", KnowledgebaseState.d_stl_shells, " shells"),
+                        rx.fragment(),
+                    ),
+                    class_name="kb-detail-section-text",
+                ),
+                rx.el.button(
+                    "Download STL",
+                    type="button",
+                    class_name="kb-stl-download",
+                    on_click=KnowledgebaseState.download_protein_stl(KnowledgebaseState.d_gene),
+                ),
+            ),
+            class_name="kb-detail-section",
+        ),
+        rx.fragment(),
+    )
+
+
 def _dossier_properties() -> rx.Component:
     return rx.fragment(
+        rx.el.div(
+            rx.el.div("Protein identifiers", class_name="kb-detail-section-label"),
+            _kb_prop_id_row(
+                KnowledgebaseState.d_protein_id_label,
+                KnowledgebaseState.d_protein_id,
+                KnowledgebaseState.d_gene_url,
+            ),
+            _kb_prop_id_row("PDB", KnowledgebaseState.d_pdb_id, KnowledgebaseState.d_pdb_url),
+            rx.cond(
+                (KnowledgebaseState.d_protein_id == "") & (KnowledgebaseState.d_reference_protein != ""),
+                _kb_prop_row("Reference protein", KnowledgebaseState.d_reference_protein),
+                rx.fragment(),
+            ),
+            rx.cond(
+                (KnowledgebaseState.d_protein_id == "")
+                & (KnowledgebaseState.d_pdb_id == "")
+                & (KnowledgebaseState.d_reference_protein == ""),
+                rx.el.div(
+                    "No UniProt, NCBI, or PDB accession stored for this entry. "
+                    "Some cards are multi-gene programs rather than a single protein.",
+                    class_name="kb-detail-section-text",
+                ),
+                rx.fragment(),
+            ),
+            class_name="kb-detail-section",
+        ),
+        rx.el.div(
+            rx.el.div("Biophysical properties", class_name="kb-detail-section-label"),
+            _kb_prop_row("Protein length (aa)", KnowledgebaseState.d_protein_length_aa),
+            _kb_prop_row("Protein mass (kDa)", KnowledgebaseState.d_protein_mass_kda),
+            _kb_prop_row("Exon count", KnowledgebaseState.d_exon_count),
+            _kb_prop_row("Disorder (%)", KnowledgebaseState.d_disorder_pct),
+            _kb_prop_row("Isoelectric point (pI)", KnowledgebaseState.d_isoelectric_point_pI),
+            _kb_prop_row("GRAVY score", KnowledgebaseState.d_gravy_score),
+            class_name="kb-detail-section",
+        ),
+        _dossier_stl_block(),
         rx.cond(
             KnowledgebaseState.d_confidence != "",
             rx.el.div(
@@ -3110,7 +3315,16 @@ def _dossier_properties() -> rx.Component:
         rx.el.div(
             rx.cond(
                 KnowledgebaseState.d_gene_url != "",
-                rx.el.a("UniProt", href=KnowledgebaseState.d_gene_url, target="_blank", class_name="kb-ext-link"),
+                rx.el.a(
+                    rx.cond(
+                        KnowledgebaseState.d_protein_id_label != "",
+                        KnowledgebaseState.d_protein_id_label,
+                        "Protein DB",
+                    ),
+                    href=KnowledgebaseState.d_gene_url,
+                    target="_blank",
+                    class_name="kb-ext-link",
+                ),
                 rx.fragment(),
             ),
             rx.cond(
@@ -3125,7 +3339,12 @@ def _dossier_properties() -> rx.Component:
             ),
             rx.cond(
                 KnowledgebaseState.d_pdb_url != "",
-                rx.el.a("PDB", href=KnowledgebaseState.d_pdb_url, target="_blank", class_name="kb-ext-link"),
+                rx.el.a(
+                    "PDB",
+                    href=KnowledgebaseState.d_pdb_url,
+                    target="_blank",
+                    class_name="kb-ext-link",
+                ),
                 rx.fragment(),
             ),
             rx.cond(
@@ -3161,6 +3380,52 @@ def _dossier_header() -> rx.Component:
             class_name="kb-detail-species",
         ),
         rx.el.span(KnowledgebaseState.d_evidence, class_name="kb-detail-tier-badge"),
+        rx.el.div(
+            rx.cond(
+                KnowledgebaseState.d_protein_id != "",
+                rx.cond(
+                    KnowledgebaseState.d_gene_url != "",
+                    rx.el.a(
+                        KnowledgebaseState.d_protein_id_label,
+                        " ",
+                        KnowledgebaseState.d_protein_id,
+                        href=KnowledgebaseState.d_gene_url,
+                        target="_blank",
+                        rel="noopener noreferrer",
+                        class_name="kb-id-chip",
+                    ),
+                    rx.el.span(
+                        KnowledgebaseState.d_protein_id_label,
+                        " ",
+                        KnowledgebaseState.d_protein_id,
+                        class_name="kb-id-chip",
+                    ),
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                KnowledgebaseState.d_pdb_id != "",
+                rx.cond(
+                    KnowledgebaseState.d_pdb_url != "",
+                    rx.el.a(
+                        "PDB ",
+                        KnowledgebaseState.d_pdb_id,
+                        href=KnowledgebaseState.d_pdb_url,
+                        target="_blank",
+                        rel="noopener noreferrer",
+                        class_name="kb-id-chip",
+                    ),
+                    rx.el.span("PDB ", KnowledgebaseState.d_pdb_id, class_name="kb-id-chip"),
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                KnowledgebaseState.d_stl_file != "",
+                rx.el.span("STL ", KnowledgebaseState.d_stl_difficulty, class_name="kb-id-chip"),
+                rx.fragment(),
+            ),
+            class_name="kb-id-chip-row",
+        ),
     )
 
 

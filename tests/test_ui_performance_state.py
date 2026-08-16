@@ -4,12 +4,38 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
+from materialized_enhancements.gene_data import read_protein_stl, stl_display_for_gene
 from materialized_enhancements.state import (
     COMPOSITION_GENE_CATALOG,
     COMPOSITION_GENE_CATALOG_BY_CATEGORY,
     COMPOSITION_GENE_DETAILS,
     ComposeState,
 )
+
+
+def test_category_catalog_rows_expose_protein_ids_and_stl() -> None:
+    """Game cards must carry accessions and STL metadata, not only materialization."""
+    assert COMPOSITION_GENE_CATALOG
+    with_protein_id = [row for row in COMPOSITION_GENE_CATALOG if row["protein_id"]]
+    with_stl = [row for row in COMPOSITION_GENE_CATALOG if row["stl_file"]]
+    assert len(with_protein_id) >= 80
+    assert len(with_stl) >= 40
+    afp = next(row for row in COMPOSITION_GENE_CATALOG if row["gene_id"] == "afp_fish")
+    assert afp["protein_id"] == "P04002"
+    assert afp["protein_id_label"] == "UniProt"
+    assert afp["pdb_id"] == "1WFB"
+    assert afp["stl_file"] == "1WFB_cartoon.stl"
+    moss = next(row for row in COMPOSITION_GENE_CATALOG if row["gene_id"] == "scaldh21_moss")
+    assert moss["protein_id"] == "ACT10823"
+    assert moss["protein_id_label"] == "NCBI Protein"
+    assert "ncbi.nlm.nih.gov/protein/ACT10823" in moss["gene_url"]
+    stl = stl_display_for_gene(gene="AFP / AFGP", gene_id="afp_fish")
+    assert stl["file"] == "1WFB_cartoon.stl"
+    payload = read_protein_stl(gene="AFP / AFGP")
+    assert payload is not None
+    data, filename = payload
+    assert filename == "1WFB_cartoon.stl"
+    assert len(data) > 80
 
 
 def test_category_catalog_rows_carry_details_fields() -> None:
