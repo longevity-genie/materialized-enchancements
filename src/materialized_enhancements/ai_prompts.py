@@ -276,7 +276,7 @@ def format_gene_ai_dossier(gene: Mapping[str, Any]) -> str:
         f"trait: {_clean_text(gene.get('trait'))}\n"
         f"species: {_clean_text(gene.get('species_common_names'))} "
         f"({_clean_text(gene.get('species_scientific_names'))})\n"
-        f"evidence_tier: {_clean_text(gene.get('evidence_tier'))}"
+        f"evidence_basis: {_clean_text(gene.get('evidence_basis'))}"
     )
     priority_sections: list[tuple[str, str]] = [
         ("Identity", identity),

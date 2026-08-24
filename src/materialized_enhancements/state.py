@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any, AsyncIterator, Dict, TypedDict
 from urllib.parse import quote
 
@@ -102,8 +103,145 @@ class KeyReferenceSegment(TypedDict):
 ProseSegment = KeyReferenceSegment
 
 
+# Written for a curious non-biologist: every term in the manipulation vocabulary
+# gets a plain-language gloss, because "heterologous expression" on a badge
+# tells a visitor nothing except that this page is not for them.
+MANIPULATION_DESCRIPTIONS: dict[str, str] = {
+    "Overexpression": "Turning up a gene the body already has, so it makes more of the protein than usual.",
+    "Heterologous expression": "Borrowing a gene from another species — a tardigrade's radiation-shield gene, switched on inside a human cell.",
+    "Pathway transfer": "Moving a whole team of genes across together, because no single one of them does the job alone.",
+    "Copy-number expansion": "Adding extra copies of the same gene. Elephants carry twenty copies of a cancer-guard gene; we have one.",
+    "Variant knock-in": "Swapping in a rare version of a gene that some people or animals already carry naturally.",
+    "Base editing": "Changing a single letter of DNA, like correcting one typo without reprinting the page.",
+    "Haplotype introgression": "Inheriting a whole block of DNA from another population — Tibetans carry one from Denisovans.",
+    "Knockout": "Switching a gene off completely — sometimes deliberately, sometimes a version people are simply born without.",
+    "Knockdown": "Turning a gene down rather than off, and usually only for a while.",
+    "Transcription-factor reprogramming": "Flipping a handful of master-switch genes that tell a cell to behave young again.",
+    "Recombinant protein administration": "Not a gene change at all — the protein is brewed in a lab and given as a medicine.",
+    "Pharmacological modulation": "Not a gene change — a drug or antibody blocks the protein after the gene has made it.",
+}
+
+
+# Evidence grades, strongest first. This is our own scale, not GRADE or Oxford
+# CEBM, so the letter never travels without its words: "B" alone means nothing to
+# a visitor, and S/A/B needs no explanation of which end is up (unlike the old
+# T1-T10, where T1 read as *best* to anyone who knows Oxford CEBM levels).
+#
+# Colours extend the ramp the app already used for tiers — green for strong,
+# through yellow and amber, to neutral slate for "barely tested". Deliberately
+# not the gaming gold/red tier-list palette: red reads as danger, and grade S
+# includes therapies sold with no oversight at all.
+EVIDENCE_GRADES: dict[str, tuple[str, str, str]] = {
+    # grade: (short label shown inline, plain-language tooltip, colour)
+    "S": (
+        "approved and on sale",
+        "A regulator has approved it and you can buy it today, backed by real trials. Approval means it cleared safety and efficacy review — not that it will work for you.",
+        "#15803d",
+    ),
+    "A": (
+        "phase 2 trials in people",
+        "Tested in people at the stage where efficacy is measured, not just safety. Some of these trials succeeded and some failed — reaching phase 2 says the question was asked properly, not that the answer was yes.",
+        "#22c55e",
+    ),
+    "B": (
+        "phase 1, or human genetics",
+        "Either a first-in-human safety trial, or large studies of people who naturally carry the variant. Real human evidence, but nobody has shown it does the intended job.",
+        "#84cc16",
+    ),
+    "C": (
+        "mammals, usually mice",
+        "Works in a living mammal, nearly always mice. The most crowded grade in the library, and as far as most of these genes have got.",
+        "#eab308",
+    ),
+    "D": (
+        "animals, not mammals",
+        "Works in a living animal, but not a mammal — a worm, a fly, or a fish.",
+        "#f59e0b",
+    ),
+    "E": (
+        "cells or test tube only",
+        "Shown in cells in a dish, in a test tube, or only on a computer. Never tested in a living animal.",
+        "#94a3b8",
+    ),
+}
+
+_GRADE_OF_TIER: dict[int, str] = {
+    10: "S", 9: "S", 8: "A", 7: "A", 6: "B", 5: "C", 4: "D", 3: "E", 2: "E", 1: "E",
+}
+
+
+def evidence_grade(gene: Mapping[str, Any] | str) -> str:
+    """Stored grade for a gene, falling back to its legacy tier string.
+
+    Pass the gene row: the grade lives in ``genes.evidence_grade``, computed from
+    the trial record because the free-text tier disagreed with it on most genes
+    that reached humans (VEGF is approved in Russia and its tier read "T5").
+
+    The string fallback exists only for rows predating the column. It reads the
+    LEADING tier, never the maximum: compound strings cite a stronger tier for a
+    *different* gene than the enhancement — UCP1 reads "T5 (mouse cohorts) + T7
+    for endogenous human brown-fat physiology; no human gain-of-function
+    exposure" — so the max advertises human evidence the record denies having.
+    """
+    if not isinstance(gene, str):
+        stored = str(gene.get("evidence_grade") or "").strip().upper()
+        if stored in EVIDENCE_GRADES:
+            return stored
+        gene = str(gene.get("evidence_basis") or "")
+    match = re.search(r"T(\d+)", gene or "")
+    if not match:
+        return ""
+    return _GRADE_OF_TIER.get(int(match.group(1)), "")
+
+
+def evidence_short(gene: Mapping[str, Any] | str) -> str:
+    """Compact self-explanatory badge, e.g. ``C · mammals, usually mice``."""
+    grade = evidence_grade(gene)
+    if not grade:
+        raw = gene if isinstance(gene, str) else str(gene.get("evidence_basis") or "")
+        return raw[:48]
+    return f"{grade} · {EVIDENCE_GRADES[grade][0]}"
+
+
+def evidence_help(gene: Mapping[str, Any] | str) -> str:
+    """Plain-language gloss for an evidence badge, for readers who are not biologists."""
+    grade = evidence_grade(gene)
+    if not grade:
+        return gene if isinstance(gene, str) else str(gene.get("evidence_basis") or "")
+    label, description, _ = EVIDENCE_GRADES[grade]
+    return f"Grade {grade} of S-E on our own evidence scale ({label}) — {description}"
+
+
+def evidence_color(gene: Mapping[str, Any] | str) -> str:
+    """Badge colour for an evidence grade; neutral slate when no grade resolves."""
+    grade = evidence_grade(gene)
+    return EVIDENCE_GRADES[grade][2] if grade else "#94a3b8"
+
+
+# ``genes.manipulation`` is a controlled vocabulary: one of the twelve terms in
+# ``MANIPULATION_DESCRIPTIONS``. The substring fallbacks below only cover rows
+# that predate the vocabulary; they can go once Dolt holds nothing else.
+_MANIPULATION_ICONS: dict[str, str] = {
+    "Overexpression": "overexpression",
+    "Heterologous expression": "expression",
+    "Pathway transfer": "transfer",
+    "Copy-number expansion": "expansion",
+    "Variant knock-in": "knockin",
+    "Base editing": "editing",
+    "Haplotype introgression": "knockin",
+    "Knockout": "knockout",
+    "Knockdown": "knockout",
+    "Transcription-factor reprogramming": "expression",
+    "Recombinant protein administration": "other",
+    "Pharmacological modulation": "other",
+}
+
+
 def _manipulation_icon_key(manipulation: str) -> str:
     """Classify a manipulation string into an icon key for rx.match in the UI."""
+    known = _MANIPULATION_ICONS.get(manipulation.strip())
+    if known is not None:
+        return known
     m = manipulation.lower()
     if "knockout" in m:
         return "knockout"
@@ -122,6 +260,13 @@ def _manipulation_icon_key(manipulation: str) -> str:
     return "other"
 
 
+def manipulation_help(manipulation: str) -> str:
+    """Plain-language gloss for the manipulation badge, for readers who are not biologists."""
+    term = manipulation.strip()
+    description = MANIPULATION_DESCRIPTIONS.get(term)
+    return f"{term}: {description}" if description else term
+
+
 class SculptureSelectedGene(TypedDict):
     """Row passed to foreach for sculpture gene checkboxes (nested segments must be typed)."""
 
@@ -129,6 +274,7 @@ class SculptureSelectedGene(TypedDict):
     gene: str
     manipulation: str
     manipulation_icon: str
+    manipulation_help: str
     trait: str
     category: str
     category_detail: str
@@ -143,7 +289,10 @@ class SculptureSelectedGene(TypedDict):
     mechanism_segments: list[ProseSegment]
     achievements: str
     achievements_segments: list[ProseSegment]
-    evidence_tier: str
+    evidence_basis: str
+    evidence_badge: str
+    evidence_color: str
+    evidence_help: str
     confidence_entries: list[dict[str, str]]
     confidence_primary: dict[str, str]
     confidence_details: list[dict[str, str]]
@@ -202,6 +351,7 @@ class SculptureGeneCard(TypedDict):
     gene: str
     manipulation: str
     manipulation_icon: str
+    manipulation_help: str
     category: str
     category_detail: str
     secondary_categories: list[str]
@@ -209,7 +359,10 @@ class SculptureGeneCard(TypedDict):
     species_scientific_names: str
     short_description: str
     short_description_segments: list[ProseSegment]
-    evidence_tier: str
+    evidence_basis: str
+    evidence_badge: str
+    evidence_color: str
+    evidence_help: str
     confidence_primary: dict[str, str]
     gene_url: str
     puzzle_src: str
@@ -355,6 +508,7 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "gene": g["gene"],
         "manipulation": g["manipulation"],
         "manipulation_icon": _manipulation_icon_key(str(g["manipulation"])),
+        "manipulation_help": manipulation_help(str(g["manipulation"])),
         "trait": g["trait"],
         "category": g["category"],
         "category_detail": g["category_detail"],
@@ -369,7 +523,10 @@ def build_composition_gene_row(g: dict[str, Any], *, included: bool = False) -> 
         "mechanism_segments": _linkify_prose_segments(str(g.get("mechanism", "") or "")),
         "achievements": g["achievements"],
         "achievements_segments": _linkify_prose_segments(str(g.get("achievements", "") or "")),
-        "evidence_tier": g["evidence_tier"],
+        "evidence_basis": g["evidence_basis"],
+        "evidence_badge": evidence_short(g),
+        "evidence_color": evidence_color(g),
+        "evidence_help": evidence_help(g),
         "confidence_entries": g.get("confidence_entries", []),
         "confidence_primary": g.get("confidence_primary", _EMPTY_CONFIDENCE_PRIMARY),
         "confidence_details": g.get("confidence_details", []),
@@ -416,6 +573,7 @@ def build_composition_gene_card(row: SculptureSelectedGene) -> SculptureGeneCard
         "gene": row["gene"],
         "manipulation": row["manipulation"],
         "manipulation_icon": row["manipulation_icon"],
+        "manipulation_help": row["manipulation_help"],
         "category": row["category"],
         "category_detail": row["category_detail"],
         "secondary_categories": row["secondary_categories"],
@@ -423,7 +581,10 @@ def build_composition_gene_card(row: SculptureSelectedGene) -> SculptureGeneCard
         "species_scientific_names": row["species_scientific_names"],
         "short_description": row["short_description"],
         "short_description_segments": row["short_description_segments"],
-        "evidence_tier": row["evidence_tier"],
+        "evidence_basis": row["evidence_basis"],
+        "evidence_badge": row["evidence_badge"],
+        "evidence_color": row["evidence_color"],
+        "evidence_help": row["evidence_help"],
         "confidence_primary": row["confidence_primary"],
         "gene_url": row["gene_url"],
         "puzzle_src": row["puzzle_src"],
@@ -442,6 +603,7 @@ def _empty_sculpture_selected_gene() -> SculptureSelectedGene:
         "gene": "",
         "manipulation": "",
         "manipulation_icon": "other",
+        "manipulation_help": "",
         "trait": "",
         "category": "",
         "category_detail": "",
@@ -456,7 +618,10 @@ def _empty_sculpture_selected_gene() -> SculptureSelectedGene:
         "mechanism_segments": [],
         "achievements": "",
         "achievements_segments": [],
-        "evidence_tier": "",
+        "evidence_basis": "",
+        "evidence_badge": "",
+        "evidence_color": "#94a3b8",
+        "evidence_help": "",
         "confidence_entries": [],
         "confidence_primary": dict(_EMPTY_CONFIDENCE_PRIMARY),
         "confidence_details": [],
@@ -593,25 +758,27 @@ def _mobile_onboarding_scroll_script(step: int) -> str:
     fallback_by_step = {
         0: "#gene-library",
         1: "#compose-personal-tag",
-        2: ".me-rpg-body-stage > .me-rpg-materialize-leg-cta.me-onboarding-materialize-lift",
+        2: ".me-rpg-materialize-leg-cta.me-onboarding-materialize-lift",
         3: "#gene-library",
     }
     fallback = fallback_by_step[min(3, max(0, step))]
     block = "start" if step in (0, 3) else "center"
     return f"""
 (() => {{
+    let attempts = 0;
     const run = () => {{
+        attempts++;
         const tip = document.querySelector(".me-onboarding-tip-card");
         const target = tip || document.querySelector({json.dumps(fallback)});
-        if (!target) return;
+        if (!target) {{
+            if (attempts < 25) setTimeout(run, 100);
+            return;
+        }}
         const rect = target.getBoundingClientRect();
         const vh = window.innerHeight || document.documentElement.clientHeight || 0;
         const fullyVisible = rect.top >= 8 && rect.bottom <= (vh - 8);
-        const tipFixed = tip && window.getComputedStyle(tip).position === "fixed";
-        if (fullyVisible && tipFixed) return;
-        if (!fullyVisible) {{
-            target.scrollIntoView({{behavior: "smooth", block: {json.dumps(block)}, inline: "nearest"}});
-        }}
+        if (fullyVisible) return;
+        target.scrollIntoView({{behavior: "smooth", block: {json.dumps(block)}, inline: "nearest"}});
         // Tip may sit inside a height-capped scroll panel — scroll that ancestor too.
         if (!tip) return;
         let parent = tip.parentElement;
@@ -632,8 +799,7 @@ def _mobile_onboarding_scroll_script(step: int) -> str:
             parent = parent.parentElement;
         }}
     }};
-    window.setTimeout(run, 80);
-    window.setTimeout(run, 280);
+    setTimeout(run, 80);
 }})();
 """
 
@@ -852,6 +1018,7 @@ CATEGORY_DESCRIPTIONS: dict[str, str] = {
     "Perception": "Expanded senses such as better vision, hearing, navigation, or environmental awareness.",
     "Expression": "Visible biological traits such as color, light, texture, or other surface-level signals.",
 }
+
 
 
 _TAB_ROUTE_MAP: dict[str, str] = {
@@ -3117,7 +3284,7 @@ class ComposeState(rx.State):
         ):
             return True
         if self.onboarding_version != ONBOARDING_STORAGE_VERSION:
-            return False
+            return True
         complete = str(self.onboarding_complete or "false").strip().lower() == "true"
         dismissed = str(self.dismissed_onboarding or "false").strip().lower() == "true"
         step = str(self.onboarding_step or "0").strip().lower()

@@ -1438,13 +1438,13 @@ def _gene_tested_on_fold(testing_entries: rx.Var) -> rx.Component:
     )
 
 
-def _gene_evidence_tier_row(evidence_tier: rx.Var) -> rx.Component:
-    """Compact highest-evidence-tier label for the default gene-card surface."""
+def _gene_evidence_row(gene_item: rx.Var) -> rx.Component:
+    """Compact evidence-grade badge for the default gene-card surface."""
     return rx.cond(
-        evidence_tier != "",
+        gene_item["evidence_badge"] != "",
         rx.el.div(
             rx.el.span(
-                "Highest evidence",
+                "Evidence",
                 style={
                     "fontSize": "0.95rem",
                     "fontWeight": "900",
@@ -1456,16 +1456,19 @@ def _gene_evidence_tier_row(evidence_tier: rx.Var) -> rx.Component:
                 },
             ),
             rx.el.span(
-                evidence_tier,
+                gene_item["evidence_badge"],
+                title=gene_item["evidence_help"],
+                aria_label=gene_item["evidence_help"],
                 style={
                     "fontSize": "0.82rem",
                     "fontWeight": "700",
                     "padding": "2px 10px",
                     "borderRadius": "6px",
-                    "backgroundColor": "rgba(56, 189, 248, 0.14)",
-                    "color": "#7dd3fc",
-                    "border": "1px solid rgba(125, 211, 252, 0.35)",
+                    "backgroundColor": f'color-mix(in srgb, {gene_item["evidence_color"]} 20%, transparent)',
+                    "color": gene_item["evidence_color"],
+                    "border": f'1px solid color-mix(in srgb, {gene_item["evidence_color"]} 45%, transparent)',
                     "whiteSpace": "nowrap",
+                    "cursor": "help",
                 },
             ),
             style={"display": "flex", "alignItems": "center", "flexWrap": "wrap", "gap": "2px"},
@@ -2077,6 +2080,8 @@ def _manipulation_badge(gene_item: rx.Var, included: rx.Var) -> rx.Component:
             color=rx.cond(included, "#6d28d9", "#9ca3af"),
         ),
         gene_item["manipulation"],
+        title=gene_item["manipulation_help"],
+        aria_label=gene_item["manipulation_help"],
         style={
             "display": "inline-flex",
             "alignItems": "center",
@@ -2084,6 +2089,7 @@ def _manipulation_badge(gene_item: rx.Var, included: rx.Var) -> rx.Component:
             "fontSize": "0.72rem",
             "fontWeight": "600",
             "padding": "1px 6px",
+            "cursor": "help",
             "borderRadius": "4px",
             "backgroundColor": rx.cond(included, "#f3f0ff", "#f3f4f6"),
             "color": rx.cond(included, "#6d28d9", "#9ca3af"),
@@ -2097,6 +2103,8 @@ def _manipulation_badge_dark(gene_item: rx.Var) -> rx.Component:
     return rx.el.span(
         _manipulation_icon(gene_item["manipulation_icon"], size=10, color="#c4b5fd"),
         gene_item["manipulation"],
+        title=gene_item["manipulation_help"],
+        aria_label=gene_item["manipulation_help"],
         style={
             "display": "inline-flex",
             "alignItems": "center",
@@ -2104,6 +2112,7 @@ def _manipulation_badge_dark(gene_item: rx.Var) -> rx.Component:
             "fontSize": "0.72rem",
             "fontWeight": "700",
             "padding": "2px 8px",
+            "cursor": "help",
             "borderRadius": "4px",
             "backgroundColor": "rgba(124, 58, 237, 0.16)",
             "color": "#c4b5fd",
@@ -2261,7 +2270,7 @@ def _gene_checkbox(gene_item: rx.Var) -> rx.Component:
         ),
         rx.el.div(
             _gene_confidence_section(gene_item["confidence_primary"]),
-            _gene_evidence_tier_row(gene_item["evidence_tier"]),
+            _gene_evidence_row(gene_item),
             _gene_availability_badges(gene_item),
             _gene_ai_controls(gene_item, dark=False),
             style={
@@ -4394,7 +4403,7 @@ def _rpg_gene_card(gene_item: rx.Var) -> rx.Component:
             ),
             rx.el.div(
                 _gene_confidence_section(gene_item["confidence_primary"]),
-                _gene_evidence_tier_row(gene_item["evidence_tier"]),
+                _gene_evidence_row(gene_item),
                 _gene_availability_badges(gene_item),
                 _gene_ai_controls(gene_item, dark=True),
                 style={
@@ -7066,6 +7075,7 @@ def _onboarding_backdrop() -> rx.Component:
         ComposeState.show_onboarding_suggestion,
         rx.el.div(
             on_click=ComposeState.advance_onboarding,
+            class_name="me-onboarding-backdrop",
             style={
                 "position": "fixed",
                 "top": "0",
@@ -8278,10 +8288,10 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
             _gene_tested_on_row(gene_item["testing_entries"]),
             _gene_testing_table(gene_item["testing_entries"]),
             rx.cond(
-                gene_item["evidence_tier"] != "",
+                gene_item["evidence_badge"] != "",
                 rx.el.div(
                     rx.el.span(
-                        "Evidence tier",
+                        "Evidence",
                         style={
                             "fontSize": "0.8rem",
                             "fontWeight": "800",
@@ -8292,8 +8302,10 @@ def _report_gene_row(gene_item: rx.Var) -> rx.Component:
                         },
                     ),
                     rx.el.span(
-                        gene_item["evidence_tier"],
-                        style={"fontSize": "0.88rem", "color": "#cbd5e1", "lineHeight": "1.45"},
+                        gene_item["evidence_badge"],
+                        title=gene_item["evidence_help"],
+                        style={"fontSize": "0.88rem", "color": gene_item["evidence_color"],
+                               "fontWeight": "700", "lineHeight": "1.45", "cursor": "help"},
                     ),
                     style={"display": "flex", "alignItems": "baseline", "flexWrap": "wrap", "gap": "4px"},
                 ),
@@ -9524,10 +9536,10 @@ def _report_pdf_long_content() -> rx.Component:
                     data_puzzle_src=g["puzzle_src"],
                 ),
                 rx.cond(
-                    g["evidence_tier"] != "",
+                    g["evidence_badge"] != "",
                     rx.el.p(
-                        rx.el.span("Evidence tier: ", style={"color": "#9ca3af", "fontWeight": "600"}),
-                        rx.el.span(g["evidence_tier"], style={"color": "#374151"}),
+                        rx.el.span("Evidence: ", style={"color": "#9ca3af", "fontWeight": "600"}),
+                        rx.el.span(g["evidence_badge"], style={"color": "#374151"}),
                         class_name="me-report-evidence-tier",
                         style={"fontSize": "0.74rem", "margin": "0 0 2px 0", "lineHeight": "1.45"},
                     ),
@@ -11323,22 +11335,27 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
                 z-index: 1010 !important;
             }
             .me-rpg-profile-page .me-onboarding-tip-card {
-                position: fixed !important;
-                left: 12px !important;
-                right: 12px !important;
-                top: max(12px, env(safe-area-inset-top, 0px)) !important;
+                position: relative !important;
+                left: auto !important;
+                right: auto !important;
+                top: auto !important;
                 bottom: auto !important;
                 transform: none !important;
-                z-index: 1400 !important;
-                width: auto !important;
+                z-index: 1210 !important;
+                width: 100% !important;
                 max-width: calc(100vw - 24px) !important;
-                max-height: min(52svh, calc(100svh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))) !important;
                 overflow-y: auto !important;
                 overscroll-behavior: contain !important;
                 padding: 10px 12px !important;
-                margin: 0 !important;
+                margin: 0 0 8px 0 !important;
                 border-radius: 12px !important;
                 box-shadow: 0 0 18px rgba(255, 255, 255, 0.52) !important;
+            }
+            .me-rpg-profile-page .me-onboarding-backdrop {
+                pointer-events: none !important;
+            }
+            .me-rpg-profile-page .me-rpg-left-panel.me-onboarding-gene-lift {
+                pointer-events: auto !important;
             }
             .me-rpg-profile-page .me-onboarding-tip-card p {
                 font-size: 0.88rem !important;

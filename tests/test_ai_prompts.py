@@ -123,7 +123,7 @@ def test_gene_dossier_stays_within_url_budget_for_heavy_genes() -> None:
             "trait": "Telomere",
             "species_common_names": "Human",
             "species_scientific_names": "Homo sapiens",
-            "evidence_tier": "T5",
+            "evidence_basis": "T5",
             "short_description": "Telomerase.",
             "achievements": "Longer telomeres in mice.",
             "mechanism": "Extends telomeres.",

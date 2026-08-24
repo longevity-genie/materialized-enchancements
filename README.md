@@ -1,6 +1,6 @@
 # Materialized Enhancements
 
-> **Build your post-human character from real genes — tardigrade radiation shields, naked-mole-rat cancer resistance, Greenland shark longevity — backed by scientific evidence tiers and real citations — and 3D-print the result.**
+> **Build your post-human character from real genes — tardigrade radiation shields, naked-mole-rat cancer resistance, Greenland shark longevity — backed by graded scientific evidence and real citations — and 3D-print the result.**
 
 An RPG-style character creator for speculative human enhancement. Spend enhancement credits on real genes from extraordinary organisms, watch your profile light up by category, then materialize the result as a unique 3D-printable artifact and a personal enhancement report.
 
@@ -14,7 +14,7 @@ An RPG-style character creator for speculative human enhancement. Spend enhancem
 
 Upgrading human DNA is not science fiction — it is already happening in adults today. In alternative jurisdictions like Prospera, medical tourists are actively receiving gene therapies for muscle growth (Follistatin) and blood vessel creation (VEGF). The next decade will bring harder questions about what traits people might choose. Nature has already evolved extreme survival modules: tardigrade radiation shields, whale DNA repair, axolotl regeneration, bat immune tolerance, and cephalopod expression systems.
 
-**Materialized Enhancements** turns that biology into a playful experience. Learn real genetics along the way: every gene card cites peer-reviewed papers with DOIs, shows a tiered evidence grade (T1–T10), and is upfront about contradictions and translational gaps. Pick your favourites, then take home a unique souvenir — a 3D-printable form and a personal report generated from your choices.
+**Materialized Enhancements** turns that biology into a playful experience. Learn real genetics along the way: every gene card cites peer-reviewed papers with DOIs, shows a graded evidence level (`S`–`E`), and is upfront about contradictions and translational gaps. Pick your favourites, then take home a unique souvenir — a 3D-printable form and a personal report generated from your choices.
 
 ---
 
@@ -85,24 +85,58 @@ For physical installations, the app supports kiosk mode with ARTEX venue display
 
 ## Gene Knowledge Base
 
-The gene library is more than game data — it is a curated knowledge base of real genetic enhancements backed by peer-reviewed research. Every entry includes a biological narrative, molecular mechanism, quantified achievements with DOIs, evidence tiers, confidence assessments, translational gaps, and experimental testing records across multiple organisms.
+The gene library is more than game data — it is a curated knowledge base of real genetic enhancements backed by peer-reviewed research. Every entry includes a biological narrative, molecular mechanism, quantified achievements with DOIs, an S–E evidence grade, confidence assessments, translational gaps, and experimental testing records across multiple organisms.
 
 Whether you are a researcher studying gene transfer, a biohacker evaluating enhancement options, or a transhumanist tracking which therapies are already available in alternative jurisdictions — the database gives you structured, evidence-graded data to work from. We are expanding it to include providers and clinics offering gene therapies today.
 
-136 genes catalogued (89 playable in the RPG, 47 knowledge-base-only pending biophysical data) · 6 parent categories · 72 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,134 experimental evidence records · 751 registered clinical trials · 109 organizations (69 academic labs, 37 biotech companies, 3 clinics) · 973 unique DOI-linked references.
+136 genes catalogued (106 playable in the RPG, 30 knowledge-base-only — 28 pending biophysical data, 2 with no protein behind them) · 6 parent categories · 72 source species across all 5 kingdoms of life (Animalia, Bacteria, Archaea, Fungi, Plantae) · 1,134 experimental evidence records · 751 registered clinical trials · 109 organizations (69 academic labs, 37 biotech companies, 3 clinics) · 973 unique DOI-linked references.
 
 
 | Category                 | Total | Playable | Example organisms                                                                    |
 | ------------------------ | ----- | -------- | ------------------------------------------------------------------------------------ |
-| Longevity & Genome       | 44    | 25       | Greenland shark, Naked mole-rat, African elephant, Orange roughy, Mouse              |
-| Environmental Adaptation | 20    | 17       | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium         |
-| Stress Resistance        | 23    | 15       | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon, Fruit fly     |
+| Longevity & Genome       | 44    | 39       | Greenland shark, Naked mole-rat, African elephant, Orange roughy, Mouse |
+| Environmental Adaptation | 20    | 18       | Arctic ground squirrel, Electric eel, Chinese brake fern, Deep-sea bacterium |
+| Stress Resistance        | 23    | 17       | Tardigrade, Deinococcus, Desert moss, Hyperthermophilic vent archaeon, Fruit fly |
 | Expression               | 17    | 11       | Crystal jellyfish, Golden silk orbweaver, Humboldt squid, Venus flower basket sponge |
-| Regeneration             | 16    | 11       | Axolotl, Planarian, Spiny mouse, Immortal jellyfish, American lobster                |
-| Perception               | 16    | 10       | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin            |
+| Regeneration             | 16    | 11       | Axolotl, Planarian, Spiny mouse, Immortal jellyfish, American lobster |
+| Perception               | 16    | 10       | Little skate, Budgerigar, Anna's hummingbird, Corn snake, Silver spinyfin |
 
 
-Each gene has an **evidence tier** (T1–T10), a **confidence level**, quantified achievements with citations, and honest notes about limitations, contradictions, and translational gaps.
+Each gene has an **evidence grade** (`S`–`E`), a **confidence level**, quantified achievements with citations, and honest notes about limitations, contradictions, and translational gaps.
+
+### The evidence grade
+
+`genes.evidence_grade` is a six-point scale, strongest first. Every badge in the
+interface shows the letter together with its plain-language label, because the
+letter alone carries no meaning to a reader who has not read this table:
+
+| Grade | Label shown to visitors | Assigned when | Genes |
+|-------|-------------------------|---------------|-------|
+| `S` | approved and on sale | A regulator has approved a therapy for the target and it is on the market | 5 |
+| `A` | phase 2 trials in people | Reached phase 2 or 3, where efficacy and not merely safety is measured | 6 |
+| `B` | phase 1, or human genetics | First-in-human safety trial, **or** large studies of people who naturally carry the variant | 18 |
+| `C` | mammals, usually mice | Tested in a living mammal, nearly always mice | 48 |
+| `D` | animals, not mammals | Tested in a living animal that is not a mammal — worm, fly, fish | 16 |
+| `E` | cells or test tube only | Cells, a test tube, or a computer — or nothing recorded at all | 43 |
+
+Two properties of the scale are deliberate and worth stating plainly:
+
+- **The grade measures how far the evidence got, never whether the result was
+  good.** Grade `A` includes the ATOH1 hearing-regeneration programme, whose
+  completed human phase 2 *failed* on efficacy. Reaching phase 2 means the
+  question was asked properly, not that the answer was yes.
+- **Commercial availability never raises the grade.** Being purchasable is not
+  evidence of efficacy, and treating it as such would rank a $2.5M unregulated
+  offering above a replicated laboratory result. Availability, price, regulatory
+  status and peer-review status live in `organization_genes`, deliberately
+  separate from the grade. See *Reading commercial availability* below.
+
+**How the grade is derived.** `S`, `A` and `B` are read from the trial record in
+`organization_genes` (`stage` plus `regulatory_status`), not from prose. `C`, `D`
+and `E` fall back to the leading tier in the legacy `Evidence Basis`
+field. `Evidence Basis` holds the human-readable justification behind each
+letter and contains no tier numbers; 27 genes never had prose there and are
+correctly empty rather than padded.
 
 ### Browse, query, and contribute
 
@@ -137,7 +171,8 @@ Scientists and biologists can propose new genes — **no Python code changes nee
 3. **Add the gene row** to `gene_library.csv`:
   - Assign one of the 6 parent categories and a specific subcategory (trait)
   - Write the `Narrative` (150–300 words): describe the biology, cite the strongest evidence with effect sizes, be honest about contradictions and limitations
-  - Set `Highest Evidence Tier`: T7 (association only) → T6 (≥4 independent labs) → T5 (in-vivo mammal) → T4 (in-vivo non-mammal) → T3 (cell culture) → T2 (computational) → T1 (theoretical)
+  - Set `Evidence Grade`: `S` (approved and on sale) → `A` (phase 2/3 in people) → `B` (phase 1, or large human genetics) → `C` (mammals) → `D` (non-mammal animals) → `E` (cells or test tube). For anything that reached humans, take the grade from the trial record in `organization_genes`, not from the narrative
+  - Write `Evidence Basis` as the prose behind that letter — what was done, in what organism, at what scale. No tier numbers, and never a stronger result belonging to the human ortholog
   - Fill all required columns (see schema below)
 4. **Link gene to species** in `gene_species.csv`:
   - Add one row per source species: `gene_id,species_id`
@@ -257,14 +292,15 @@ All 9 tables are connected through two hubs:
 | ---------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `gene_id`                                      | **PK**   | Unique slug, e.g. `dsup`, `has2_nmr`. Used as join key everywhere.                                                                                                                                                                                          |
 | `Gene`                                         | yes      | Display name, e.g. `Dsup`, `HAS2`                                                                                                                                                                                                                           |
-| `Manipulation`                                 | yes      | How the gene is used: `Overexpression`, `Knockout`, `Base editing knockout`, etc.                                                                                                                                                                           |
+| `Manipulation`                                 | yes      | Controlled vocabulary, exactly one of twelve terms — see [Manipulation vocabulary](#manipulation-vocabulary). Put procedure detail (construct, dose, route) in `gene_testing`, never in this field.                                                          |
 | `Category`                                     | yes      | One of 6 parent categories: `Stress Resistance`, `Longevity & Genome`, `Regeneration`, `Environmental Adaptation`, `Perception`, `Expression`                                                                                                               |
 | `Subcategory`                                  | yes      | Specific trait within the category, e.g. `Radiation Shielding`, `Hyaluronic Acid`                                                                                                                                                                           |
 | `Narrative`                                    | yes      | 150–300 word biological story. Honest about contradictions — not hype.                                                                                                                                                                                      |
 | `Short Description`                            | yes      | 1–2 sentence plain-language summary                                                                                                                                                                                                                         |
 | `Mechanism`                                    | yes      | Molecular mechanism of action                                                                                                                                                                                                                               |
 | `Achievements (effect sizes)`                  | yes      | Quantified experimental results with citations                                                                                                                                                                                                              |
-| `Highest Evidence Tier`                        | yes      | `T1`–`T7` (T7 = association only, T6 = ≥4 independent labs, T5 = in-vivo mammal, T4 = in-vivo non-mammal, T3 = cell culture, T2 = computational, T1 = theoretical). Compound tiers like `T4 (human U2OS cell expression) + T3 (cross-species)` are allowed. |
+| `Evidence Basis`                               | optional | Prose justifying the grade — what was done, in what organism, at what scale. **No tier numbers**: they were retired with the S–E grade and a stray one is stale data (enforced by a test). Describe the enhancement itself, never a stronger result belonging to a different gene — see *Known limitations*. |
+| `Evidence Grade`                               | yes      | `S`, `A`, `B`, `C`, `D` or `E` — see [The evidence grade](#the-evidence-grade). For genes that have reached humans, derive it from the trial record in `organization_genes`, not from the narrative.                                                          |
 | `Translational Gaps`                           | yes      | What research is still needed                                                                                                                                                                                                                               |
 | `Key References (DOIs)`                        | yes      | Pipe-separated `Author Year URL` entries                                                                                                                                                                                                                    |
 | `Notes (limitations, contradictions, caveats)` | yes      | Caveats, contradictions between studies, known failure modes                                                                                                                                                                                                |
@@ -411,6 +447,189 @@ App loads from SQLite (preferred) or CSV fallback
 - `scripts/seed_db.py` — regenerates `data/enhancement.db` from CSV files locally: `uv run python scripts/seed_db.py`
 
 
+
+---
+
+
+
+## Methodology
+
+This section documents how the knowledge base is built and graded, in enough
+detail to reproduce or audit it.
+
+### Data provenance
+
+The canonical store is the DoltHub database `longevity-genie/enhancement-bio`, a
+version-controlled MySQL-compatible database in which every change is a commit
+with an author, a message and a diff. Two derived artefacts are generated from
+it and committed to this repository:
+
+```
+DoltHub (canonical, versioned)
+    │  db-to-sqlite, every 6h via GitHub Action or manually
+    ▼
+data/enhancement.db  (SQLite, what the application reads)
+    │  scripts/export_db_csv.py
+    ▼
+data/db_backup/*.csv  (git-diffable mirror, offline fallback)
+```
+
+Precedence is Dolt → SQLite → CSV. The CSVs are generated output: correcting the
+data means editing Dolt, never the CSV. `scripts/export_db_csv.py --check`
+exits non-zero when the mirror has drifted from the database.
+
+Because `db-to-sqlite` appends rather than replaces, a resync onto an existing
+file silently duplicates every row. Delete `data/enhancement.db` before syncing
+and verify row counts table-by-table against Dolt afterwards.
+
+### Controlled vocabularies
+
+Two fields that were originally free text are now closed vocabularies. Both were
+changed for the same reason: a field with roughly as many distinct values as it
+has rows is a description, not a category, and cannot be filtered, counted,
+coloured, or explained to a reader in a tooltip.
+
+#### Manipulation vocabulary
+
+`genes.manipulation` is exactly one of twelve terms. It previously held 103
+distinct free-text strings across 136 genes — including `overexpression` and
+`Overexpression` as separate values, and titles up to 128 characters carrying
+trial detail already stored in `gene_testing`.
+
+| Term | Meaning |
+|------|---------|
+| `Overexpression` | More of the host's own gene than it normally makes |
+| `Heterologous expression` | A gene from another organism expressed in a new host |
+| `Pathway transfer` | A defined multi-gene program moved across species together |
+| `Copy-number expansion` | Extra genomic copies are themselves the mechanism |
+| `Variant knock-in` | One specific allele or substitution written into the locus |
+| `Base editing` | A precise single-base conversion, no double-strand break |
+| `Haplotype introgression` | An allele block acquired from another population or species |
+| `Knockout` | Complete loss of function, engineered or natural |
+| `Knockdown` | Partial reduction of expression rather than complete loss |
+| `Transcription-factor reprogramming` | A cell-fate program driven by a transcription-factor cocktail |
+| `Recombinant protein administration` | Exogenous protein given as a drug; no genomic change |
+| `Pharmacological modulation` | A small molecule, antibody or cell therapy targeting the gene product |
+
+The distinction between `Overexpression` and `Heterologous expression` is
+decided by source species against test host, and separates 20 genes that are
+more of the host's own gene from 53 that are a gene borrowed from another
+organism — tardigrade *Dsup*, naked mole-rat *SOD2*, lobster *TERT*, bat
+*Prestin*. The last two rows are not genetic manipulations at all and are
+labelled as such rather than being quietly filed among them.
+
+Procedure detail — construct, dose, route, delivery, integration — belongs in
+`gene_testing` (`intervention`, `delivery`, `integration`), which stores one row
+per experiment and is the correct place for it.
+
+#### Evidence grade
+
+See [The evidence grade](#the-evidence-grade) for the scale itself. The
+assignment procedure, in order:
+
+1. **If a regulator has approved a therapy for the target and it is marketed →
+   `S`.** Read from `organization_genes.regulatory_status`.
+2. **Else if the highest `organization_genes.stage` is phase 2 or 3 → `A`.**
+3. **Else if it is phase 1 → `B`.**
+4. **Else if the record shows large human genetic studies of natural carriers →
+   `B`.**
+5. **Else read `gene_testing.host`** — the organism each experiment used:
+   any mammal → `C`, any non-mammal animal → `D`, cells or non-animal only → `E`.
+
+**Opposite-direction rows are excluded from step 5**, the same way NCT rows are. A
+knockout tests whether the gene is *required*, not whether adding it helps, so a
+loss-of-function result cannot set the grade on a gain-of-function card. `TRPV1s`
+shows why: its only mammal result is that *ablating* TRPV1 lengthens life, while
+the enhancement adds bat TRPV1s — evidence pointing against the card. The same
+rule already governs `gene_testing.positive`, where an opposite-direction result
+is `false`.
+
+Steps 1–4 consult the trial record rather than the narrative because the two
+disagreed for most genes that had reached humans. Step 5 reads the experimental
+hosts rather than prose, for the same reason.
+
+**NCT-referenced rows in `gene_testing` are excluded from grading.** They record
+trials of the *target*, not of the enhancement: counting them grades firefly
+luciferase and GFP as human-trialled and elephant TP53 on 143 oncology trials it
+has no part in. This is the same borrowing error described below, and it is easy
+to commit twice.
+
+### Reading commercial availability
+
+Several genes in this library can be bought today. `organization_genes` records
+who offers them and under what oversight, and this is kept strictly separate
+from the evidence grade. Three levels are distinguishable in the data and should
+not be conflated:
+
+| Oversight | What it means | Example |
+|-----------|---------------|---------|
+| Approved | A regulator reviewed and approved it; post-market surveillance applies | APOC3 (olezarsen, NDA 218614); VEGF (Neovasculgen, Russia) |
+| Registered trial | Public protocol, formal adverse-event grading, known enrollment | Follistatin, `NCT06411366` — phase 1, n=43, CTCAE v4.0, completed 2023-08-31, **results never posted** |
+| Sold, unregistered | No protocol, no adverse-event framework, no denominator | *TERT* offered at $2.5M with no trial registration |
+
+`peer_reviewed`, `price_usd`, `trial_id` and `regulatory_status` carry these
+facts. Absence of reported harm from an unregistered offering is not evidence of
+safety: with no protocol and no reporting pipeline, there is no mechanism by
+which harm would be recorded. A registered trial that completed and never posted
+results is likewise an absence of data, not a null result.
+
+### Known limitations
+
+Stated explicitly because each one is a live source of error in the current data.
+
+**Evidence grading conflates three dimensions.** The scale mixes biological
+proximity to humans (test tube → cells → non-mammal → mammal), independent
+replication, and clinical stage. These are not one ordered axis. A heterologous
+gene can be maxed on replication and structurally barred from clinical stage —
+*Dsup* could be confirmed by twenty laboratories in human cells and still never
+enter a trial — while a thin association study on a human variant reaches `B`
+cheaply. Grades are therefore comparable within a manipulation class more safely
+than across classes.
+
+**Tier borrowing.** Six genes cite a strong tier belonging to the *human
+ortholog* rather than to the enhancement, because the enhancement itself cannot
+reach that tier. *UCP1*'s entry paired mouse cohorts with human brown-fat physiology while
+stating `no human gain-of-function exposure`; *AQP1* said plainly that the human
+gene had human evidence while the frog gene actually on offer had almost none.
+Grading on the strongest claim in such an entry advertises human evidence the
+record denies having, which is why grades now come from the experimental and
+trial records rather than from prose.
+
+**Missing justification.** 27 of 136 genes carried a tier number and no prose at
+all, so no audit comparing the two could see them, and several were badly wrong:
+*VEGF*, approved in Russia with a phase 2 RCT behind it, had an evidence tier of
+exactly `T5`. Their `Evidence Basis` is now empty, which is honest but means the
+grade rests entirely on the structured record.
+
+**Genes with no experiments recorded.** 8 genes have no `gene_testing` rows and
+are graded `E`, whose label reads *cells or test tube only*. That asserts more
+than the record holds: there is no experimental evidence either way.
+
+**Approved-drug attribution.** Two of the five `S` genes are graded on an
+approved drug that hits the same target rather than on the genetic enhancement
+itself — ANGPTL3 (evinacumab) and LMNA (lonafarnib). VEGF's Neovasculgen is
+genuinely the gene therapy. This is the tier-borrowing pattern reappearing on
+the commercial axis.
+
+**Single-curator entries.** Most rows were authored by one curator against the
+primary literature and have not been independently re-derived. `peer_reviewed`
+in `organization_genes` refers to the underlying source, not to this project's
+transcription of it.
+
+### Reproducing the current state
+
+```bash
+dolt clone longevity-genie/enhancement-bio
+uv run --no-project python scripts/seed_db.py          # CSV → SQLite
+uv run --no-project python scripts/export_db_csv.py --check
+```
+
+Grade and vocabulary distributions can be checked directly:
+
+```sql
+SELECT evidence_grade, COUNT(*) FROM genes GROUP BY 1;   -- S 5, A 6, B 18, C 48, D 16, E 43
+SELECT manipulation,   COUNT(*) FROM genes GROUP BY 1;   -- 12 terms, 136 genes
+```
 
 ---
 

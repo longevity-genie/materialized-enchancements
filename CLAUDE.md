@@ -103,7 +103,8 @@ Gene data is split across three CSVs:
 | Short Description | `short_description` | One-sentence summary |
 | Mechanism | `mechanism` / `enhancement` | Molecular mechanism |
 | Achievements (effect sizes) | `achievements` | Quantified experimental results |
-| Highest Evidence Tier | `evidence_tier` | Evidence strength (T2–T6) |
+| Evidence Basis | `evidence_basis` | Prose justifying the grade; no tier numbers |
+| Evidence Grade | `evidence_grade` | `S`/`A`/`B`/`C`/`D`/`E` — see README |
 | Confidence | `confidence` | Confidence level |
 | Translational Gaps | `translational_gaps` | Remaining research needs |
 | Key References (DOIs) | `key_references` | DOI links to publications |
@@ -200,7 +201,7 @@ data, change it in Dolt.
 
 | Table | PK | Rows | Description |
 |---|---|---|---|
-| `genes` | `gene_id` | 136 | Gene metadata (narrative, mechanism, evidence tier, references, `game_enabled` flag) |
+| `genes` | `gene_id` | 136 | Gene metadata (narrative, mechanism, `evidence_grade` S-E, `evidence_basis` justification prose, `manipulation` controlled vocabulary, references, `game_enabled` flag) |
 | `species` | `species_id` | 72 | Organism lookup (taxonomy, life-history) |
 | `gene_species` | `(gene_id, species_id)` | 173 | Many-to-many gene↔species join |
 | `gene_properties` | `gene_id` | 136 | Pricing, biophysical data, protein IDs |
@@ -821,6 +822,11 @@ deficiency evidence; enhancement-above-normal cards may not.
 SELECT t.gene_id, t.intervention, t.key_result
 FROM gene_testing t JOIN genes g ON g.gene_id = t.gene_id
 WHERE t.positive = 'true'
-  AND g.manipulation NOT LIKE '%knockout%' AND g.manipulation NOT LIKE '%loss-of-function%'
+  AND g.manipulation NOT IN ('Knockout', 'Knockdown')
   AND (t.intervention LIKE '%knock%' OR t.intervention LIKE '%RNAi%' OR t.intervention LIKE '%deficien%');
 ```
+
+`manipulation` is a closed vocabulary of twelve terms (see README), so match it
+with `IN`/`=` and never with `LIKE '%...%'` — the old free-text values it used to
+hold, such as `loss-of-function germline knockout`, no longer exist and a
+substring filter written against them now silently matches nothing.

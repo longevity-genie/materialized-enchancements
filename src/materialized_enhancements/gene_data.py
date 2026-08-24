@@ -55,7 +55,8 @@ class GeneEntry(TypedDict):
     narrative: str
     mechanism: str
     achievements: str
-    evidence_tier: str
+    evidence_basis: str
+    evidence_grade: str
     confidence_entries: list[ConfidenceEntry]
     confidence_primary: ConfidenceEntry
     confidence_details: list[ConfidenceEntry]
@@ -144,7 +145,8 @@ _LIBRARY_COLUMN_MAP: dict[str, str] = {
     "Narrative": "narrative",
     "Mechanism": "mechanism",
     "Achievements (effect sizes)": "achievements",
-    "Highest Evidence Tier": "evidence_tier",
+    "Evidence Basis": "evidence_basis",
+    "Evidence Grade": "evidence_grade",
     "Translational Gaps": "translational_gaps",
     "Key References (DOIs)": "key_references",
     "Notes (limitations, contradictions, caveats)": "notes",
@@ -239,7 +241,7 @@ def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, object
     rows = conn.execute(
         """SELECT gene_id, gene, manipulation, category, trait,
                   narrative, short_description, mechanism, achievements,
-                  evidence_tier, translational_gaps, key_references, notes,
+                  evidence_basis, evidence_grade, translational_gaps, key_references, notes,
                   secondary_categories, game_enabled
            FROM genes"""
     ).fetchall()
@@ -255,7 +257,8 @@ def _sqlite_load_gene_library(conn: sqlite3.Connection) -> list[dict[str, object
             "narrative": r["narrative"] or "",
             "mechanism": r["mechanism"] or "",
             "achievements": r["achievements"] or "",
-            "evidence_tier": r["evidence_tier"] or "",
+            "evidence_basis": r["evidence_basis"] or "",
+            "evidence_grade": r["evidence_grade"] or "",
             "translational_gaps": r["translational_gaps"] or "",
             "key_references": r["key_references"] or "",
             "notes": r["notes"] or "",

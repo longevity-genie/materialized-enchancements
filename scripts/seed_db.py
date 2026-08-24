@@ -29,7 +29,11 @@ CREATE TABLE IF NOT EXISTS genes (
     short_description   TEXT NOT NULL DEFAULT '',
     mechanism           TEXT NOT NULL DEFAULT '',
     achievements        TEXT NOT NULL DEFAULT '',
-    evidence_tier       TEXT NOT NULL DEFAULT '',
+    evidence_basis      TEXT NOT NULL DEFAULT '',
+    -- S/A/B/C/D/E. S/A/B come from the trial record in organization_genes;
+    -- evidence_basis is the justification prose behind the letter; it holds no
+    -- tier numbers - those were removed when the S-E grade replaced them.
+    evidence_grade      TEXT NOT NULL DEFAULT '',
     translational_gaps  TEXT NOT NULL DEFAULT '',
     key_references      TEXT NOT NULL DEFAULT '',
     notes               TEXT NOT NULL DEFAULT '',
@@ -217,9 +221,9 @@ def seed_database(db_path: Path, data_dir: Path = DATA_DIR) -> None:
     conn.executemany(
         """INSERT INTO genes (gene_id, gene, manipulation, category, trait,
            narrative, short_description, mechanism, achievements,
-           evidence_tier, translational_gaps, key_references, notes,
+           evidence_basis, evidence_grade, translational_gaps, key_references, notes,
            secondary_categories)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         [
             (
                 _safe(r, "gene_id"),
@@ -231,7 +235,8 @@ def seed_database(db_path: Path, data_dir: Path = DATA_DIR) -> None:
                 _safe(r, "Short Description"),
                 _safe(r, "Mechanism"),
                 _safe(r, "Achievements (effect sizes)"),
-                _safe(r, "Highest Evidence Tier"),
+                _safe(r, "Evidence Basis"),
+                _safe(r, "Evidence Grade"),
                 _safe(r, "Translational Gaps"),
                 _safe(r, "Key References (DOIs)"),
                 _safe(r, "Notes (limitations, contradictions, caveats)"),

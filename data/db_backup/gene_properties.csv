@@ -24,7 +24,7 @@ clock_bmal1_dolphin,CLOCK / BMAL1,A0A6J3RDU0,uniprot,,true,CLOCK,855,95.4,20,2,0
 cltx,Chlorotoxin,P45639,uniprot,7X43,true,Chlorotoxin,36,4,2,1,3,0,8.2,-0.25,2006,Expression,3
 clu_secreted,"CLU (clusterin / apolipoprotein J, secreted isoform)",P10909,uniprot,7ZET,true,Clusterin,449,52.49,9,1,2,0,5.83,-0.665,2012,Stress Resistance,7
 cpdp_potoroo,CPD Photolyase,Q28811,uniprot,,true,Deoxyribodipyrimidine photo-lyase,532,61.6,3,1,3,11,8.2,-0.52,2005,Environmental Adaptation,6
-cry4a_robin,CRY4a,,,,false,CRY4,590,66,12,1,0,15,6.2,-0.3,2021,Perception,5
+cry4a_robin,CRY4a,A0A2I4SZI9,uniprot,,true,CRY4,590,66,12,1,0,15,6.2,-0.3,2021,Perception,5
 csmg_snail,CSMG,,,,false,,,,,25,0,,,,2019,Expression,4
 ctf1_ko,CTF1 (cardiotrophin-1),Q16619,uniprot,,true,Cardiotrophin-1,201,21.2,3,1,1,20.9,9.18,-0.105,2013,Longevity & Genome,6
 cyp2j19_bdh1l_keto,CYP2J19 + BDH1L,A0A8V1A1M2,uniprot,,true,CYP2J19,496,57,,2,6,0,7.63,-0.045,2025,Expression,4
@@ -86,7 +86,7 @@ pgc1a_gut_stem,"PPARGC1A (dPGC-1/spargel, gut-stem-cell-restricted overexpressio
 piezo2,PIEZO2,Q9H5I5,uniprot,,true,PIEZO2,2752,318.1,56,1,3,10,6,-0.15,2010,Perception,7
 pif,Pif,C7G0B5,uniprot,,true,Protein PIF,1007,115.4,5,1,1,37,5.5,-1.1,2009,Expression,10
 plaur_car_senolytic,PLAUR (uPAR) — anti-uPAR CAR construct,Q03405,uniprot,1YWH,true,PLAUR,335,37,7,1,3,15.2,6.19,-0.419,2024,Longevity & Genome,13
-pot1_turritopsis,POT1 / SIRT3 / RTEL1,,,,false,POT1,634,71.4,22,3,0,18,6,-0.4,2025,Regeneration,4
+pot1_turritopsis,POT1 / SIRT3 / RTEL1,Q9NUX5,uniprot,1XJV,true,POT1,634,71.4,22,3,0,18,6,-0.4,2025,Regeneration,4
 pparg_pro12ala,"PPARG (Pro12Ala, PPARγ2 variant)",P37231,uniprot,9F7W,true,Peroxisome proliferator-activated receptor gamma,505,57.6,7,1,1,31.3,5.61,-0.308,,Longevity & Genome,7
 ppri_ppra,PprI / PprA,Q9RXY7,uniprot,,true,PprA,300,33,1,2,2,10,5,-0.25,2016,Stress Resistance,5
 pr_marine_photoheterotroph,PR (green-light-absorbing proteorhodopsin),Q9F7P4,uniprot,2L6X,true,PR (green-light-absorbing proteorhodopsin),249,27.3,1,1,1,4,5.06,0.809,2007,Environmental Adaptation,6

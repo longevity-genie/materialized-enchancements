@@ -27,7 +27,13 @@ from materialized_enhancements.gene_data import (
     stl_display_for_gene,
 )
 from materialized_enhancements.sculpture import resolve_gene_properties_row
-from materialized_enhancements.state import CATEGORY_COLORS
+from materialized_enhancements.state import (
+    CATEGORY_COLORS,
+    evidence_color,
+    evidence_help,
+    evidence_short,
+    manipulation_help,
+)
 
 # Watch data-kb-gene on the dossier panel and reset scroll when the gene changes.
 # Do NOT yield rx.call_script from KbGenesGridState.handle_lf_grid_row_click after
@@ -66,14 +72,6 @@ _KB_DETAIL_SCROLL_WATCH_SCRIPT = """
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-_TIER_COLORS: dict[str, str] = {
-    "clinical": "#22c55e",
-    "human_cell": "#4ade80",
-    "animal": "#eab308",
-    "invitro": "#f59e0b",
-    "genomic": "#94a3b8",
-}
 
 _ORG_TYPE_LABELS: dict[str, str] = {
     "biotech_company": "Biotech company",
@@ -216,23 +214,6 @@ _DOSSIER_TABS: list[tuple[str, str]] = [
 ]
 
 
-def _max_tier(evidence_tier: str) -> int:
-    nums = re.findall(r"T(\d)", evidence_tier)
-    return max((int(n) for n in nums), default=0)
-
-
-def _tier_bucket(max_t: int) -> str:
-    if max_t >= 7:
-        return "clinical"
-    if max_t >= 6:
-        return "human_cell"
-    if max_t >= 5:
-        return "animal"
-    if max_t >= 3:
-        return "invitro"
-    return "genomic"
-
-
 def _stage_label(stage: str) -> str:
     return _STAGE_LABELS.get(stage, stage.replace("_", " ").title())
 
@@ -289,10 +270,10 @@ def _evidence_badge_maps() -> tuple[dict[str, str], dict[str, str]]:
     fg: dict[str, str] = {}
     bg: dict[str, str] = {}
     for gene in GENE_LIBRARY:
-        label = _short_evidence(str(gene.get("evidence_tier", "") or ""))
+        label = _short_evidence(gene)
         if not label or label in fg:
             continue
-        color = _TIER_COLORS.get(_tier_bucket(_max_tier(label)), "#94a3b8")
+        color = evidence_color(gene)
         fg[label] = color
         bg[label] = _badge_tint(color, 0.2)
     return fg, bg
@@ -548,17 +529,13 @@ _COMMERCIAL_COUNT: int = sum(
 # ---------------------------------------------------------------------------
 
 
-def _short_evidence(evidence_tier: str) -> str:
-    """Compact evidence label for grid cells (full text stays in the dossier)."""
-    tiers = re.findall(r"T\d+", evidence_tier)
-    if not tiers:
-        return evidence_tier[:48]
-    # Keep unique tiers in order, e.g. "T5 · T6"
-    seen: list[str] = []
-    for t in tiers:
-        if t not in seen:
-            seen.append(t)
-    return " · ".join(seen)
+def _short_evidence(gene: Any) -> str:
+    """Compact evidence label for grid cells (full text stays in the dossier).
+
+    A bare chain like "T5 · T4 · T3 · T6" told the reader nothing about any of
+    them, so this is the stored letter grade plus its words.
+    """
+    return evidence_short(gene)
 
 
 _CATEGORY_BADGE_FG, _CATEGORY_BADGE_BG = _category_badge_maps()
@@ -582,7 +559,7 @@ def _genes_lazyframe() -> pl.LazyFrame:
                 "Category": g["category"],
                 "Trait": g["trait"],
                 "Species": g["species_common_names"],
-                "Evidence": _short_evidence(g["evidence_tier"]),
+                "Evidence": _short_evidence(g),
                 "Tests": len(g.get("testing_entries", [])),
                 "Orgs": len(GENE_ORG_MAP.get(gid, [])),
                 "Best stage": _best_org_stage(gid),
@@ -985,10 +962,13 @@ class KnowledgebaseState(rx.State):
     d_category: str = ""
     d_trait: str = ""
     d_manipulation: str = ""
+    d_manipulation_help: str = ""
     d_species_common: str = ""
     d_species_scientific: str = ""
     d_evidence: str = ""
-    d_tier_bucket: str = "genomic"
+    d_evidence_badge: str = ""
+    d_evidence_color: str = "#94a3b8"
+    d_evidence_help: str = ""
     # Prose fields are linkified segments ({kind, v, href}) so DB plain-text
     # URLs/DOIs render as clickable links in the gene card.
     d_short: list[dict[str, str]] = []
@@ -1194,10 +1174,13 @@ class KnowledgebaseState(rx.State):
         self.d_category = gene["category"]
         self.d_trait = gene["trait"]
         self.d_manipulation = gene["manipulation"]
+        self.d_manipulation_help = manipulation_help(gene["manipulation"])
         self.d_species_common = gene["species_common_names"]
         self.d_species_scientific = gene["species_scientific_names"]
-        self.d_evidence = gene["evidence_tier"]
-        self.d_tier_bucket = _tier_bucket(_max_tier(gene["evidence_tier"]))
+        self.d_evidence = gene["evidence_basis"]
+        self.d_evidence_badge = evidence_short(gene)
+        self.d_evidence_color = evidence_color(gene)
+        self.d_evidence_help = evidence_help(gene)
         self.d_short = _linkify_prose_segments(str(gene.get("short_description", "") or ""))
         self.d_mechanism = _linkify_prose_segments(str(gene.get("mechanism", "") or ""))
         self.d_achievements = _linkify_prose_segments(str(gene.get("achievements", "") or ""))
@@ -1949,8 +1932,13 @@ _KB_CSS = """
 .kb-detail-species { font-size: 1.02rem; color: #94a3b8; margin: 10px 0; line-height: 1.45; }
 .kb-detail-tier-badge {
     display: inline-block; font-size: 0.92rem; font-weight: 700;
-    border-radius: 999px; padding: 4px 12px; margin-bottom: 12px;
-    background: rgba(124, 58, 237, 0.2); color: #c4b5fd;
+    border-radius: 999px; padding: 4px 12px; margin-bottom: 6px;
+    border: 1px solid transparent; cursor: help;
+    /* colour is set inline, per evidence grade */
+}
+.kb-detail-tier-why {
+    font-size: 0.86rem; line-height: 1.5; color: #94a3b8;
+    margin: 0 0 12px; max-width: 68ch;
 }
 .kb-detail-desc {
     font-size: 1.12rem; line-height: 1.65; color: #e2e8f0;
@@ -3370,7 +3358,12 @@ def _dossier_header() -> rx.Component:
         ),
         rx.cond(
             KnowledgebaseState.d_manipulation != "",
-            rx.el.div(KnowledgebaseState.d_manipulation, class_name="kb-detail-manip"),
+            rx.el.div(
+                KnowledgebaseState.d_manipulation,
+                title=KnowledgebaseState.d_manipulation_help,
+                aria_label=KnowledgebaseState.d_manipulation_help,
+                class_name="kb-detail-manip",
+            ),
             rx.fragment(),
         ),
         rx.el.div(
@@ -3379,7 +3372,22 @@ def _dossier_header() -> rx.Component:
             rx.el.em(KnowledgebaseState.d_species_scientific),
             class_name="kb-detail-species",
         ),
-        rx.el.span(KnowledgebaseState.d_evidence, class_name="kb-detail-tier-badge"),
+        rx.el.span(
+            KnowledgebaseState.d_evidence_badge,
+            title=KnowledgebaseState.d_evidence_help,
+            aria_label=KnowledgebaseState.d_evidence_help,
+            style={
+                "color": KnowledgebaseState.d_evidence_color,
+                "background": f"color-mix(in srgb, {KnowledgebaseState.d_evidence_color} 22%, transparent)",
+                "borderColor": f"color-mix(in srgb, {KnowledgebaseState.d_evidence_color} 45%, transparent)",
+            },
+            class_name="kb-detail-tier-badge",
+        ),
+        rx.cond(
+            KnowledgebaseState.d_evidence != "",
+            rx.el.div(KnowledgebaseState.d_evidence, class_name="kb-detail-tier-why"),
+            rx.fragment(),
+        ),
         rx.el.div(
             rx.cond(
                 KnowledgebaseState.d_protein_id != "",

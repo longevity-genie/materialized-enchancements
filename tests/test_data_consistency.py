@@ -26,7 +26,7 @@ ORGANIZATIONS_PATH = CSV_DIR / "organizations.csv"
 
 _README_STATS_RE = re.compile(
     r"(?P<genes>\d+) genes catalogued \((?P<playable>\d+) playable in the RPG, "
-    r"(?P<kb_only>\d+) knowledge-base-only pending biophysical data\) · "
+    r"(?P<kb_only>\d+) knowledge-base-only[^)]*\) · "
     r"(?P<categories>\d+) parent categories · "
     r"(?P<species>\d+) source species across all (?P<kingdoms>\d+) kingdoms of life "
     r"\((?P<kingdom_list>[^)]+)\) · "
@@ -50,9 +50,7 @@ VALID_CATEGORIES = {
     "Expression",
 }
 
-VALID_EVIDENCE_TIERS = {
-    "T1", "T2", "T2–T3", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T9-limited", "T10",
-}
+VALID_EVIDENCE_GRADES = {"S", "A", "B", "C", "D", "E"}
 
 VALID_CONFIDENCE_VALUES = {
     "Low", "Low-Medium", "Medium-Low", "Medium", "Medium-High",
@@ -256,13 +254,19 @@ class TestDomainValues:
         invalid = cats - VALID_CATEGORIES
         assert not invalid, f"Unknown categories in gene_library.csv: {invalid}"
 
-    def test_valid_evidence_tiers(self, gene_library: pl.DataFrame) -> None:
-        tiers = gene_library["Highest Evidence Tier"].str.strip_chars().to_list()
-        for raw in tiers:
-            prefix = str(raw).split(" ")[0].split("(")[0].strip()
-            assert prefix in VALID_EVIDENCE_TIERS, (
-                f"Unknown evidence tier prefix '{prefix}' (full value: '{raw}')"
-            )
+    def test_valid_evidence_grades(self, gene_library: pl.DataFrame) -> None:
+        grades = set(gene_library["Evidence Grade"].str.strip_chars().to_list())
+        invalid = grades - VALID_EVIDENCE_GRADES
+        assert not invalid, f"Unknown evidence grades in gene_library.csv: {invalid}"
+
+    def test_evidence_basis_carries_no_tier_numbers(self, gene_library: pl.DataFrame) -> None:
+        """The T-numbers were retired with the grade; a stray one is stale data."""
+        stale = [
+            raw
+            for raw in gene_library["Evidence Basis"].str.strip_chars().to_list()
+            if re.search(r"(?:^|[^A-Za-z0-9])T\d+(?:$|[^A-Za-z0-9])", str(raw))
+        ]
+        assert not stale, f"Evidence Basis still contains tier numbers: {stale[:3]}"
 
     def test_valid_confidence_values(self, gene_confidence: pl.DataFrame) -> None:
         vals = set(gene_confidence["value"].str.strip_chars().to_list())
@@ -337,7 +341,9 @@ class TestRequiredFields:
         "Short Description",
         "Mechanism",
         "Achievements (effect sizes)",
-        "Highest Evidence Tier",
+        # "Evidence Basis" is deliberately absent: 27 genes never had justification
+        # prose, and padding it would invent evidence. The grade is the required field.
+        "Evidence Grade",
         "Translational Gaps",
     ]
 

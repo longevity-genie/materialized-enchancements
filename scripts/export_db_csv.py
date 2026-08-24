@@ -76,7 +76,8 @@ _GENES_HEADERS = {
     "short_description": "Short Description",
     "mechanism": "Mechanism",
     "achievements": "Achievements (effect sizes)",
-    "evidence_tier": "Highest Evidence Tier",
+    "evidence_basis": "Evidence Basis",
+    "evidence_grade": "Evidence Grade",
     "translational_gaps": "Translational Gaps",
     "key_references": "Key References (DOIs)",
     "notes": "Notes (limitations, contradictions, caveats)",
@@ -89,9 +90,9 @@ EXPORTS: tuple[Export, ...] = (
     Export(
         "genes", "gene_library.csv",
         ("gene_id", "gene", "manipulation", "category", "trait", "narrative",
-         "short_description", "mechanism", "achievements", "evidence_tier",
-         "translational_gaps", "key_references", "notes", "secondary_categories",
-         "game_enabled"),
+         "short_description", "mechanism", "achievements", "evidence_basis",
+         "evidence_grade", "translational_gaps", "key_references", "notes",
+         "secondary_categories", "game_enabled"),
         rename=_GENES_HEADERS,
     ),
     Export(
