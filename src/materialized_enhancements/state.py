@@ -78,7 +78,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_PERSONAL_TAG = ""
 REPORT_LANDING_HTML_VERSION: int = 2
 REPORT_LANDING_HTML_VERSION_META_NAME = "materialized-report-html-version"
-ONBOARDING_STORAGE_VERSION: str = "2026-06-24-mobile-onboarding-v2"
+ONBOARDING_STORAGE_VERSION: str = "2026-08-24-opt-in-onboarding-v1"
 REPORT_CHARACTER_NOTE_MAX_CHARS: int = 420
 REPORT_PORTRAIT_MAX_BYTES: int = 2_500_000
 REPORT_PORTRAIT_ALLOWED_TYPES: set[str] = {"image/jpeg", "image/png", "image/webp"}
@@ -1868,35 +1868,11 @@ class ComposeState(rx.State):
         )
 
     def _sync_onboarding_from_storage(self) -> None:
-        """Align cookie + LocalStorage so a partial write still counts as finished."""
-        if self.onboarding_version == "pending":
-            has_prior_onboarding_state = (
-                self.onboarding_complete != "pending"
-                or self.dismissed_onboarding != "pending"
-                or self.onboarding_step != "pending"
-            )
+        """Default is tutorial-off. A matching-version in-progress tour may continue."""
+        version = str(self.onboarding_version or "pending")
+        if version == "pending" or version != ONBOARDING_STORAGE_VERSION:
             self.onboarding_version = ONBOARDING_STORAGE_VERSION
-            if has_prior_onboarding_state:
-                self.onboarding_complete = "false"
-                self.dismissed_onboarding = "false"
-                self.onboarding_step = "0"
-                return
-
-        if self.onboarding_version != ONBOARDING_STORAGE_VERSION:
-            self.onboarding_version = ONBOARDING_STORAGE_VERSION
-            self.onboarding_complete = "false"
-            self.dismissed_onboarding = "false"
-            self.onboarding_step = "0"
-            return
-
-        if (
-            self.onboarding_complete == "pending"
-            and self.dismissed_onboarding == "pending"
-            and self.onboarding_step == "pending"
-        ):
-            self.onboarding_complete = "false"
-            self.dismissed_onboarding = "false"
-            self.onboarding_step = "0"
+            self._mark_onboarding_finished()
             return
 
         if self.onboarding_complete == "pending":
@@ -1910,11 +1886,17 @@ class ComposeState(rx.State):
         dismissed = str(self.dismissed_onboarding or "false").strip().lower() == "true"
         step = str(self.onboarding_step or "0").strip().lower()
 
-        if complete:
+        if complete or dismissed or step in ("3", "done"):
             self._mark_onboarding_finished()
-            return
-        if dismissed or step in ("3", "done"):
-            self._mark_onboarding_finished()
+
+    def start_onboarding(self):  # type: ignore[return]
+        """Start or replay the 3-step tour from the gene-library step."""
+        self.onboarding_version = ONBOARDING_STORAGE_VERSION
+        self.onboarding_complete = "false"
+        self.dismissed_onboarding = "false"
+        self.onboarding_step = "0"
+        yield rx.call_script(self._onboarding_storage_script())
+        yield rx.call_script(_mobile_onboarding_scroll_script(0))
 
     def advance_onboarding(self):  # type: ignore[return]
         """Dismiss the current onboarding step and reveal the next spotlight."""

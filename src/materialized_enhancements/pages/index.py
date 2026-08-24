@@ -829,68 +829,87 @@ def _category_button(category: str) -> rx.Component:
     )
 
 
-def _budget_gauge() -> rx.Component:
-    """Sticky credit budget gauge with integrated mission briefing."""
-    briefing = rx.cond(
+def _orientation_block() -> rx.Component:
+    """Always-open first-screen brief: method, one reversal, takeaway, Show me how."""
+    return rx.cond(
         ComposeState.show_mission_brief,
         rx.el.div(
             rx.el.div(
-                rx.el.div(
-                    fomantic_icon("crosshairs", size=14, color="#a78bfa"),
-                    rx.el.span(
-                        "MISSION BRIEFING",
-                        style={
-                            "fontSize": "0.65rem",
-                            "fontWeight": "900",
-                            "letterSpacing": "0.14em",
-                            "color": "#a78bfa",
-                        },
-                    ),
-                    style={"display": "flex", "alignItems": "center", "gap": "5px"},
-                ),
                 rx.el.span(
-                    fomantic_icon("times", size=11, color="#64748b"),
+                    fomantic_icon("times", size=12, color="#94a3b8"),
                     on_click=ComposeState.dismiss_mission_brief,
+                    title="Hide this brief",
+                    aria_label="Hide this brief",
                     style={
                         "cursor": "pointer",
-                        "opacity": "0.6",
-                        "padding": "3px",
-                        "borderRadius": "4px",
-                        "transition": "opacity 0.2s",
+                        "opacity": "0.65",
+                        "padding": "6px",
+                        "borderRadius": "6px",
+                        "marginLeft": "auto",
                     },
                     _hover={"opacity": "1"},
                 ),
                 style={
                     "display": "flex",
-                    "justifyContent": "space-between",
-                    "alignItems": "center",
-                    "marginBottom": "4px",
+                    "justifyContent": "flex-end",
+                    "marginBottom": "2px",
                 },
             ),
             rx.el.p(
-                "Design one enhanced human. You have ",
-                rx.el.strong(f"{DEFAULT_BUDGET} enhancement credits", style={"color": "#c4b5fd"}),
-                " and real genes from extraordinary organisms. "
-                "Every upgrade has a biological tradeoff — you cannot maximize everything. "
-                "Once finished, materialize your enhancements into a personal report and a printable crystal "
-                "grown from your gene choices (an abstract form for now — a full-body figure is still on the roadmap).",
-                style={
-                    "fontSize": "0.82rem",
-                    "lineHeight": "1.45",
-                    "color": "#94a3b8",
-                    "margin": "0",
-                },
+                "A game. A gene therapy knowledgebase. A bioart project.",
+                class_name="me-orientation-headline",
             ),
-            style={
-                "padding": "0 0 8px",
-                "marginBottom": "8px",
-                "borderBottom": "1px solid rgba(167, 139, 250, 0.15)",
-            },
-            class_name="me-mission-briefing",
+            rx.el.p(
+                f"Pick real genes from real animals and design an enhanced human. "
+                f"{DEFAULT_BUDGET} credits, 80 genes from 71 species, and you cannot afford them all.",
+                class_name="me-orientation-body",
+            ),
+            rx.el.p(
+                "Tardigrade radiation shielding, naked mole-rat cancer resistance, axolotl limb regrowth. "
+                "Each gene carries a rating for how far the evidence actually got: "
+                "cells, animals, primates, human trials, on the market. "
+                "You will know the trade-offs before you spend. "
+                "Dsup, for example, shields human kidney cells "
+                "from radiation but killed rat neurons outright.",
+                class_name="me-orientation-body",
+            ),
+            rx.el.p(
+                "Your gene choices grow a unique 3D-printable Voronoi crystal "
+                "from the biophysical properties of those genes. "
+                "Wear it, display it, or share the build.",
+                class_name="me-orientation-body",
+            ),
+            rx.el.button(
+                fomantic_icon("info circle", size=16, color="#f8fafc"),
+                rx.el.span("Show me how", style={"marginLeft": "8px"}),
+                type="button",
+                on_click=ComposeState.start_onboarding,
+                class_name="me-orientation-help",
+            ),
+            rx.el.p(
+                "Just want to read about the genes? ",
+                rx.el.a(
+                    "Open the Knowledgebase",
+                    href="/knowledgebase",
+                    style={
+                        "color": "#c4b5fd",
+                        "fontWeight": "700",
+                        "textDecoration": "underline",
+                        "textUnderlineOffset": "2px",
+                    },
+                ),
+                ".",
+                class_name="me-orientation-kb",
+            ),
+            class_name="me-orientation-block",
         ),
+        rx.fragment(),
     )
+
+
+def _budget_gauge() -> rx.Component:
+    """Sticky credit budget gauge."""
     return rx.el.div(
-        briefing,
         rx.el.div(
             rx.el.div(
                 fomantic_icon("bolt", size=16, style={"color": ComposeState.budget_spent_color, "transition": "color 0.35s ease"}),
@@ -2586,8 +2605,8 @@ def _rpg_schema_hint_panel() -> rx.Component:
             },
         ),
         rx.el.div(
-            "Trait choices grow a unique printable crystal — an abstract mathematical form from your genes, "
-            "not a full-body figure (that is still on the roadmap).",
+            "Process diagram: trait input, parametric geometry, STL, then print. "
+            "Open if you want the pictures.",
             style={
                 "marginTop": "8px",
                 "color": "#cbd5e1",
@@ -4224,6 +4243,7 @@ def _gene_information_folds(gene_item: rx.Var, dark: bool) -> rx.Component:
             ),
             rx.fragment(),
         ),
+        class_name="me-gene-details",
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -4813,9 +4833,97 @@ def _pdb_viewer_scripts() -> rx.Component:
     )
 
 
+def _term_hint_script() -> rx.Component:
+    """Wrap method words inside open Details folds. Hover on desktop, tap on mobile."""
+    return rx.script(
+        r"""
+        (() => {
+            const installerVersion = "term-hints-2026-08-24";
+            if (window.__meTermHintsInstalled === installerVersion) return;
+            window.__meTermHintsInstalled = installerVersion;
+
+            const TERMS = {
+                knockout: "Loss-of-function: the gene is disrupted so the protein is gone or inactive.",
+                overexpression: "Extra copies or forced high expression of the gene.",
+                AAV: "Adeno-associated virus. A common gene-therapy delivery vector.",
+                mRNA: "Messenger RNA. A transient instruction to make the protein, not a DNA edit.",
+            };
+            const names = Object.keys(TERMS).sort((a, b) => b.length - a.length);
+            const re = new RegExp("\\b(" + names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")\\b", "gi");
+
+            const wrapRoot = (root) => {
+                if (!root || root.dataset.meTermsWrapped === "1") return;
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                    acceptNode(node) {
+                        const text = node.nodeValue || "";
+                        re.lastIndex = 0;
+                        if (!re.test(text)) return NodeFilter.FILTER_REJECT;
+                        const parent = node.parentElement;
+                        if (!parent || parent.closest("a, button, .me-term-hint, script, style")) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    },
+                });
+                const nodes = [];
+                while (walker.nextNode()) nodes.push(walker.currentNode);
+                for (const node of nodes) {
+                    const text = node.nodeValue || "";
+                    const frag = document.createDocumentFragment();
+                    let last = 0;
+                    re.lastIndex = 0;
+                    let match = re.exec(text);
+                    while (match) {
+                        if (match.index > last) {
+                            frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+                        }
+                        const key = names.find((n) => n.toLowerCase() === match[0].toLowerCase()) || match[0];
+                        const span = document.createElement("span");
+                        span.className = "me-term-hint";
+                        span.dataset.term = key;
+                        span.dataset.def = TERMS[key] || "";
+                        span.setAttribute("tabindex", "0");
+                        span.setAttribute("role", "button");
+                        span.textContent = match[0];
+                        frag.appendChild(span);
+                        last = match.index + match[0].length;
+                        match = re.exec(text);
+                    }
+                    if (last < text.length) {
+                        frag.appendChild(document.createTextNode(text.slice(last)));
+                    }
+                    if (node.parentNode) node.parentNode.replaceChild(frag, node);
+                }
+                root.dataset.meTermsWrapped = "1";
+            };
+
+            const scan = () => {
+                document.querySelectorAll(".me-gene-details").forEach(wrapRoot);
+            };
+
+            document.addEventListener("click", (event) => {
+                const hint = event.target && event.target.closest ? event.target.closest(".me-term-hint") : null;
+                document.querySelectorAll(".me-term-hint.is-open").forEach((el) => {
+                    if (el !== hint) el.classList.remove("is-open");
+                });
+                if (!hint) return;
+                hint.classList.toggle("is-open");
+            });
+
+            const observer = new MutationObserver(() => {
+                window.requestAnimationFrame(scan);
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            scan();
+        })();
+        """
+    )
+
+
 def _rpg_gene_library_panel() -> rx.Component:
     return rx.el.div(
         _pdb_viewer_scripts(),
+        _term_hint_script(),
         _rpg_gene_library_anchor_script(),
         _rpg_gene_library_title(),
         rx.el.div(_materialize_hint_bubble("genes"), style={"position": "relative"}),
@@ -6043,6 +6151,7 @@ def _rpg_flow_css() -> rx.Component:
             position: relative;
             z-index: 1010;
         }
+        .me-onboarding-gene-lift .me-orientation-block,
         .me-onboarding-gene-lift .me-rpg-sidebar-intro,
         .me-onboarding-gene-lift .me-budget-gauge,
         .me-onboarding-gene-lift .me-rpg-library-title,
@@ -6113,6 +6222,106 @@ def _rpg_flow_css() -> rx.Component:
             flex-direction: column;
             gap: 12px;
             margin-bottom: 12px;
+        }
+        .me-orientation-block {
+            box-sizing: border-box;
+            width: 100%;
+            margin: 0 0 12px;
+            padding: 14px 14px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(167, 139, 250, 0.32);
+            background: rgba(15, 23, 42, 0.92);
+            box-shadow: 0 8px 22px rgba(2, 6, 23, 0.36);
+        }
+        .me-orientation-headline {
+            margin: 0 0 8px;
+            color: #f8fafc;
+            font-size: clamp(1.02rem, 2.4vw, 1.22rem);
+            font-weight: 900;
+            line-height: 1.35;
+        }
+        .me-orientation-body {
+            margin: 0 0 8px;
+            color: #cbd5e1;
+            font-size: clamp(0.86rem, 2vw, 0.96rem);
+            line-height: 1.5;
+            font-weight: 600;
+        }
+        @media (max-width: 700px) {
+            .me-orientation-block {
+                padding: 10px 12px 8px;
+            }
+            .me-orientation-headline {
+                margin-bottom: 6px;
+                font-size: 1.02rem;
+                line-height: 1.3;
+            }
+            .me-orientation-body {
+                margin-bottom: 6px;
+                font-size: 0.84rem;
+                line-height: 1.4;
+            }
+            .me-orientation-help {
+                min-height: 48px;
+            }
+        }
+        .me-orientation-kb {
+            margin: 8px 0 0;
+            color: #94a3b8;
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+        .me-orientation-help {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            width: 100%;
+            margin: 4px 0 0;
+            padding: 10px 14px;
+            border: 1px solid rgba(167, 139, 250, 0.55);
+            border-radius: 10px;
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: #f8fafc;
+            font-size: 1.02rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+        .me-term-hint {
+            position: relative;
+            border-bottom: 1px dotted rgba(167, 139, 250, 0.75);
+            cursor: help;
+            color: inherit;
+        }
+        .me-term-hint::after {
+            content: attr(data-def);
+            position: absolute;
+            left: 0;
+            bottom: calc(100% + 8px);
+            z-index: 40;
+            width: min(280px, 72vw);
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(167, 139, 250, 0.45);
+            background: rgba(15, 23, 42, 0.96);
+            color: #e2e8f0;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.4;
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+        }
+        @media (hover: hover) and (pointer: fine) {
+            .me-term-hint:hover::after,
+            .me-term-hint:focus-visible::after {
+                opacity: 1;
+            }
+        }
+        .me-term-hint.is-open::after {
+            opacity: 1;
         }
         .me-rpg-body-map-panel {
             position: relative;
@@ -6875,39 +7084,14 @@ def _onboarding_backdrop() -> rx.Component:
     )
 
 
-def _mobile_mission_briefing_autoclose_script() -> rx.Component:
-    return rx.script(
-        """
-        (() => {
-            if (window.__meMobileMissionBriefingAutocloseInstalled) return;
-            window.__meMobileMissionBriefingAutocloseInstalled = true;
-            const isMobile = () => window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-            const closeBriefing = () => {
-                if (!isMobile()) return;
-                const briefing = document.querySelector(".me-mission-briefing");
-                if (!briefing) return;
-                document.documentElement.classList.add("me-mobile-mission-briefing-auto-closed");
-            };
-            const onScroll = () => {
-                if (!isMobile()) return;
-                if (window.scrollY > 96) closeBriefing();
-            };
-            window.addEventListener("scroll", onScroll, { passive: true });
-            window.addEventListener("touchmove", onScroll, { passive: true });
-            setTimeout(onScroll, 300);
-        })();
-        """
-    )
-
-
 def _rpg_active_genes_layout() -> rx.Component:
     return _rpg_shell(
         rx.el.div(
-            _mobile_mission_briefing_autoclose_script(),
             rx.el.div(
                 # Step 1 tip first so it is visible without scrolling past intro/video
                 # on short viewports where the left panel is height-capped.
                 _gene_library_onboarding_tooltip(),
+                _orientation_block(),
                 _rpg_sidebar_intro_stack(),
                 _mobile_budget_materialize_stack(),
                 _rpg_gene_library_panel(),
@@ -10881,8 +11065,22 @@ def _tab_page(active_route: str, content: rx.Component) -> rx.Component:
                 -webkit-backdrop-filter: none !important;
                 pointer-events: auto !important;
             }
-            html.me-mobile-mission-briefing-auto-closed .me-rpg-profile-page .me-mission-briefing {
-                display: none !important;
+            .me-rpg-profile-page .me-orientation-block {
+                width: 100% !important;
+                padding: 10px 12px 8px !important;
+            }
+            .me-rpg-profile-page .me-orientation-headline {
+                font-size: 1.02rem !important;
+                line-height: 1.3 !important;
+                margin-bottom: 6px !important;
+            }
+            .me-rpg-profile-page .me-orientation-body {
+                font-size: 0.84rem !important;
+                line-height: 1.4 !important;
+                margin-bottom: 6px !important;
+            }
+            .me-rpg-profile-page .me-orientation-help {
+                min-height: 48px !important;
             }
             .me-rpg-profile-page .me-mobile-budget-materialize {
                 display: flex !important;
